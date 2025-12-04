@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="478" viewBox="0 0 400 478" role="img" aria-labelledby="title desc">
+<title id='title'>Portfolio allocation example</title>
+<desc id='desc'>Horizontal bar chart showing example weights per theme in percent.</desc>
+<defs><style>.label{font:12px "Helvetica Neue",Helvetica,Arial,sans-serif;fill:#0f172a}.tick{font:11px "Helvetica Neue",Helvetica,Arial,sans-serif;fill:#475569}</style></defs>
+<line x1="150.0" y1="18" x2="150.0" y2="448" stroke="#d9e2ef" stroke-width="1" />
+<text class="tick" x="150.0" y="464" text-anchor="middle">0.0%</text>
+<line x1="194.8" y1="18" x2="194.8" y2="448" stroke="#d9e2ef" stroke-width="1" />
+<text class="tick" x="194.8" y="464" text-anchor="middle">5.0%</text>
+<line x1="239.6" y1="18" x2="239.6" y2="448" stroke="#d9e2ef" stroke-width="1" />
+<text class="tick" x="239.6" y="464" text-anchor="middle">10.0%</text>
+<line x1="284.4" y1="18" x2="284.4" y2="448" stroke="#d9e2ef" stroke-width="1" />
+<text class="tick" x="284.4" y="464" text-anchor="middle">15.0%</text>
+<line x1="329.2" y1="18" x2="329.2" y2="448" stroke="#d9e2ef" stroke-width="1" />
+<text class="tick" x="329.2" y="464" text-anchor="middle">20.0%</text>
+<line x1="374.0" y1="18" x2="374.0" y2="448" stroke="#d9e2ef" stroke-width="1" />
+<text class="tick" x="374.0" y="464" text-anchor="middle">25.0%</text>
+<text class="label" x="140" y="39.0" text-anchor="end" dominant-baseline="middle">AI - Compute</text>
+<rect x="150" y="30.0" width="69.0" height="16" fill="#4a8ddf" rx="3" />
+<text class="label" x="213.0" y="39.0" text-anchor="end" dominant-baseline="middle" fill="#f7fbff">7.7%</text>
+<text class="label" x="140" y="67.0" text-anchor="end" dominant-baseline="middle">AI - Healthcare</text>
+<rect x="150" y="58.0" width="18.8" height="16" fill="#4a8ddf" rx="3" />
+<text class="label" x="174.8" y="67.0" text-anchor="start" dominant-baseline="middle" fill="#0f172a">2.1%</text>
+<text class="label" x="140" y="95.0" text-anchor="end" dominant-baseline="middle">AI - Platform</text>
+<rect x="150" y="86.0" width="219.5" height="16" fill="#4a8ddf" rx="3" />
+<text class="label" x="363.5" y="95.0" text-anchor="end" dominant-baseline="middle" fill="#f7fbff">24.5%</text>
+<text class="label" x="140" y="123.0" text-anchor="end" dominant-baseline="middle">China Wave</text>
+<rect x="150" y="114.0" width="80.6" height="16" fill="#4a8ddf" rx="3" />
+<text class="label" x="224.6" y="123.0" text-anchor="end" dominant-baseline="middle" fill="#f7fbff">9.0%</text>
+<text class="label" x="140" y="151.0" text-anchor="end" dominant-baseline="middle">Digital Assets</text>
+<rect x="150" y="142.0" width="26.9" height="16" fill="#4a8ddf" rx="3" />
+<text class="label" x="182.9" y="151.0" text-anchor="start" dominant-baseline="middle" fill="#0f172a">3.0%</text>
+<text class="label" x="140" y="179.0" text-anchor="end" dominant-baseline="middle">EV</text>
+<rect x="150" y="170.0" width="90.5" height="16" fill="#4a8ddf" rx="3" />
+<text class="label" x="234.5" y="179.0" text-anchor="end" dominant-baseline="middle" fill="#f7fbff">10.1%</text>
+<text class="label" x="140" y="207.0" text-anchor="end" dominant-baseline="middle">Cash</text>
+<rect x="150" y="198.0" width="59.1" height="16" fill="#4a8ddf" rx="3" />
+<text class="label" x="203.1" y="207.0" text-anchor="end" dominant-baseline="middle" fill="#f7fbff">6.6%</text>
+<text class="label" x="140" y="235.0" text-anchor="end" dominant-baseline="middle">Consumer Staples</text>
+<rect x="150" y="226.0" width="26.9" height="16" fill="#4a8ddf" rx="3" />
+<text class="label" x="182.9" y="235.0" text-anchor="start" dominant-baseline="middle" fill="#0f172a">3.0%</text>
+<text class="label" x="140" y="263.0" text-anchor="end" dominant-baseline="middle">Infra / Transport</text>
+<rect x="150" y="254.0" width="57.3" height="16" fill="#4a8ddf" rx="3" />
+<text class="label" x="201.3" y="263.0" text-anchor="end" dominant-baseline="middle" fill="#f7fbff">6.4%</text>
+<text class="label" x="140" y="291.0" text-anchor="end" dominant-baseline="middle">US Bond (Hedged)</text>
+<rect x="150" y="282.0" width="20.6" height="16" fill="#4a8ddf" rx="3" />
+<text class="label" x="176.6" y="291.0" text-anchor="start" dominant-baseline="middle" fill="#0f172a">2.3%</text>
+<text class="label" x="140" y="319.0" text-anchor="end" dominant-baseline="middle">US Index</text>
+<rect x="150" y="310.0" width="75.3" height="16" fill="#4a8ddf" rx="3" />
+<text class="label" x="219.3" y="319.0" text-anchor="end" dominant-baseline="middle" fill="#f7fbff">8.4%</text>
+<text class="label" x="140" y="347.0" text-anchor="end" dominant-baseline="middle">AI - Energy</text>
+<rect x="150" y="338.0" width="32.3" height="16" fill="#4a8ddf" rx="3" />
+<text class="label" x="176.3" y="347.0" text-anchor="end" dominant-baseline="middle" fill="#f7fbff">3.6%</text>
+<text class="label" x="140" y="375.0" text-anchor="end" dominant-baseline="middle">Emerging Mkts</text>
+<rect x="150" y="366.0" width="11.6" height="16" fill="#4a8ddf" rx="3" />
+<text class="label" x="167.6" y="375.0" text-anchor="start" dominant-baseline="middle" fill="#0f172a">1.3%</text>
+<text class="label" x="140" y="403.0" text-anchor="end" dominant-baseline="middle">Japan Rise</text>
+<rect x="150" y="394.0" width="92.3" height="16" fill="#4a8ddf" rx="3" />
+<text class="label" x="236.3" y="403.0" text-anchor="end" dominant-baseline="middle" fill="#f7fbff">10.3%</text>
+<text class="label" x="140" y="431.0" text-anchor="end" dominant-baseline="middle">Vietnam Growth</text>
+<rect x="150" y="422.0" width="13.4" height="16" fill="#4a8ddf" rx="3" />
+<text class="label" x="169.4" y="431.0" text-anchor="start" dominant-baseline="middle" fill="#0f172a">1.5%</text>
+</svg>
