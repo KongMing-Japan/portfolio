@@ -1,0 +1,28 @@
+Broker,Holding,Ticker,Theme,Type,Target %,Currency,Shares,Buy Price,Investment Thesis
+楽天証券,NFナスダック,2845.T,AI – Platform,Core,2%,JPY,560,2700,代表美股AI核心平台企业的ETF，长期AI算力与平台信仰配置。
+楽天証券,NFナスダック,2845.T,AI – Platform,Core,6%,JPY,"2,000",2850,美股AI主线ETF，覆盖NVIDIA、Microsoft、Amazon等主导AI产业链的公司。
+楽天証券,米国債7-10年（為替ヘッジあり）,1482.T,US Bond (Hedged),Defensive,4%,JPY,"1,500",1642,用日元直接购买的对冲型美债ETF，稳健利息收益，防御型仓位。
+楽天証券,S&P500,2563.T,US Index,Defensive,3%,JPY,"9,000",363,美股大盘对冲版ETF，提供稳定防御收益。
+楽天証券,GMO-FG,4051.T,Japan Rise,Satellite,0%,JPY,"1,000",5713,日本金融科技代表企业，卫星型成长配置。
+楽天証券,サイゼリヤ,7581.T,Japan Rise,Satellite,3%,JPY,600,5001,日本消费必需品与餐饮龙头。
+楽天証券,共立メンテナンス,9616.T,Japan Rise,Satellite,3%,JPY,"1,000",2878,日本旅游与住宿业复苏受益标的。
+楽天証券,新興国INDEX,EEM_JPY,Emerging Mkts,Satellite,2%,JPY,67,16155.29,新兴市场指数基金。
+楽天証券,日元现金,Cash_JPY,Cash,Defensive,1%,JPY,"5,000,000",1,保留短期现金流动性。
+moomoo,NFナスダック,2845.T,AI – Platform,Core,9%,JPY,"3,200",2862,长期AI主线ETF。
+moomoo,東京地下鉄,9023.T,Infra / Transport,Defensive,5%,JPY,"4,300",1683,稳定现金流、防御型基础设施资产。
+moomoo,ユニ・チャーム,8113.T,Consumer Staples,Defensive,2%,JPY,"3,500",973,日本消费必需品龙头企业。
+moomoo,日元现金,Cash_JPY,Cash,Defensive,0%,JPY,"10,000",1,保留短期现金流动性。
+moomoo,S&P500,SPY_JPY,US Index,Defensive,1%,JPY,33,34800,美股大盘代表ETF。
+Tiger,ARK Genomic,BATS:ARKG,AI – Healthcare,Core,3%,USD,500,29.62,通过AI赋能医疗创新与基因组学革命。
+Tiger,Cameco Corp,CCJ,AI – Energy,Satellite,3%,USD,200,77,铀能企业，能源安全与AI扩张配套机会。
+Tiger,Circle Internet,CRCL,Digital Assets,Core,4%,USD,290,114.26,稳定币基础设施核心企业。
+Tiger,NVIDIA,NVDA,AI – Compute,Core,10%,USD,300,171.06,全球AI算力核心企业。
+Tiger,NuScale Power,SMR,AI – Energy,Satellite,2%,USD,500,34.66,小型核能模块化技术企业。
+Tiger,Tesla,TSLA,EV,Core,7%,USD,100,269.88,电动车与能源生态龙头。
+Tiger,腾讯-W,HKG:0700,China Wave,Core,4%,HKD,400,604,中国AI与互联网平台核心公司。
+Tiger,小米-W,HKG:1810,China Wave,Core,6%,HKD,"6,400",30.92,中国科技品牌全球化代表。
+支付宝,越南指数(VNM),VNM_CNY,Vietnam Growth,Satellite,2%,CNY,"44,268",1.5031,越南经济成长配置。
+招商证券,恒生科技ETF,SHA:513130,AI – Platform,Core,8%,CNY,"520,000",0.753,中国科技龙头集中ETF。
+招商证券,S&P500,SHA:513500,US Index,Defensive,4%,CNY,"90,000",2.378,美股大盘ETF。
+招商证券,宁德时代,SHE:300750,EV,Core,5%,CNY,600,287.65,动力电池产业链龙头。
+招商证券,人民币现金,Cash_CNY,Cash,Defensive,1%,CNY,"100,000",1,人民币现金仓位。

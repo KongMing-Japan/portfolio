@@ -1,38 +1,77 @@
-# portfolio
+# Portfolio
 
-Web 版个人股票持仓管理工具（文档与模板）。代码你将自行实现；此处提供需求与数据结构说明，便于外包或自研快速对齐。
+一个极简的多券商、多币种个人投资组合生成器。
 
-## 资源 / 参考
-- Google Sheet：https://docs.google.com/spreadsheets/d/1UPcx6tNZ9wwjNShGZVBwjoMuqfegmCq8vT5cSiQsyBU/edit?usp=sharing
+主流程只有四步：
 
-## 文档
-- PRD（v3）：`docs/prd-v3.md`
-- 数据规范（Data Spec）：`docs/data-spec.md`
-- 实战持仓方法论（个人版）：`docs/methodology.zh.md`
-- 我的组合与持仓逻辑（个人版）：`docs/my-portfolio.zh.md`
-- 整理持仓第一步（上手指南）：`docs/quickstart.zh.md`
-- Google Sheets 使用说明：`docs/google-sheets-guide.zh.md`
+1. 上传 CSV 或券商持仓截图
+2. 仅确认低置信度、缺字段或行情缺失的记录
+3. 自动统一证券、账户、币种和价格
+4. 生成核心仓、卫星仓、防御仓、现金四层组合报告
 
-## 模板样例
-- 持仓明细：`templates/holdings.example.csv`
-- 市场/价格与汇率：`templates/market-data.example.csv`
-- 统一配置：`templates/config.example.json`
+## 本地运行
 
-## 开发与部署（建议）
-- 前端：React + Tailwind（或任意你熟悉的框架）
-- 图表：Recharts / Chart.js
-- 数据源：先用模板导入；后续可接第三方价格/汇率 API
-- 部署：GitHub Pages（移动端适配）。仓库根已提供 `index.html` 跳转到 `webapp/`，发布后直接访问仓库 Pages 根即可打开应用。
-
-## 推送到 GitHub（先在网页新建公开仓库 portfolio）
 ```bash
-cd /Users/zhang/Documents/code/portfolio
-git add .
-git commit -m "docs: add PRD, modules and templates"
-git branch -M main
-git remote add origin https://github.com/<YOUR_USER>/portfolio.git
-git push -u origin main
+npm install
+npm run dev
 ```
 
-> `.gitignore` 可后续补充；License 选 MIT 较合适。
-- 一页极简流程（可立即执行）：`docs/quickstart.zh.md`
+使用 Cloudflare Pages Functions 运行完整前后端：
+
+```bash
+npm run dev:cf
+```
+
+生产构建与测试：
+
+```bash
+npm run build
+npm test
+```
+
+## 截图识别
+
+截图识别由 Groq 的视觉模型在 Cloudflare Pages Function
+`/api/extract-positions` 中完成。生产密钥通过 Cloudflare Secret 设置：
+
+```bash
+npx wrangler pages secret put GROQ_API_KEY --project-name=portfolio
+```
+
+模型名称已经保存在 `wrangler.jsonc`：
+
+```text
+meta-llama/llama-4-scout-17b-16e-instruct
+```
+
+未配置 Groq 密钥时，CSV、JSON 导入、行情和报告功能仍可使用。API
+密钥只存在于 Cloudflare 服务端 Secret，不会进入 GitHub 或浏览器包。
+
+## Cloudflare Pages
+
+- Project：`portfolio`
+- Production URL：<https://portfolio-kfb.pages.dev>
+- Build command：`npm run build`
+- Output directory：`dist`
+- Functions：`functions/api/*`
+
+手动部署：
+
+```bash
+npm run deploy:cf
+```
+
+## 数据与隐私
+
+- 完整组合保存在浏览器 IndexedDB，不需要登录。
+- 图片只发送给当次识别请求，应用不设置图片数据库或文件存储。
+- 可导出 Portfolio JSON，在其他设备重新导入。
+- 行情接口通过 `/api/quotes` 获取证券价格与汇率；行情失败时保留导入值或成本估值并要求确认。
+
+## 主要目录
+
+- `src/`：React + TypeScript 前端
+- `functions/`：Cloudflare Pages Functions
+- `public/sample-positions.csv`：27 条验收示例
+- `docs/`：原有投资组合方法论
+- `scripts/fetch-prices.js`：静态行情文件更新脚本

@@ -1,68 +1,20 @@
----
-layout: default
-title: Personal Portfolio Tracker
-description: Multi‑Broker · Multi‑Currency · Auto Prices & FX · Target Weights
----
-
-<h1>Personal Portfolio Tracker</h1>
-
-<p>
-  跨券商、多币种的个人持仓管理工具。以“目标占比”为核心，自动统一到 JPY 口径，支持价格与汇率自动更新；数据仅保存在浏览器或仓库中。
-  建议先打开 Web App（英文按钮），或阅读方法论与 Quickstart（中文说明）。下方提供 Data Spec 与 Schemas（开发者参考）。
-</p>
-
-<style>
-  .btn{display:inline-block;padding:10px 16px;margin:6px 8px 0 0;border-radius:10px;border:1px solid #083974;background:#0a4595;color:#fff!important;text-decoration:none;font-weight:600}
-  .btn:hover{background:#083974}
-  .btn--ghost{background:#fff;color:#0a4595!important;border-color:#0a4595}
-  .btn--ghost:hover{background:#edf2ff}
-  .btns{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
-  .btns .btn{margin:0}
-  @media (max-width: 640px){
-    .btns .btn{flex:1 1 calc(50% - 8px);text-align:center}
-    .btns .btn:first-child{flex-basis:100%}
-  }
-  @media (max-width: 420px){
-    .btns .btn{flex-basis:100%}
-  }
-  </style>
-
-<p class="btns">
-  <a class="btn" href="webapp/">Open Web App</a>
-  <a class="btn btn--ghost" href="docs/methodology.zh.html">Methodology</a>
-  <a class="btn btn--ghost" href="docs/my-portfolio.zh.html">My Portfolio</a>
-  <a class="btn btn--ghost" href="docs/quickstart.zh.html">First Steps</a>
-  <a class="btn btn--ghost" href="docs/prd-v3.html">PRD v3</a>
-  <a class="btn btn--ghost" href="docs/data-spec.html">Data Spec</a>
-  <a class="btn btn--ghost" href="docs/google-sheets-guide.zh.html">Google Sheets Guide</a>
-  <a class="btn btn--ghost" href="https://docs.google.com/spreadsheets/d/1UPcx6tNZ9wwjNShGZVBwjoMuqfegmCq8vT5cSiQsyBU/edit?usp=sharing" target="_blank" rel="noopener">Google Sheet</a>
-</p>
-
-<h2>包含内容</h2>
-<ul>
-  <li>GitHub Actions 自动抓取价格与汇率 → 产出 <code>data/prices.json</code></li>
-  <li>导入模板：<code>templates/holdings.example.csv</code>、<code>templates/market-data.example.csv</code>、<code>templates/config.example.json</code></li>
-  <li>文档：方法论、极简流程、PRD、Google Sheets 指南、Data Spec</li>
-  <li>纯前端应用（无服务器），移动端友好，托管于 GitHub Pages</li>
-</ul>
-
-<h2>开发者说明</h2>
-<ul>
-  <li>Schemas: <a href="schemas/config.schema.json">config.schema.json</a>, <a href="schemas/prices.schema.json">prices.schema.json</a></li>
-  <li>Prices workflow: <code>.github/workflows/update-prices.yml</code>（每日两次 + 手动触发）</li>
-</ul>
-
-<h2>文档导航</h2>
-<ul>
-  <li><a href="docs/prd-v3.html">PRD v3 (ZH)</a></li>
-  <li><a href="docs/methodology.zh.html">Methodology</a></li>
-  <li><a href="docs/my-portfolio.zh.html">My Portfolio</a></li>
-  <li><a href="docs/quickstart.zh.html">First Steps</a></li>
-  <li><a href="docs/data-spec.html">Data Spec</a></li>
-  <li><a href="docs/google-sheets-guide.zh.html">Google Sheets Guide</a></li>
-  <li><a href="https://docs.google.com/spreadsheets/d/1UPcx6tNZ9wwjNShGZVBwjoMuqfegmCq8vT5cSiQsyBU/edit?usp=sharing" target="_blank" rel="noopener">Google Sheet</a></li>
-  <li><a href="templates/holdings.example.csv">Template: holdings.example.csv</a></li>
-  <li><a href="templates/market-data.example.csv">Template: market-data.example.csv</a></li>
-  <li><a href="templates/config.example.json">Template: config.example.json</a></li>
-  <li><a href="data/prices.json">Latest prices.json</a></li>
-</ul>
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="上传多券商持仓文件或截图，自动生成专业、清晰的个人投资组合报告。"
+    />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22><rect width=%2232%22 height=%2232%22 rx=%226%22 fill=%22%23124f9b%22/><path d=%22M9 23V9h7.5c4 0 6.5 2.2 6.5 5.8 0 3.7-2.5 6-6.5 6H13V23H9zm4-6h3.2c1.8 0 2.8-.8 2.8-2.2 0-1.3-1-2.1-2.8-2.1H13V17z%22 fill=%22white%22/></svg>"
+    />
+    <title>Portfolio · 我的投资组合</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

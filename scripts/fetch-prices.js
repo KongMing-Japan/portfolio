@@ -1,12 +1,20 @@
 /*
   Node script: fetch prices and fx, output to data/prices.json
-  - Uses yahoo-finance2 (no API key) for equities/ETFs
-  - FX rates can be hardcoded or later fetched from exchangerate.host
+  - Uses Yahoo Finance's public chart endpoint (no API key)
+  - Fetches FX through Yahoo currency pairs
   - Map tickers from config/templates to Yahoo symbols
 */
 
 import fs from 'fs/promises';
-import yf from 'yahoo-finance2';
+
+const FX_TO_JPY_SYMBOLS = {
+  USD: 'USDJPY=X',
+  CNY: 'CNYJPY=X',
+  HKD: 'HKDJPY=X',
+  EUR: 'EURJPY=X',
+  GBP: 'GBPJPY=X',
+  SGD: 'SGDJPY=X',
+};
 
 // Map exchange-prefixed tickers to Yahoo symbols
 function mapToYahoo(t) {
@@ -17,6 +25,24 @@ function mapToYahoo(t) {
   if (t.startsWith('SHA:')) return t.split(':')[1] + '.SS';
   if (t.startsWith('SHE:')) return t.split(':')[1] + '.SZ';
   return t;
+}
+
+async function fetchYahooPrice(symbol) {
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=1d`;
+  const response = await fetch(url, {
+    headers: {
+      accept: 'application/json',
+      'user-agent': 'portfolio-generator/1.0',
+    },
+  });
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  const payload = await response.json();
+  const meta = payload?.chart?.result?.[0]?.meta;
+  if (meta?.regularMarketPrice == null) throw new Error('No market price');
+  return {
+    price: meta.regularMarketPrice,
+    currency: meta.currency ?? null,
+  };
 }
 
 async function readTickersAndFX() {
@@ -109,10 +135,10 @@ async function main() {
     }
     const ysym = mapToYahoo(t);
     try {
-      const q = await yf.quote(ysym);
-      const price = q?.regularMarketPrice ?? null;
-      const currency = q?.currency ?? null;
-      if (price != null) out.prices.push({ ticker: t, currency, price, fetchedAt: now });
+      const q = await fetchYahooPrice(ysym);
+      const price = q.price;
+      const currency = q.currency;
+      out.prices.push({ ticker: t, currency, price, fetchedAt: now });
       if (currency) currencies.add(currency);
       else console.error('No price for', t);
     } catch (e) {
@@ -122,25 +148,23 @@ async function main() {
   // Merge currencies known from data fx as well
   Object.keys(fxFromData || {}).forEach(c => currencies.add(c));
 
-  // Fetch FX via exchangerate.host (base=JPY, invert to get FX→JPY)
   async function fetchFXFromApi(curs) {
-    try {
-      const syms = Array.from(curs).filter(Boolean).map(s=>s.toUpperCase()).join(',');
-      const url = `https://api.exchangerate.host/latest?base=JPY&symbols=${encodeURIComponent(syms)}`;
-      const res = await fetch(url, { headers: { 'accept': 'application/json' } });
-      if (!res.ok) throw new Error('HTTP '+res.status);
-      const js = await res.json();
-      const rates = js?.rates || {};
-      const fx = { JPY: 1 };
-      for (const [k, v] of Object.entries(rates)) {
-        if (k === 'JPY') { fx.JPY = 1; continue; }
-        if (v && isFinite(v)) fx[k] = Number((1 / v).toFixed(6)); // invert: (JPY base → currency per JPY) => JPY per currency
-      }
-      return fx;
-    } catch (e) {
-      console.error('FX fetch failed:', e.message);
-      return null;
-    }
+    const fx = { JPY: 1 };
+    await Promise.all(
+      Array.from(curs).map(async (currency) => {
+        const code = String(currency || '').toUpperCase();
+        if (!code || code === 'JPY') return;
+        const symbol = FX_TO_JPY_SYMBOLS[code];
+        if (!symbol) return;
+        try {
+          const quote = await fetchYahooPrice(symbol);
+          fx[code] = quote.price;
+        } catch (error) {
+          console.error('FX fetch failed:', code, error.message);
+        }
+      }),
+    );
+    return fx;
   }
 
   const fxApi = await fetchFXFromApi(currencies);

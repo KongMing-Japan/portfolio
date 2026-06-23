@@ -1,0 +1,10 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "portfolio",
+  "pages_build_output_dir": "./dist",
+  "compatibility_date": "2026-06-23",
+  "compatibility_flags": ["nodejs_compat"],
+  "vars": {
+    "GROQ_VISION_MODEL": "meta-llama/llama-4-scout-17b-16e-instruct"
+  }
+}
