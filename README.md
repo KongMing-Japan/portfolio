@@ -61,16 +61,9 @@ meta-llama/llama-4-scout-17b-16e-instruct
 npm run deploy:cf
 ```
 
-GitHub 自动部署已经通过 GitHub Actions 配置：
-
-- Workflow：`.github/workflows/deploy-cloudflare-pages.yml`
-- 触发：push 到 `main`
-- 流程：安装依赖 → 测试 → 构建 → 部署到 Cloudflare Pages `portfolio`
-- GitHub Repo Variable：`CLOUDFLARE_ACCOUNT_ID`
-- GitHub Repo Secret：`CLOUDFLARE_API_TOKEN`
-
-`CLOUDFLARE_API_TOKEN` 需要在 Cloudflare 创建专用 token 后写入 GitHub
-Secrets；`GROQ_API_KEY` 不放 GitHub，继续放 Cloudflare Pages Secret。
+GitHub 自动部署通过 Cloudflare Pages 原生 Git 集成完成，push 到
+`main` 后由 Cloudflare 构建并发布。`GROQ_API_KEY` 不放 GitHub，继续放
+Cloudflare Pages Secret。
 
 ## 数据与隐私
 
