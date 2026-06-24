@@ -18,17 +18,15 @@ describe('portfolio import and analysis', () => {
 
   it('loads the Berkshire sample and normalizes cash', () => {
     const holdings = parseHoldingsCsv(readFileSync(samplePath, 'utf8'));
-    expect(holdings).toHaveLength(11);
-    expect(new Set(holdings.map((item) => item.broker)).size).toBe(2);
+    expect(holdings).toHaveLength(10);
+    expect(new Set(holdings.map((item) => item.broker))).toEqual(
+      new Set(['Berkshire Hathaway 13F Demo']),
+    );
     expect(new Set(holdings.map((item) => item.currency))).toEqual(
       new Set(['USD']),
     );
-    expect(holdings.filter((item) => item.ticker === 'Cash_USD')).toHaveLength(1);
-    expect(
-      holdings.filter((item) => item.ticker.startsWith('Cash_')).every(
-        (item) => item.layer === 'Cash',
-      ),
-    ).toBe(true);
+    expect(holdings.some((item) => item.ticker.startsWith('Cash_'))).toBe(false);
+    expect(holdings.every((item) => item.account === 'Q1 2026 13F')).toBe(true);
   });
 
   it('aggregates duplicate tickers across accounts', () => {
@@ -48,10 +46,10 @@ describe('portfolio import and analysis', () => {
       'JPY',
     );
     const aggregated = aggregateHoldings(priced);
-    expect(aggregated).toHaveLength(11);
-    expect(
-      aggregated.find((item) => item.ticker === 'Cash_USD')?.quantity,
-    ).toBe(40_000_000_000);
+    expect(aggregated).toHaveLength(10);
+    expect(aggregated.find((item) => item.ticker === 'AAPL')?.quantity).toBe(
+      289_000_000,
+    );
     expect(concentrationScore(aggregated)).toBeGreaterThan(0);
   });
 

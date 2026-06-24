@@ -1534,3 +1534,125 @@ a:focus-visible {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* White minimal direction */
+html,
+body {
+  background: #fff;
+}
+
+.app-shell::before {
+  display: none;
+}
+
+.simple-header,
+.report-header {
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: none;
+  border-bottom-color: #eeeeee;
+}
+
+.intro-mark {
+  display: none;
+}
+
+.upload-page {
+  padding-top: 78px;
+}
+
+.upload-intro h1 {
+  color: #111;
+  font-size: clamp(36px, 5.2vw, 64px);
+  font-weight: 760;
+}
+
+.upload-intro p {
+  color: #5f6670;
+}
+
+.input-studio,
+.upload-zone,
+.paste-zone,
+.summary-strip,
+.allocation-section,
+.report-panel,
+.complete-holdings {
+  background: #fff !important;
+  box-shadow: none !important;
+  border-color: #e7e7e7 !important;
+}
+
+.input-studio {
+  border-radius: 24px;
+}
+
+.upload-zone,
+.paste-zone {
+  border-radius: 18px;
+}
+
+.input-tabs {
+  background: #f7f7f7;
+  border-color: #ececec;
+}
+
+.input-tabs button.is-active,
+.tab-button.is-active {
+  background: #111 !important;
+  color: #fff !important;
+  box-shadow: none !important;
+}
+
+.upload-icon {
+  color: #111;
+  border-color: #e6e6e6;
+  border-radius: 18px;
+  box-shadow: none;
+}
+
+.primary-button {
+  border-color: #111;
+  background: #111;
+  box-shadow: none;
+}
+
+.primary-button:hover {
+  border-color: #333;
+  background: #333;
+}
+
+.text-link,
+.upload-support svg,
+.report-footer a {
+  color: #111 !important;
+}
+
+.report-page {
+  background: #fff;
+}
+
+.report-title-row h1,
+.section-heading h2,
+.report-panel h2 {
+  color: #111;
+}
+
+.summary-strip {
+  border-radius: 20px;
+}
+
+.allocation-section,
+.report-panel,
+.complete-holdings {
+  border-radius: 20px !important;
+}
+
+.ranked-fill,
+.exposure-fill {
+  background: #111 !important;
+  box-shadow: none !important;
+}
+
+.review-group {
+  border-top-color: #111;
+}

@@ -202,6 +202,21 @@ export function concentrationLabel(score: number) {
 }
 
 export function formatMoney(value: number, currency: string) {
+  const prefix =
+    currency === 'USD'
+      ? 'US$'
+      : currency === 'JPY'
+        ? '¥'
+        : currency === 'CNY'
+          ? 'CN¥'
+          : `${currency} `;
+  const absolute = Math.abs(value);
+  if (absolute >= 1_000_000_000) {
+    return `${prefix}${(value / 1_000_000_000).toFixed(1)}B`;
+  }
+  if (absolute >= 1_000_000) {
+    return `${prefix}${(value / 1_000_000).toFixed(1)}M`;
+  }
   return new Intl.NumberFormat('zh-CN', {
     style: 'currency',
     currency,

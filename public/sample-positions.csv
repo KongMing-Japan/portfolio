@@ -1,12 +1,11 @@
-Broker,Holding,Ticker,Theme,Type,Target %,Currency,Shares,Buy Price,Market Price,Investment Thesis
-Berkshire 13F Sample,Apple,AAPL,Consumer Technology,Core,22%,USD,"289,000,000",160,200,公开13F中的最大持仓之一，用于演示集中型核心仓。
-Berkshire 13F Sample,American Express,AXP,Financials,Core,17%,USD,"151,610,700",190,320,长期金融服务与支付网络持仓，用于演示核心仓。
-Berkshire 13F Sample,Coca-Cola,KO,Consumer Staples,Core,12%,USD,"400,000,000",25,75,消费品长期持仓，用于演示稳定品牌资产。
-Berkshire 13F Sample,Bank of America,BAC,Financials,Core,10%,USD,"630,000,000",30,45,大型银行持仓，用于演示金融暴露。
-Berkshire 13F Sample,Chevron,CVX,Energy,Defensive,7%,USD,"105,000,000",135,165,能源现金流资产，用于演示防御与通胀暴露。
-Berkshire 13F Sample,Occidental Petroleum,OXY,Energy,Satellite,5%,USD,"255,000,000",55,62,能源主题持仓，用于演示卫星主题仓。
-Berkshire 13F Sample,Kraft Heinz,KHC,Consumer Staples,Defensive,4%,USD,"325,000,000",32,34,食品消费品持仓，用于演示防御仓。
-Berkshire 13F Sample,Moody's,MCO,Financial Data,Satellite,4%,USD,"24,669,778",310,475,金融数据与评级业务，用于演示高质量卫星仓。
-Berkshire 13F Sample,Alphabet Class A,GOOGL,Technology Platform,Satellite,3%,USD,"36,000,000",155,175,公开披露新增/增加的科技平台暴露示例。
-Berkshire 13F Sample,Delta Air Lines,DAL,Transport,Satellite,1%,USD,"40,000,000",45,56,航空运输主题，用于演示小型卫星仓。
-Berkshire Cash,USD Cash,Cash_USD,Cash,Cash,15%,USD,"40,000,000,000",1,1,现金与短期流动性示例；现金始终归入 Cash。
+Broker,Account,Holding,Ticker,Theme,Type,Currency,Shares,Market Value,Investment Thesis
+Berkshire Hathaway 13F Demo,Q1 2026 13F,Apple,AAPL,Information Technology,Core,USD,"289,000,000","57,800,000,000",Public 13F-style demo row based on Berkshire Hathaway disclosed equity holdings.
+Berkshire Hathaway 13F Demo,Q1 2026 13F,American Express,AXP,Financial Services,Core,USD,"151,610,700","45,900,000,000",Public 13F-style demo row based on Berkshire Hathaway disclosed equity holdings.
+Berkshire Hathaway 13F Demo,Q1 2026 13F,Coca-Cola,KO,Consumer Staples,Core,USD,"400,000,000","30,400,000,000",Public 13F-style demo row based on Berkshire Hathaway disclosed equity holdings.
+Berkshire Hathaway 13F Demo,Q1 2026 13F,Bank of America,BAC,Financial Services,Core,USD,"630,000,000","25,000,000,000",Public 13F-style demo row based on Berkshire Hathaway disclosed equity holdings.
+Berkshire Hathaway 13F Demo,Q1 2026 13F,Chevron,CVX,Energy,Defensive,USD,"105,000,000","17,500,000,000",Public 13F-style demo row based on Berkshire Hathaway disclosed equity holdings.
+Berkshire Hathaway 13F Demo,Q1 2026 13F,Occidental Petroleum,OXY,Energy,Defensive,USD,"255,000,000","14,700,000,000",Public 13F-style demo row based on Berkshire Hathaway disclosed equity holdings.
+Berkshire Hathaway 13F Demo,Q1 2026 13F,Kraft Heinz,KHC,Consumer Staples,Defensive,USD,"325,000,000","10,900,000,000",Public 13F-style demo row based on Berkshire Hathaway disclosed equity holdings.
+Berkshire Hathaway 13F Demo,Q1 2026 13F,Moody's,MCO,Financial Data,Satellite,USD,"24,669,778","11,700,000,000",Public 13F-style demo row based on Berkshire Hathaway disclosed equity holdings.
+Berkshire Hathaway 13F Demo,Q1 2026 13F,Alphabet Class A,GOOGL,Communication Services,Satellite,USD,"36,000,000","6,300,000,000",Public 13F-style demo row based on Berkshire Hathaway disclosed equity holdings.
+Berkshire Hathaway 13F Demo,Q1 2026 13F,Delta Air Lines,DAL,Industrials,Satellite,USD,"40,000,000","2,600,000,000",Public 13F-style demo row based on Berkshire Hathaway disclosed equity holdings.
