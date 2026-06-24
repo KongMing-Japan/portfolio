@@ -4,7 +4,7 @@
 
 主流程只有四步：
 
-1. 上传 CSV 或券商持仓截图
+1. 上传 CSV、券商持仓截图，或直接手写 / 粘贴持仓
 2. 仅确认低置信度、缺字段或行情缺失的记录
 3. 自动统一证券、账户、币种和价格
 4. 生成核心仓、卫星仓、防御仓、现金四层组合报告
@@ -51,6 +51,7 @@ meta-llama/llama-4-scout-17b-16e-instruct
 
 - Project：`portfolio`
 - Production URL：<https://portfolio-kfb.pages.dev>
+- Custom domain：<https://portfolio.kongmingjapan.com>
 - Build command：`npm run build`
 - Output directory：`dist`
 - Functions：`functions/api/*`
@@ -76,6 +77,6 @@ Cloudflare Pages Secret。
 
 - `src/`：React + TypeScript 前端
 - `functions/`：Cloudflare Pages Functions
-- `public/sample-positions.csv`：27 条验收示例
+- `public/sample-positions.csv`：Berkshire Hathaway 13F 风格演示数据
 - `docs/`：原有投资组合方法论
 - `scripts/fetch-prices.js`：静态行情文件更新脚本

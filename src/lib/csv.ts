@@ -16,9 +16,9 @@ const FIELD_ALIASES = {
   targetWeight: ['target %', 'targetweight', 'target weight', '目标占比', '目標比率'],
   currency: ['currency', '币种', '幣種', '通貨'],
   quantity: ['shares', 'quantity', 'qty', '数量', '數量', '持有数量', '保有数量'],
-  cost: ['buy price', 'cost_per_unit', 'cost', '买入价', '成本价', '取得単価'],
-  marketPrice: ['market price', 'current price', '现价', '現在値', '市价'],
-  marketValue: ['market value', 'value', '市值', '評価額', '资产'],
+  cost: ['buy price', 'cost_per_unit', 'costperunit', 'cost', '买入价', '成本价', '取得単価'],
+  marketPrice: ['market price', 'marketprice', 'current price', 'currentprice', '现价', '現在値', '市价'],
+  marketValue: ['market value', 'marketvalue', 'value', '市值', '評価額', '资产'],
   thesis: ['investment thesis', 'thesis', '投资逻辑', '投資理由'],
 } as const;
 
@@ -63,7 +63,11 @@ function normalizeRow(row: CsvRow) {
   return output;
 }
 
-function rowToHolding(row: CsvRow, sourceName: string): Holding | null {
+function rowToHolding(
+  row: CsvRow,
+  sourceName: string,
+  sourceType: Holding['sourceType'] = 'csv',
+): Holding | null {
   const normalized = normalizeRow(row);
   const ticker = String(normalized.ticker ?? '').trim();
   const name = String(normalized.name ?? ticker).trim();
@@ -106,7 +110,7 @@ function rowToHolding(row: CsvRow, sourceName: string): Holding | null {
       theme,
     ),
     theme,
-    sourceType: 'csv',
+    sourceType,
     confidence: reviewReasons.length ? 0.65 : 1,
     needsReview: reviewReasons.length > 0,
     reviewReasons,
@@ -134,6 +138,61 @@ export function parseHoldingsCsv(text: string, sourceName = 'CSV 导入') {
 
 export async function parseCsvFile(file: File) {
   return parseHoldingsCsv(await file.text(), file.name.replace(/\.csv$/i, ''));
+}
+
+function looksLikeHeader(line: string) {
+  const normalized = line.toLowerCase();
+  return [
+    'ticker',
+    'symbol',
+    '证券',
+    '代碼',
+    '代码',
+    '銘柄',
+    'holding',
+    'broker',
+  ].some((token) => normalized.includes(token));
+}
+
+export function parseHoldingsText(text: string, sourceName = '手动输入') {
+  const trimmed = text.trim();
+  if (!trimmed) throw new Error('请先粘贴或手写持仓数据');
+
+  const firstLine = trimmed.split(/\r?\n/).find((line) => line.trim()) ?? '';
+  if (looksLikeHeader(firstLine)) {
+    return parseHoldingsCsv(trimmed, sourceName).map((holding) => ({
+      ...holding,
+      sourceType: 'manual' as const,
+    }));
+  }
+
+  const rows = trimmed
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const delimiter = line.includes('\t') ? '\t' : ',';
+      const parts = line
+        .split(delimiter)
+        .map((part) => part.trim())
+        .filter(Boolean);
+      return {
+        ticker: parts[0],
+        name: parts[1] || parts[0],
+        currency: parts[2],
+        quantity: parts[3],
+        marketPrice: parts[4],
+        broker: parts[5] || sourceName,
+        layer: parts[6],
+        theme: parts[7],
+      } satisfies CsvRow;
+    });
+
+  const parsed = rows
+    .map((row) => rowToHolding(row, sourceName, 'manual'))
+    .filter((holding): holding is Holding => holding != null);
+  if (!parsed.length) throw new Error('没有识别到有效持仓');
+  return parsed;
 }
 
 export function markDuplicates(holdings: Holding[]) {

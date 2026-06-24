@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { parseHoldingsCsv, parseNumber } from '../lib/csv';
+import { parseHoldingsCsv, parseHoldingsText, parseNumber } from '../lib/csv';
 import {
   aggregateHoldings,
   applyQuotes,
@@ -16,14 +16,14 @@ describe('portfolio import and analysis', () => {
     expect(parseNumber('2%')).toBe(2);
   });
 
-  it('loads the acceptance sample and normalizes cash', () => {
+  it('loads the Berkshire sample and normalizes cash', () => {
     const holdings = parseHoldingsCsv(readFileSync(samplePath, 'utf8'));
-    expect(holdings).toHaveLength(27);
-    expect(new Set(holdings.map((item) => item.broker)).size).toBe(5);
+    expect(holdings).toHaveLength(11);
+    expect(new Set(holdings.map((item) => item.broker)).size).toBe(2);
     expect(new Set(holdings.map((item) => item.currency))).toEqual(
-      new Set(['JPY', 'USD', 'HKD', 'CNY']),
+      new Set(['USD']),
     );
-    expect(holdings.filter((item) => item.ticker === 'Cash_JPY')).toHaveLength(2);
+    expect(holdings.filter((item) => item.ticker === 'Cash_USD')).toHaveLength(1);
     expect(
       holdings.filter((item) => item.ticker.startsWith('Cash_')).every(
         (item) => item.layer === 'Cash',
@@ -48,13 +48,20 @@ describe('portfolio import and analysis', () => {
       'JPY',
     );
     const aggregated = aggregateHoldings(priced);
-    expect(aggregated).toHaveLength(24);
-    expect(aggregated.find((item) => item.ticker === '2845.T')?.quantity).toBe(
-      5760,
-    );
+    expect(aggregated).toHaveLength(11);
     expect(
-      aggregated.find((item) => item.ticker === 'Cash_JPY')?.quantity,
-    ).toBe(5_010_000);
+      aggregated.find((item) => item.ticker === 'Cash_USD')?.quantity,
+    ).toBe(40_000_000_000);
     expect(concentrationScore(aggregated)).toBeGreaterThan(0);
+  });
+
+  it('parses pasted shorthand rows', () => {
+    const holdings = parseHoldingsText(
+      'AAPL, Apple, USD, 10, 200, Manual, Core, Consumer Tech\nCash_USD, USD Cash, USD, 5000, 1, Manual, Cash, Liquidity',
+    );
+    expect(holdings).toHaveLength(2);
+    expect(holdings[0].sourceType).toBe('manual');
+    expect(holdings[0].ticker).toBe('AAPL');
+    expect(holdings[1].layer).toBe('Cash');
   });
 });

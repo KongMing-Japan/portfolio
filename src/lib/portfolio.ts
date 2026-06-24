@@ -115,7 +115,11 @@ export function applyQuotes(
     const fx = fxToJpy[holding.currency] ?? null;
     const valueInBase =
       localValue != null && fx != null ? (localValue * fx) / baseToJpy : null;
-    const missingQuote = quote?.price == null && !CASH_PATTERN.test(holding.ticker);
+    const missingQuote =
+      quote?.price == null &&
+      holding.marketPrice == null &&
+      holding.importedMarketValue == null &&
+      !CASH_PATTERN.test(holding.ticker);
     const reviewReasons = holding.reviewReasons.filter(
       (reason) => reason !== '未获取到最新行情',
     );

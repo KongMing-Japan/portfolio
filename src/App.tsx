@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertCircle, RotateCcw, Trash2 } from 'lucide-react';
 import { fetchBundledPrices, fetchQuotes, extractImagePositions } from './lib/api';
-import { markDuplicates, parseCsvFile, parseHoldingsCsv } from './lib/csv';
+import {
+  markDuplicates,
+  parseCsvFile,
+  parseHoldingsCsv,
+  parseHoldingsText,
+} from './lib/csv';
 import {
   applyQuotes,
   recalculateBaseValues,
@@ -198,6 +203,40 @@ function App() {
     }
   }, [finishImport]);
 
+  const handleManualImport = useCallback(
+    async (text: string) => {
+      setError(null);
+      setStep('processing');
+      setProcessing({
+        parsing: 'active',
+        matching: 'pending',
+        quotes: 'pending',
+        message: '正在读取手动输入的持仓',
+      });
+      try {
+        const parsed = parseHoldingsText(text, '手动输入');
+        setProcessing({
+          parsing: 'done',
+          matching: 'active',
+          quotes: 'pending',
+          message: '正在统一证券代码、币种和分层',
+        });
+        await finishImport(parsed);
+      } catch (caught) {
+        const message =
+          caught instanceof Error ? caught.message : '手动输入解析失败';
+        setError(message);
+        setProcessing({
+          parsing: 'error',
+          matching: 'pending',
+          quotes: 'pending',
+          message,
+        });
+      }
+    },
+    [finishImport],
+  );
+
   const handleJsonImport = useCallback(async (file: File) => {
     const snapshot = JSON.parse(await file.text()) as PortfolioSnapshot;
     if (snapshot.version !== 1 || !Array.isArray(snapshot.holdings)) {
@@ -308,6 +347,7 @@ function App() {
       <UploadScreen
         onFiles={handleFiles}
         onJsonImport={handleJsonImport}
+        onManualImport={handleManualImport}
         onSample={handleSample}
         onResume={resumeSaved}
         hasSavedPortfolio={hasSavedPortfolio}
@@ -322,6 +362,7 @@ function App() {
     handleBaseCurrency,
     handleFiles,
     handleJsonImport,
+    handleManualImport,
     handleSample,
     hasSavedPortfolio,
     holdings,
