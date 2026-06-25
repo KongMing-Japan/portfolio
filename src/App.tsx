@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertCircle, RotateCcw, Trash2 } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 import { fetchBundledPrices, fetchQuotes, extractImagePositions } from './lib/api';
 import {
   markDuplicates,
@@ -19,11 +19,11 @@ import { clearSnapshot, loadSnapshot, saveSnapshot } from './lib/storage';
 import { ProcessingScreen } from './components/ProcessingScreen';
 import { FinanceReportScreen } from './components/FinanceReportScreen';
 import { ReviewScreen } from './components/ReviewScreen';
-import { UploadScreen } from './components/UploadScreen';
 import type {
   AppStep,
   BaseCurrency,
   Holding,
+  Locale,
   ManualHoldingInput,
   PortfolioSnapshot,
   ProcessingStatus,
@@ -38,18 +38,18 @@ const INITIAL_STATUS: ProcessingStatus = {
 };
 
 function App() {
-  const [step, setStep] = useState<AppStep>('upload');
+  const [step, setStep] = useState<AppStep>('report');
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [baseCurrency, setBaseCurrency] = useState<BaseCurrency>('JPY');
+  const [locale, setLocale] = useState<Locale>(
+    () => (localStorage.getItem('portfolio-locale') as Locale | null) ?? 'zh',
+  );
   const [fx, setFx] = useState<Record<string, number>>({ JPY: 1 });
   const [quoteUpdatedAt, setQuoteUpdatedAt] = useState<string | null>(null);
   const [processing, setProcessing] =
     useState<ProcessingStatus>(INITIAL_STATUS);
   const [error, setError] = useState<string | null>(null);
   const [hasSavedPortfolio, setHasSavedPortfolio] = useState(false);
-  const [shouldRestoreReport] = useState(
-    () => sessionStorage.getItem('portfolio-current-step') === 'report',
-  );
 
   useEffect(() => {
     let active = true;
@@ -57,24 +57,26 @@ function App() {
       .then((snapshot) => {
         if (!active || !snapshot?.holdings.length) return;
         setHasSavedPortfolio(true);
-        if (shouldRestoreReport) {
-          setHoldings(snapshot.holdings);
-          setBaseCurrency(snapshot.baseCurrency);
-          setFx(snapshot.fx);
-          setQuoteUpdatedAt(snapshot.quoteUpdatedAt);
-          setStep('report');
-        }
+        setHoldings(snapshot.holdings);
+        setBaseCurrency(snapshot.baseCurrency);
+        setFx(snapshot.fx);
+        setQuoteUpdatedAt(snapshot.quoteUpdatedAt);
+        setStep('report');
       })
       .catch(() => undefined);
     return () => {
       active = false;
     };
-  }, [shouldRestoreReport]);
+  }, []);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'auto' });
     sessionStorage.setItem('portfolio-current-step', step);
   }, [step]);
+
+  useEffect(() => {
+    localStorage.setItem('portfolio-locale', locale);
+  }, [locale]);
 
   const persist = useCallback(
     async (
@@ -403,19 +405,9 @@ function App() {
     setStep('report');
   }, [holdings, persist]);
 
-  const handleBaseCurrency = useCallback(
-    async (currency: BaseCurrency) => {
-      const recalculated = recalculateBaseValues(holdings, fx, currency);
-      setBaseCurrency(currency);
-      setHoldings(recalculated);
-      await persist(recalculated, currency);
-    },
-    [fx, holdings, persist],
-  );
-
-  const resetToUpload = useCallback(() => {
+  const resetToDashboard = useCallback(() => {
     setError(null);
-    setStep('upload');
+    setStep('report');
   }, []);
 
   const clearAll = useCallback(async () => {
@@ -424,7 +416,7 @@ function App() {
     setFx({ JPY: 1 });
     setQuoteUpdatedAt(null);
     setHasSavedPortfolio(false);
-    setStep('upload');
+    setStep('report');
   }, []);
 
   const appContent = useMemo(() => {
@@ -433,7 +425,7 @@ function App() {
         <ProcessingScreen
           status={processing}
           error={error}
-          onBack={resetToUpload}
+          onBack={resetToDashboard}
         />
       );
     }
@@ -444,34 +436,28 @@ function App() {
           onUpdate={updateHolding}
           onRemove={removeHolding}
           onConfirm={confirmReview}
-          onBack={resetToUpload}
-        />
-      );
-    }
-    if (step === 'report') {
-      return (
-        <FinanceReportScreen
-          holdings={holdings}
-          baseCurrency={baseCurrency}
-          fx={fx}
-          quoteUpdatedAt={quoteUpdatedAt}
-          onBaseCurrencyChange={handleBaseCurrency}
-          onReimport={resetToUpload}
-          onClear={clearAll}
-          onAddHolding={addManualHolding}
-          onUpdateHolding={updateReportHolding}
-          onRemoveHolding={removeReportHolding}
+          onBack={resetToDashboard}
         />
       );
     }
     return (
-      <UploadScreen
+      <FinanceReportScreen
+        holdings={holdings}
+        baseCurrency={baseCurrency}
+        fx={fx}
+        quoteUpdatedAt={quoteUpdatedAt}
+        locale={locale}
+        hasSavedPortfolio={hasSavedPortfolio}
+        onLocaleChange={setLocale}
+        onClear={clearAll}
+        onAddHolding={addManualHolding}
+        onUpdateHolding={updateReportHolding}
+        onRemoveHolding={removeReportHolding}
         onFiles={handleFiles}
         onJsonImport={handleJsonImport}
         onManualImport={handleManualImport}
         onSample={handleSample}
         onResume={resumeSaved}
-        hasSavedPortfolio={hasSavedPortfolio}
       />
     );
   }, [
@@ -480,7 +466,6 @@ function App() {
     confirmReview,
     error,
     fx,
-    handleBaseCurrency,
     handleFiles,
     handleJsonImport,
     handleManualImport,
@@ -488,11 +473,12 @@ function App() {
     hasSavedPortfolio,
     holdings,
     addManualHolding,
+    locale,
     processing,
     quoteUpdatedAt,
     removeHolding,
     removeReportHolding,
-    resetToUpload,
+    resetToDashboard,
     resumeSaved,
     step,
     updateReportHolding,
@@ -501,27 +487,6 @@ function App() {
 
   return (
     <div className="app-shell">
-      {step !== 'report' ? (
-        <header className="simple-header">
-          <button className="brand-button" onClick={resetToUpload}>
-            Portfolio
-          </button>
-          <div className="header-actions">
-            {hasSavedPortfolio && step === 'upload' ? (
-              <button className="text-button" onClick={resumeSaved}>
-                <RotateCcw size={16} />
-                打开已保存组合
-              </button>
-            ) : null}
-            {hasSavedPortfolio && step === 'upload' ? (
-              <button className="icon-button danger-quiet" onClick={clearAll}>
-                <Trash2 size={16} />
-                <span>清除数据</span>
-              </button>
-            ) : null}
-          </div>
-        </header>
-      ) : null}
       {error && step !== 'processing' ? (
         <div className="global-error" role="alert">
           <AlertCircle size={17} />

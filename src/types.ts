@@ -2,6 +2,7 @@ export type Layer = 'Core' | 'Satellite' | 'Defensive' | 'Cash';
 export type SourceType = 'csv' | 'image' | 'json' | 'manual';
 export type BaseCurrency = 'JPY' | 'USD' | 'CNY';
 export type AppStep = 'upload' | 'processing' | 'review' | 'report';
+export type Locale = 'zh' | 'ja' | 'en';
 
 export interface Holding {
   id: string;

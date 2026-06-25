@@ -1981,9 +1981,10 @@ body {
   gap: 8px;
 }
 
-.gf-currency select {
+.gf-currency select,
+.gf-language select {
   height: 38px;
-  min-width: 78px;
+  min-width: 92px;
   border: 1px solid #dadce0;
   border-radius: 8px;
   background: #fff;
@@ -2586,6 +2587,7 @@ body {
 }
 
 .gf-add-modal,
+.gf-import-modal,
 .gf-editor-modal {
   width: min(720px, 100%);
   border: 1px solid #dadce0;
@@ -2596,7 +2598,8 @@ body {
     0 8px 24px rgba(60, 64, 67, 0.15);
 }
 
-.gf-add-modal {
+.gf-add-modal,
+.gf-import-modal {
   padding: 22px;
 }
 
@@ -2617,6 +2620,129 @@ body {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
+}
+
+.gf-import-tabs {
+  width: fit-content;
+  margin-bottom: 16px;
+  border: 1px solid #dadce0;
+  border-radius: 999px;
+  padding: 2px;
+  display: flex;
+  background: #fff;
+}
+
+.gf-import-tabs button {
+  min-height: 32px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  padding: 0 13px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #5f6368;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.gf-import-tabs button.is-active {
+  background: #e8f0fe;
+  color: #1a73e8;
+}
+
+.gf-drop-zone {
+  min-height: 220px;
+  border: 1px dashed #c9cdd3;
+  border-radius: 12px;
+  background: #f8fafd;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 9px;
+  color: #5f6368;
+  text-align: center;
+}
+
+.gf-drop-zone.is-dragging {
+  border-color: #1a73e8;
+  background: #e8f0fe;
+  color: #1a73e8;
+}
+
+.gf-drop-zone strong {
+  color: #202124;
+  font-size: 18px;
+  font-weight: 400;
+}
+
+.gf-drop-zone span,
+.gf-paste-panel p {
+  margin: 0;
+  color: #5f6368;
+  font-size: 13px;
+}
+
+.gf-drop-zone button,
+.gf-paste-panel button,
+.gf-import-actions button,
+.gf-empty-state button {
+  min-height: 36px;
+  border: 1px solid #dadce0;
+  border-radius: 999px;
+  background: #fff;
+  padding: 0 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  color: #1a73e8;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.gf-paste-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.gf-paste-panel textarea {
+  min-height: 220px;
+  border: 1px solid #dadce0;
+  border-radius: 12px;
+  background: #fff;
+  padding: 13px;
+  color: #202124;
+  font: 13px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace;
+  resize: vertical;
+}
+
+.gf-import-actions {
+  margin-top: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.gf-empty-state {
+  min-height: 180px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 8px;
+  text-align: center;
+  color: #5f6368;
+}
+
+.gf-empty-state strong {
+  color: #202124;
+  font-size: 18px;
+  font-weight: 400;
+}
+
+.gf-empty-state span {
+  max-width: 360px;
+  line-height: 1.55;
 }
 
 .gf-add-grid label {
@@ -2748,7 +2874,8 @@ body {
     grid-area: actions;
   }
 
-  .gf-currency select {
+  .gf-currency select,
+  .gf-language select {
     min-width: 70px;
     height: 36px;
   }
@@ -2837,6 +2964,7 @@ body {
   }
 
   .gf-add-modal,
+  .gf-import-modal,
   .gf-editor-modal {
     border-radius: 12px;
   }

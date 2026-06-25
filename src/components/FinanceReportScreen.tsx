@@ -1,13 +1,15 @@
-import { useMemo, useState, type FormEvent } from 'react';
+import { useMemo, useRef, useState, type FormEvent } from 'react';
 import {
   ChevronDown,
   ChevronRight,
+  ClipboardList,
   Download,
   Layers3,
   Plus,
   RefreshCcw,
   Search,
   Trash2,
+  Upload,
 } from 'lucide-react';
 import {
   aggregateHoldings,
@@ -23,6 +25,7 @@ import type {
   BaseCurrency,
   Holding,
   Layer,
+  Locale,
   ManualHoldingInput,
   PortfolioSnapshot,
 } from '../types';
@@ -32,18 +35,188 @@ interface FinanceReportScreenProps {
   baseCurrency: BaseCurrency;
   fx: Record<string, number>;
   quoteUpdatedAt: string | null;
-  onBaseCurrencyChange: (currency: BaseCurrency) => void;
-  onReimport: () => void;
+  locale: Locale;
+  hasSavedPortfolio: boolean;
+  onLocaleChange: (locale: Locale) => void;
   onClear: () => void;
   onAddHolding: (input: ManualHoldingInput) => Promise<void>;
   onUpdateHolding: (id: string, patch: Partial<Holding>) => Promise<void>;
   onRemoveHolding: (id: string) => Promise<void>;
+  onFiles: (files: File[]) => void;
+  onJsonImport: (file: File) => Promise<void>;
+  onManualImport: (text: string) => Promise<void>;
+  onSample: () => void;
+  onResume: () => void;
 }
 
 type ExposureMode = 'currency' | 'theme' | 'broker';
+type ImportMode = 'upload' | 'paste';
 
 const LAYERS = Object.keys(LAYER_META) as Layer[];
 const CURRENCIES = ['USD', 'JPY', 'CNY', 'HKD'] as const;
+const ACCEPTED = '.csv,.png,.jpg,.jpeg,.webp';
+
+const COPY: Record<Locale, Record<string, string>> = {
+  zh: {
+    search: '搜索或添加股票',
+    lists: '列表',
+    portfolio: 'Portfolio',
+    holdings: '持仓',
+    allocation: '结构',
+    exposure: '暴露',
+    allHoldings: '全部持仓',
+    layers: '分层',
+    topSymbols: '主要证券',
+    updated: '行情更新',
+    noUpdate: '未更新',
+    addStock: '添加股票',
+    securities: '只证券',
+    brokers: '个券商',
+    base: '基准',
+    yourPortfolio: '我的持仓',
+    manageAccounts: '管理账户明细',
+    symbol: 'Symbol',
+    value: 'Value',
+    weight: 'Weight',
+    layer: 'Layer',
+    qty: 'Qty',
+    price: 'Price',
+    topHoldings: '主要持仓',
+    managePortfolio: '管理组合',
+    importPositions: '上传 CSV / 截图 / 粘贴',
+    editCost: '修改数量和平均成本',
+    structureHealth: '结构体检',
+    largest: '最大持仓',
+    top5: 'Top 5',
+    concentration: '集中度分数',
+    healthNote: '仅用于组合结构体检，不提供买卖建议。',
+    shortcuts: '快捷入口',
+    methodology: '查看组合方法论',
+    clear: '清除全部本地数据',
+    importTitle: '导入持仓',
+    uploadFile: '上传文件',
+    paste: '手写 / 粘贴',
+    drop: '拖入 CSV 或截图',
+    choose: '选择文件',
+    sample: '使用 Berkshire 示例',
+    json: '导入 Portfolio JSON',
+    resume: '打开已保存组合',
+    pasteHint: '支持 CSV 表头，也支持一行一个简写：Ticker, 名称, 币种, 数量, 价格, 券商, 分层, 主题',
+    generate: '生成 dashboard',
+    cancel: '取消',
+    done: '完成',
+    accountDetails: '账户明细',
+    editDetails: '修改账户级数量、平均成本和当前价。',
+    emptyTitle: '还没有持仓',
+    emptyBody: '从右侧导入 CSV、截图或粘贴数据，dashboard 会直接在这里生成。',
+  },
+  ja: {
+    search: '銘柄を検索または追加',
+    lists: 'リスト',
+    portfolio: 'ポートフォリオ',
+    holdings: '保有銘柄',
+    allocation: '配分',
+    exposure: 'エクスポージャー',
+    allHoldings: 'すべての保有',
+    layers: 'レイヤー',
+    topSymbols: '主要銘柄',
+    updated: '更新',
+    noUpdate: '未更新',
+    addStock: '銘柄を追加',
+    securities: '銘柄',
+    brokers: '証券会社',
+    base: '基準',
+    yourPortfolio: 'ポートフォリオ',
+    manageAccounts: '口座明細を編集',
+    symbol: '銘柄',
+    value: '評価額',
+    weight: '比率',
+    layer: '分類',
+    qty: '数量',
+    price: '価格',
+    topHoldings: '上位保有',
+    managePortfolio: 'ポートフォリオ管理',
+    importPositions: 'CSV / 画像 / 貼り付け',
+    editCost: '数量と平均単価を編集',
+    structureHealth: '構造チェック',
+    largest: '最大保有',
+    top5: '上位5銘柄',
+    concentration: '集中度',
+    healthNote: '構造確認のみで、売買助言ではありません。',
+    shortcuts: 'ショートカット',
+    methodology: '方法論を見る',
+    clear: 'ローカルデータを削除',
+    importTitle: '保有データを取り込む',
+    uploadFile: 'ファイル',
+    paste: '入力 / 貼り付け',
+    drop: 'CSVまたは画像をドロップ',
+    choose: 'ファイルを選択',
+    sample: 'Berkshireサンプル',
+    json: 'Portfolio JSONを取り込む',
+    resume: '保存済みを開く',
+    pasteHint: 'CSVヘッダー、または1行形式：Ticker, 名前, 通貨, 数量, 価格, 証券会社, 分類, テーマ',
+    generate: 'Dashboardを生成',
+    cancel: 'キャンセル',
+    done: '完了',
+    accountDetails: '口座明細',
+    editDetails: '口座ごとの数量、平均単価、現在価格を編集します。',
+    emptyTitle: '保有データがありません',
+    emptyBody: '右側からCSV、画像、貼り付けで取り込むと、ここにdashboardが生成されます。',
+  },
+  en: {
+    search: 'Search or add stocks',
+    lists: 'Lists',
+    portfolio: 'Portfolio',
+    holdings: 'Holdings',
+    allocation: 'Allocation',
+    exposure: 'Exposure',
+    allHoldings: 'All holdings',
+    layers: 'Layers',
+    topSymbols: 'Top symbols',
+    updated: 'Updated',
+    noUpdate: 'Not updated',
+    addStock: 'Add stock',
+    securities: 'securities',
+    brokers: 'brokers',
+    base: 'Base',
+    yourPortfolio: 'Your portfolio',
+    manageAccounts: 'Manage accounts',
+    symbol: 'Symbol',
+    value: 'Value',
+    weight: 'Weight',
+    layer: 'Layer',
+    qty: 'Qty',
+    price: 'Price',
+    topHoldings: 'Top holdings',
+    managePortfolio: 'Manage portfolio',
+    importPositions: 'Upload CSV / image / paste',
+    editCost: 'Edit shares and cost basis',
+    structureHealth: 'Structure health',
+    largest: 'Largest holding',
+    top5: 'Top 5',
+    concentration: 'Concentration score',
+    healthNote: 'For portfolio structure only. Not investment advice.',
+    shortcuts: 'Shortcuts',
+    methodology: 'View methodology',
+    clear: 'Clear all local data',
+    importTitle: 'Import positions',
+    uploadFile: 'Upload',
+    paste: 'Type / paste',
+    drop: 'Drop CSV or screenshots',
+    choose: 'Choose files',
+    sample: 'Use Berkshire sample',
+    json: 'Import Portfolio JSON',
+    resume: 'Open saved portfolio',
+    pasteHint: 'CSV headers supported, or one line each: Ticker, Name, Currency, Quantity, Price, Broker, Layer, Theme',
+    generate: 'Generate dashboard',
+    cancel: 'Cancel',
+    done: 'Done',
+    accountDetails: 'Account details',
+    editDetails: 'Edit account-level quantity, average cost, and current price.',
+    emptyTitle: 'No holdings yet',
+    emptyBody: 'Import CSV, screenshots, or pasted positions from the right panel. The dashboard will render here.',
+  },
+};
 
 const EMPTY_DRAFT: ManualHoldingInput = {
   ticker: '',
@@ -142,21 +315,35 @@ export function FinanceReportScreen({
   baseCurrency,
   fx,
   quoteUpdatedAt,
-  onBaseCurrencyChange,
-  onReimport,
+  locale,
+  hasSavedPortfolio,
+  onLocaleChange,
   onClear,
   onAddHolding,
   onUpdateHolding,
   onRemoveHolding,
+  onFiles,
+  onJsonImport,
+  onManualImport,
+  onSample,
+  onResume,
 }: FinanceReportScreenProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const jsonInputRef = useRef<HTMLInputElement>(null);
   const [exposureMode, setExposureMode] = useState<ExposureMode>('currency');
   const [expandedTicker, setExpandedTicker] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [importMode, setImportMode] = useState<ImportMode>('upload');
+  const [dragging, setDragging] = useState(false);
+  const [manualText, setManualText] = useState('');
+  const [localError, setLocalError] = useState<string | null>(null);
   const [draft, setDraft] = useState<ManualHoldingInput>({
     ...EMPTY_DRAFT,
     currency: baseCurrency === 'CNY' ? 'CNY' : 'USD',
   });
+  const t = COPY[locale];
 
   const aggregated = useMemo(() => aggregateHoldings(holdings), [holdings]);
   const total = useMemo(
@@ -210,28 +397,59 @@ export function FinanceReportScreen({
     setAddOpen(false);
   };
 
+  const processFiles = (list: FileList | null) => {
+    const files = [...(list ?? [])];
+    if (!files.length) return;
+    const valid = files.filter((file) =>
+      /\.(csv|png|jpe?g|webp)$/i.test(file.name),
+    );
+    if (valid.length !== files.length) {
+      setLocalError('Only CSV, PNG, JPG and WebP files are supported.');
+      return;
+    }
+    setLocalError(null);
+    onFiles(valid);
+  };
+
+  const importManualText = async () => {
+    try {
+      setLocalError(null);
+      await onManualImport(manualText);
+    } catch (error) {
+      setLocalError(error instanceof Error ? error.message : 'Import failed');
+    }
+  };
+
+  const importJsonFile = async (file: File | undefined) => {
+    if (!file) return;
+    try {
+      setLocalError(null);
+      await onJsonImport(file);
+    } catch (error) {
+      setLocalError(error instanceof Error ? error.message : 'JSON import failed');
+    }
+  };
+
   return (
     <main className="gf-page">
       <header className="gf-topbar">
-        <button className="gf-brand" onClick={onReimport}>
+        <button className="gf-brand" onClick={() => setImportOpen(false)}>
           Portfolio
         </button>
         <button className="gf-search" onClick={() => setAddOpen(true)}>
           <Search size={18} />
-          <span>Search or add stocks</span>
+          <span>{t.search}</span>
         </button>
         <div className="gf-top-actions">
-          <label className="gf-currency">
-            <span className="visually-hidden">基准货币</span>
+          <label className="gf-language">
+            <span className="visually-hidden">Language</span>
             <select
-              value={baseCurrency}
-              onChange={(event) =>
-                onBaseCurrencyChange(event.target.value as BaseCurrency)
-              }
+              value={locale}
+              onChange={(event) => onLocaleChange(event.target.value as Locale)}
             >
-              <option value="JPY">JPY</option>
-              <option value="USD">USD</option>
-              <option value="CNY">CNY</option>
+              <option value="zh">中文</option>
+              <option value="ja">日本語</option>
+              <option value="en">English</option>
             </select>
           </label>
           <button
@@ -245,8 +463,8 @@ export function FinanceReportScreen({
           </button>
           <button
             className="gf-icon-button"
-            aria-label="导入 CSV / 截图 / 粘贴"
-            onClick={onReimport}
+            aria-label={t.importPositions}
+            onClick={() => setImportOpen(true)}
           >
             <RefreshCcw size={18} />
           </button>
@@ -255,25 +473,25 @@ export function FinanceReportScreen({
 
       <nav className="gf-nav" aria-label="Portfolio navigation">
         <a href="#portfolio" className="is-active">
-          Portfolio
+          {t.portfolio}
         </a>
-        <a href="#holdings">Holdings</a>
-        <a href="#allocation">Allocation</a>
-        <a href="#exposure">Exposure</a>
+        <a href="#holdings">{t.holdings}</a>
+        <a href="#allocation">{t.allocation}</a>
+        <a href="#exposure">{t.exposure}</a>
       </nav>
 
       <div className="gf-shell" id="portfolio">
         <aside className="gf-left-rail" aria-label="Portfolio lists">
           <div className="gf-left-heading">
-            <h2>Lists</h2>
+            <h2>{t.lists}</h2>
             <button onClick={() => setAddOpen(true)} aria-label="添加列表项目">
               <Plus size={16} />
             </button>
           </div>
           <div className="gf-left-group">
-            <h3>Portfolio</h3>
+            <h3>{t.portfolio}</h3>
             <button className="is-selected">
-              <span>All holdings</span>
+              <span>{t.allHoldings}</span>
               <strong>{formatMoney(total, baseCurrency)}</strong>
             </button>
             {layerRows.map((row) => (
@@ -284,7 +502,7 @@ export function FinanceReportScreen({
             ))}
           </div>
           <div className="gf-left-group">
-            <h3>Top symbols</h3>
+            <h3>{t.topSymbols}</h3>
             {aggregated.slice(0, 8).map((holding) => (
               <button key={holding.ticker}>
                 <span>{holding.ticker}</span>
@@ -298,19 +516,19 @@ export function FinanceReportScreen({
           <section className="gf-overview">
             <div className="gf-overview-top">
               <div>
-                <h1>Portfolio</h1>
-                <p>行情更新 {formatDateTime(quoteUpdatedAt)}</p>
+                <h1>{t.portfolio}</h1>
+                <p>{t.updated} {quoteUpdatedAt ? formatDateTime(quoteUpdatedAt) : t.noUpdate}</p>
               </div>
               <button className="gf-primary-action" onClick={() => setAddOpen(true)}>
                 <Plus size={17} />
-                添加股票
+                {t.addStock}
               </button>
             </div>
             <div className="gf-total-value">{formatMoney(total, baseCurrency)}</div>
             <div className="gf-stat-row">
-              <span>{aggregated.length} securities</span>
-              <span>{brokers} brokers</span>
-              <span>Base {baseCurrency}</span>
+              <span>{aggregated.length} {t.securities}</span>
+              <span>{brokers} {t.brokers}</span>
+              <span>{t.base} {baseCurrency}</span>
               <span>{concentrationLabel(hhi)}</span>
             </div>
             <div className="gf-allocation-strip" aria-label="Portfolio allocation">
@@ -335,37 +553,52 @@ export function FinanceReportScreen({
 
           <section className="gf-section" id="holdings">
             <div className="gf-section-header">
-              <h2>Your portfolio</h2>
+              <h2>{t.yourPortfolio}</h2>
               <button className="gf-text-action" onClick={() => setEditorOpen(true)}>
-                管理账户明细
+                {t.manageAccounts}
               </button>
             </div>
             <div className="gf-table-wrap">
               <table className="gf-holdings-table">
                 <thead>
                   <tr>
-                    <th>Symbol</th>
-                    <th className="numeric">Value</th>
-                    <th className="numeric">Weight</th>
-                    <th>Layer</th>
-                    <th className="numeric">Qty</th>
-                    <th className="numeric">Price</th>
+                    <th>{t.symbol}</th>
+                    <th className="numeric">{t.value}</th>
+                    <th className="numeric">{t.weight}</th>
+                    <th>{t.layer}</th>
+                    <th className="numeric">{t.qty}</th>
+                    <th className="numeric">{t.price}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {aggregated.map((holding) => (
-                    <FinanceHoldingRow
-                      key={holding.ticker}
-                      holding={holding}
-                      baseCurrency={baseCurrency}
-                      expanded={expandedTicker === holding.ticker}
-                      onToggle={() =>
-                        setExpandedTicker((current) =>
-                          current === holding.ticker ? null : holding.ticker,
-                        )
-                      }
-                    />
-                  ))}
+                  {aggregated.length ? (
+                    aggregated.map((holding) => (
+                      <FinanceHoldingRow
+                        key={holding.ticker}
+                        holding={holding}
+                        baseCurrency={baseCurrency}
+                        expanded={expandedTicker === holding.ticker}
+                        onToggle={() =>
+                          setExpandedTicker((current) =>
+                            current === holding.ticker ? null : holding.ticker,
+                          )
+                        }
+                      />
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={6}>
+                        <div className="gf-empty-state">
+                          <strong>{t.emptyTitle}</strong>
+                          <span>{t.emptyBody}</span>
+                          <button onClick={() => setImportOpen(true)}>
+                            <Upload size={16} />
+                            {t.importPositions}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -374,7 +607,7 @@ export function FinanceReportScreen({
           <div className="gf-two-column" id="allocation">
             <section className="gf-section">
               <div className="gf-section-header">
-                <h2>Top holdings</h2>
+                <h2>{t.topHoldings}</h2>
               </div>
               <div className="gf-ranked-list">
                 {topRows.map((holding, index) => (
@@ -402,7 +635,7 @@ export function FinanceReportScreen({
 
             <section className="gf-section">
               <div className="gf-section-header">
-                <h2>Layers</h2>
+                <h2>{t.layers}</h2>
               </div>
               <div className="gf-layer-list">
                 {layerRows.map((row) => (
@@ -424,12 +657,12 @@ export function FinanceReportScreen({
 
           <section className="gf-section" id="exposure">
             <div className="gf-section-header">
-              <h2>Exposure</h2>
+              <h2>{t.exposure}</h2>
               <div className="gf-tabs" role="tablist" aria-label="风险暴露维度">
                 {[
-                  ['currency', '币种'],
-                  ['theme', '主题'],
-                  ['broker', '券商'],
+                  ['currency', locale === 'ja' ? '通貨' : locale === 'en' ? 'Currency' : '币种'],
+                  ['theme', locale === 'ja' ? 'テーマ' : locale === 'en' ? 'Theme' : '主题'],
+                  ['broker', locale === 'ja' ? '証券会社' : locale === 'en' ? 'Broker' : '券商'],
                 ].map(([value, label]) => (
                   <button
                     key={value}
@@ -464,69 +697,168 @@ export function FinanceReportScreen({
           <section className="gf-side-card">
             <div className="gf-side-title">
               <Layers3 size={18} />
-              <h2>Manage portfolio</h2>
+              <h2>{t.managePortfolio}</h2>
             </div>
             <button className="gf-side-action" onClick={() => setAddOpen(true)}>
               <Plus size={17} />
-              添加股票
+              {t.addStock}
             </button>
-            <button className="gf-side-action" onClick={onReimport}>
+            <button className="gf-side-action" onClick={() => setImportOpen(true)}>
               <RefreshCcw size={17} />
-              上传 CSV / 截图 / 粘贴
+              {t.importPositions}
             </button>
             <button
               className="gf-side-action"
               onClick={() => setEditorOpen((open) => !open)}
             >
               <ChevronRight size={17} />
-              修改数量和平均成本
+              {t.editCost}
             </button>
           </section>
 
           <section className="gf-side-card">
-            <h2>Structure health</h2>
+            <h2>{t.structureHealth}</h2>
             <div className="gf-health-line">
-              <span>最大持仓</span>
+              <span>{t.largest}</span>
               <strong>{formatPercent(largest)}</strong>
             </div>
             <div className="gf-health-line">
-              <span>Top 5</span>
+              <span>{t.top5}</span>
               <strong>{formatPercent(topFive)}</strong>
             </div>
             <div className="gf-health-line">
-              <span>集中度分数</span>
+              <span>{t.concentration}</span>
               <strong>{Math.round(hhi * 100)}</strong>
             </div>
-            <p>仅用于组合结构体检，不提供买卖建议。</p>
+            <p>{t.healthNote}</p>
           </section>
 
           <section className="gf-side-card">
-            <h2>Shortcuts</h2>
+            <h2>{t.shortcuts}</h2>
             <a
               href="https://github.com/halftokyo/portfolio/blob/main/docs/methodology.zh.md"
               target="_blank"
               rel="noreferrer"
             >
-              查看组合方法论
+              {t.methodology}
             </a>
             <button
               className="gf-danger-action"
               onClick={onClear}
             >
               <Trash2 size={15} />
-              清除全部本地数据
+              {t.clear}
             </button>
           </section>
         </aside>
       </div>
 
+      {importOpen ? (
+        <div className="gf-modal-backdrop" role="presentation">
+          <section className="gf-import-modal">
+            <div className="gf-modal-header">
+              <h2>{t.importTitle}</h2>
+              <button type="button" onClick={() => setImportOpen(false)}>
+                {t.cancel}
+              </button>
+            </div>
+            <div className="gf-import-tabs" role="tablist" aria-label="Import mode">
+              <button
+                className={importMode === 'upload' ? 'is-active' : ''}
+                onClick={() => setImportMode('upload')}
+                role="tab"
+                aria-selected={importMode === 'upload'}
+              >
+                <Upload size={16} />
+                {t.uploadFile}
+              </button>
+              <button
+                className={importMode === 'paste' ? 'is-active' : ''}
+                onClick={() => setImportMode('paste')}
+                role="tab"
+                aria-selected={importMode === 'paste'}
+              >
+                <ClipboardList size={16} />
+                {t.paste}
+              </button>
+            </div>
+
+            {importMode === 'upload' ? (
+              <div
+                className={`gf-drop-zone ${dragging ? 'is-dragging' : ''}`}
+                onDragEnter={(event) => {
+                  event.preventDefault();
+                  setDragging(true);
+                }}
+                onDragOver={(event) => event.preventDefault()}
+                onDragLeave={(event) => {
+                  event.preventDefault();
+                  setDragging(false);
+                }}
+                onDrop={(event) => {
+                  event.preventDefault();
+                  setDragging(false);
+                  processFiles(event.dataTransfer.files);
+                }}
+              >
+                <Upload size={30} strokeWidth={1.6} />
+                <strong>{t.drop}</strong>
+                <span>CSV / PNG / JPG / WebP</span>
+                <button type="button" onClick={() => fileInputRef.current?.click()}>
+                  {t.choose}
+                </button>
+                <input
+                  ref={fileInputRef}
+                  className="visually-hidden"
+                  type="file"
+                  accept={ACCEPTED}
+                  multiple
+                  onChange={(event) => processFiles(event.target.files)}
+                />
+              </div>
+            ) : (
+              <div className="gf-paste-panel">
+                <p>{t.pasteHint}</p>
+                <textarea
+                  value={manualText}
+                  onChange={(event) => setManualText(event.target.value)}
+                  spellCheck={false}
+                  placeholder={`AAPL, Apple, USD, 100, 200, Demo Broker, Core, Technology\nCash_USD, USD Cash, USD, 50000, 1, Demo Broker, Cash, Liquidity`}
+                />
+                <button type="button" onClick={() => void importManualText()}>
+                  {t.generate}
+                </button>
+              </div>
+            )}
+
+            <div className="gf-import-actions">
+              <button type="button" onClick={onSample}>{t.sample}</button>
+              <button type="button" onClick={() => jsonInputRef.current?.click()}>
+                {t.json}
+              </button>
+              {hasSavedPortfolio ? (
+                <button type="button" onClick={onResume}>{t.resume}</button>
+              ) : null}
+              <input
+                ref={jsonInputRef}
+                className="visually-hidden"
+                type="file"
+                accept=".json,application/json"
+                onChange={(event) => void importJsonFile(event.target.files?.[0])}
+              />
+            </div>
+            {localError ? <p className="inline-error studio-error">{localError}</p> : null}
+          </section>
+        </div>
+      ) : null}
+
       {addOpen ? (
         <div className="gf-modal-backdrop" role="presentation">
           <form className="gf-add-modal" onSubmit={submitManualHolding}>
             <div className="gf-modal-header">
-              <h2>添加股票</h2>
+              <h2>{t.addStock}</h2>
               <button type="button" onClick={() => setAddOpen(false)}>
-                取消
+                {t.cancel}
               </button>
             </div>
             <div className="gf-add-grid">
@@ -545,7 +877,7 @@ export function FinanceReportScreen({
                 />
               </label>
               <label>
-                <span>名称</span>
+                <span>{locale === 'en' ? 'Name' : locale === 'ja' ? '名称' : '名称'}</span>
                 <input
                   value={draft.name}
                   onChange={(event) =>
@@ -558,7 +890,7 @@ export function FinanceReportScreen({
                 />
               </label>
               <label>
-                <span>数量</span>
+                <span>{locale === 'en' ? 'Quantity' : locale === 'ja' ? '数量' : '数量'}</span>
                 <input
                   type="number"
                   inputMode="decimal"
@@ -575,7 +907,7 @@ export function FinanceReportScreen({
                 />
               </label>
               <label>
-                <span>平均成本</span>
+                <span>{locale === 'en' ? 'Average cost' : locale === 'ja' ? '平均単価' : '平均成本'}</span>
                 <input
                   type="number"
                   inputMode="decimal"
@@ -592,7 +924,7 @@ export function FinanceReportScreen({
                 />
               </label>
               <label>
-                <span>当前价</span>
+                <span>{locale === 'en' ? 'Current price' : locale === 'ja' ? '現在価格' : '当前价'}</span>
                 <input
                   type="number"
                   inputMode="decimal"
@@ -608,11 +940,11 @@ export function FinanceReportScreen({
                           : Number(event.target.value),
                     }))
                   }
-                  placeholder="默认同平均成本"
+                  placeholder={locale === 'en' ? 'Defaults to average cost' : locale === 'ja' ? '平均単価と同じ' : '默认同平均成本'}
                 />
               </label>
               <label>
-                <span>币种</span>
+                <span>{locale === 'en' ? 'Currency' : locale === 'ja' ? '通貨' : '币种'}</span>
                 <select
                   value={draft.currency}
                   onChange={(event) =>
@@ -630,7 +962,7 @@ export function FinanceReportScreen({
                 </select>
               </label>
               <label>
-                <span>分层</span>
+                <span>{t.layer}</span>
                 <select
                   value={draft.layer}
                   onChange={(event) =>
@@ -648,7 +980,7 @@ export function FinanceReportScreen({
                 </select>
               </label>
               <label>
-                <span>券商</span>
+                <span>{locale === 'en' ? 'Broker' : locale === 'ja' ? '証券会社' : '券商'}</span>
                 <input
                   value={draft.broker}
                   onChange={(event) =>
@@ -657,12 +989,12 @@ export function FinanceReportScreen({
                       broker: event.target.value,
                     }))
                   }
-                  placeholder="手动添加"
+                  placeholder={locale === 'en' ? 'Manual' : locale === 'ja' ? '手動追加' : '手动添加'}
                 />
               </label>
             </div>
             <button className="gf-submit" type="submit">
-              添加到组合
+              {t.addStock}
             </button>
           </form>
         </div>
@@ -673,24 +1005,24 @@ export function FinanceReportScreen({
           <section className="gf-editor-modal">
             <div className="gf-modal-header">
               <div>
-                <h2>账户明细</h2>
-                <p>修改账户级数量、平均成本和当前价。</p>
+                <h2>{t.accountDetails}</h2>
+                <p>{t.editDetails}</p>
               </div>
               <button type="button" onClick={() => setEditorOpen(false)}>
-                完成
+                {t.done}
               </button>
             </div>
             <div className="gf-editor-table-wrap">
               <table className="gf-editor-table">
                 <thead>
                   <tr>
-                    <th>证券</th>
-                    <th>券商</th>
-                    <th>分层</th>
-                    <th className="numeric">数量</th>
-                    <th className="numeric">平均成本</th>
-                    <th className="numeric">当前价</th>
-                    <th className="numeric">市值</th>
+                    <th>{t.symbol}</th>
+                    <th>{locale === 'en' ? 'Broker' : locale === 'ja' ? '証券会社' : '券商'}</th>
+                    <th>{t.layer}</th>
+                    <th className="numeric">{t.qty}</th>
+                    <th className="numeric">{locale === 'en' ? 'Average cost' : locale === 'ja' ? '平均単価' : '平均成本'}</th>
+                    <th className="numeric">{t.price}</th>
+                    <th className="numeric">{t.value}</th>
                     <th />
                   </tr>
                 </thead>
