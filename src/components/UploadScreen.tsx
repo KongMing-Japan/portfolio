@@ -49,13 +49,13 @@ export function UploadScreen({
   };
 
   return (
-    <main className="upload-page">
+    <main className="upload-page finance-import-page">
       <section className="upload-intro">
-        <div className="intro-mark">Portfolio Studio</div>
-        <h1>把分散的持仓，变成一张清楚的组合报告。</h1>
+        <div className="intro-mark">Portfolio</div>
+        <h1>Portfolio dashboard</h1>
         <p>
-          上传 CSV / 截图，或直接粘贴几行持仓。系统会统一证券、币种和账户，
-          按核心仓、卫星仓、防御仓与现金整理成专业报告。
+          先导入 CSV、截图或粘贴几行持仓。导入后这里会变成你的组合 dashboard，
+          上传只是入口，核心是后续的持仓列表、结构和风险暴露。
         </p>
       </section>
 

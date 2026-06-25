@@ -2,13 +2,11 @@ import { useMemo, useState, type FormEvent } from 'react';
 import {
   ChevronDown,
   ChevronRight,
-  CircleGauge,
   Download,
   Layers3,
   Plus,
   RefreshCcw,
   Search,
-  Target,
   Trash2,
 } from 'lucide-react';
 import {
@@ -29,7 +27,7 @@ import type {
   PortfolioSnapshot,
 } from '../types';
 
-interface ReportScreenProps {
+interface FinanceReportScreenProps {
   holdings: Holding[];
   baseCurrency: BaseCurrency;
   fx: Record<string, number>;
@@ -135,12 +133,11 @@ function topHoldingsWithOther(aggregated: AggregatedHolding[]) {
 }
 
 function formatEditableNumber(value: number | null) {
-  if (value == null) return '';
-  if (!Number.isFinite(value)) return '';
+  if (value == null || !Number.isFinite(value)) return '';
   return Number.isInteger(value) ? String(value) : String(Number(value.toFixed(4)));
 }
 
-export function ReportScreen({
+export function FinanceReportScreen({
   holdings,
   baseCurrency,
   fx,
@@ -151,12 +148,15 @@ export function ReportScreen({
   onAddHolding,
   onUpdateHolding,
   onRemoveHolding,
-}: ReportScreenProps) {
+}: FinanceReportScreenProps) {
   const [exposureMode, setExposureMode] = useState<ExposureMode>('currency');
-  const [holdingsOpen, setHoldingsOpen] = useState(false);
   const [expandedTicker, setExpandedTicker] = useState<string | null>(null);
+  const [addOpen, setAddOpen] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
-  const [draft, setDraft] = useState<ManualHoldingInput>(EMPTY_DRAFT);
+  const [draft, setDraft] = useState<ManualHoldingInput>({
+    ...EMPTY_DRAFT,
+    currency: baseCurrency === 'CNY' ? 'CNY' : 'USD',
+  });
 
   const aggregated = useMemo(() => aggregateHoldings(holdings), [holdings]);
   const total = useMemo(
@@ -190,7 +190,8 @@ export function ReportScreen({
   );
   const topRows = useMemo(() => topHoldingsWithOther(aggregated), [aggregated]);
   const topBarMax = useMemo(
-    () => Math.max(...aggregated.slice(0, 8).map((holding) => holding.weight), 0.01),
+    () =>
+      Math.max(...aggregated.slice(0, 8).map((holding) => holding.weight), 0.01),
     [aggregated],
   );
   const hhi = useMemo(() => concentrationScore(aggregated), [aggregated]);
@@ -206,17 +207,21 @@ export function ReportScreen({
     }
     await onAddHolding(draft);
     setDraft({ ...EMPTY_DRAFT, currency: baseCurrency === 'CNY' ? 'CNY' : 'USD' });
-    setEditorOpen(false);
+    setAddOpen(false);
   };
 
   return (
-    <main className="report-page">
-      <header className="report-header">
-        <button className="report-brand" onClick={onReimport}>
+    <main className="gf-page">
+      <header className="gf-topbar">
+        <button className="gf-brand" onClick={onReimport}>
           Portfolio
         </button>
-        <div className="report-actions">
-          <label className="currency-select">
+        <button className="gf-search" onClick={() => setAddOpen(true)}>
+          <Search size={18} />
+          <span>Search or add stocks</span>
+        </button>
+        <div className="gf-top-actions">
+          <label className="gf-currency">
             <span className="visually-hidden">基准货币</span>
             <select
               value={baseCurrency}
@@ -230,73 +235,301 @@ export function ReportScreen({
             </select>
           </label>
           <button
-            className="header-button"
+            className="gf-icon-button"
+            aria-label="导出 JSON"
             onClick={() =>
               downloadJson(holdings, baseCurrency, fx, quoteUpdatedAt)
             }
           >
-            <Download size={16} />
-            导出
+            <Download size={18} />
           </button>
-          <button className="header-button" onClick={onReimport}>
-            <RefreshCcw size={16} />
-            重新导入
+          <button
+            className="gf-icon-button"
+            aria-label="导入 CSV / 截图 / 粘贴"
+            onClick={onReimport}
+          >
+            <RefreshCcw size={18} />
           </button>
         </div>
       </header>
 
-      <div className="report-content">
-        <div className="report-title-row">
-          <div>
-            <h1>我的投资组合</h1>
-            <p>行情更新 {formatDateTime(quoteUpdatedAt)}</p>
-          </div>
-          <button
-            className="finance-search-button"
-            onClick={() => setEditorOpen(true)}
-          >
-            <Search size={18} />
-            <span>搜索或添加股票代码</span>
-            <Plus size={17} />
-          </button>
-        </div>
+      <nav className="gf-nav" aria-label="Portfolio navigation">
+        <a href="#portfolio" className="is-active">
+          Portfolio
+        </a>
+        <a href="#holdings">Holdings</a>
+        <a href="#allocation">Allocation</a>
+        <a href="#exposure">Exposure</a>
+      </nav>
 
-        <section className="summary-strip" aria-label="组合摘要">
-          <div>
-            <span>总资产</span>
-            <strong>{formatMoney(total, baseCurrency)}</strong>
-          </div>
-          <div>
-            <span>证券</span>
-            <strong>{aggregated.length}</strong>
-          </div>
-          <div>
-            <span>券商</span>
-            <strong>{brokers}</strong>
-          </div>
-          <div>
-            <span>行情更新</span>
-            <strong>{formatDateTime(quoteUpdatedAt)}</strong>
-          </div>
-        </section>
-
-        <section className="portfolio-editor-panel">
-          <div className="editor-heading">
-            <div>
-              <h2>持仓管理</h2>
-              <p>追加股票，或直接修改账户级数量、平均成本和当前价。</p>
-            </div>
-            <button
-              className="editor-add-button"
-              onClick={() => setEditorOpen((open) => !open)}
-            >
-              <Plus size={17} />
-              添加持仓
+      <div className="gf-shell" id="portfolio">
+        <aside className="gf-left-rail" aria-label="Portfolio lists">
+          <div className="gf-left-heading">
+            <h2>Lists</h2>
+            <button onClick={() => setAddOpen(true)} aria-label="添加列表项目">
+              <Plus size={16} />
             </button>
           </div>
+          <div className="gf-left-group">
+            <h3>Portfolio</h3>
+            <button className="is-selected">
+              <span>All holdings</span>
+              <strong>{formatMoney(total, baseCurrency)}</strong>
+            </button>
+            {layerRows.map((row) => (
+              <button key={row.layer}>
+                <span>{LAYER_META[row.layer].label}</span>
+                <strong>{formatPercent(row.weight)}</strong>
+              </button>
+            ))}
+          </div>
+          <div className="gf-left-group">
+            <h3>Top symbols</h3>
+            {aggregated.slice(0, 8).map((holding) => (
+              <button key={holding.ticker}>
+                <span>{holding.ticker}</span>
+                <strong>{formatPercent(holding.weight)}</strong>
+              </button>
+            ))}
+          </div>
+        </aside>
 
-          {editorOpen ? (
-            <form className="manual-holding-form" onSubmit={submitManualHolding}>
+        <section className="gf-main">
+          <section className="gf-overview">
+            <div className="gf-overview-top">
+              <div>
+                <h1>Portfolio</h1>
+                <p>行情更新 {formatDateTime(quoteUpdatedAt)}</p>
+              </div>
+              <button className="gf-primary-action" onClick={() => setAddOpen(true)}>
+                <Plus size={17} />
+                添加股票
+              </button>
+            </div>
+            <div className="gf-total-value">{formatMoney(total, baseCurrency)}</div>
+            <div className="gf-stat-row">
+              <span>{aggregated.length} securities</span>
+              <span>{brokers} brokers</span>
+              <span>Base {baseCurrency}</span>
+              <span>{concentrationLabel(hhi)}</span>
+            </div>
+            <div className="gf-allocation-strip" aria-label="Portfolio allocation">
+              {layerRows.map((row) =>
+                row.weight > 0 ? (
+                  <div
+                    key={row.layer}
+                    className="gf-allocation-segment"
+                    style={{
+                      width: `${row.weight * 100}%`,
+                      background: LAYER_META[row.layer].color,
+                    }}
+                    title={`${LAYER_META[row.layer].label} ${formatPercent(row.weight)}`}
+                  >
+                    <span>{LAYER_META[row.layer].label}</span>
+                    <strong>{formatPercent(row.weight)}</strong>
+                  </div>
+                ) : null,
+              )}
+            </div>
+          </section>
+
+          <section className="gf-section" id="holdings">
+            <div className="gf-section-header">
+              <h2>Your portfolio</h2>
+              <button className="gf-text-action" onClick={() => setEditorOpen(true)}>
+                管理账户明细
+              </button>
+            </div>
+            <div className="gf-table-wrap">
+              <table className="gf-holdings-table">
+                <thead>
+                  <tr>
+                    <th>Symbol</th>
+                    <th className="numeric">Value</th>
+                    <th className="numeric">Weight</th>
+                    <th>Layer</th>
+                    <th className="numeric">Qty</th>
+                    <th className="numeric">Price</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {aggregated.map((holding) => (
+                    <FinanceHoldingRow
+                      key={holding.ticker}
+                      holding={holding}
+                      baseCurrency={baseCurrency}
+                      expanded={expandedTicker === holding.ticker}
+                      onToggle={() =>
+                        setExpandedTicker((current) =>
+                          current === holding.ticker ? null : holding.ticker,
+                        )
+                      }
+                    />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <div className="gf-two-column" id="allocation">
+            <section className="gf-section">
+              <div className="gf-section-header">
+                <h2>Top holdings</h2>
+              </div>
+              <div className="gf-ranked-list">
+                {topRows.map((holding, index) => (
+                  <div className="gf-ranked-row" key={holding.ticker}>
+                    <span className="gf-rank">{index + 1}</span>
+                    <span className="gf-ranked-name" title={holding.name}>
+                      {holding.name}
+                    </span>
+                    <span className="gf-bar-track">
+                      <span
+                        className="gf-bar-fill"
+                        style={{
+                          width: `${Math.max(
+                            Math.min((holding.weight / topBarMax) * 100, 100),
+                            2,
+                          )}%`,
+                        }}
+                      />
+                    </span>
+                    <strong>{formatPercent(holding.weight)}</strong>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <section className="gf-section">
+              <div className="gf-section-header">
+                <h2>Layers</h2>
+              </div>
+              <div className="gf-layer-list">
+                {layerRows.map((row) => (
+                  <div className="gf-layer-item" key={row.layer}>
+                    <span
+                      className="gf-layer-dot"
+                      style={{ background: LAYER_META[row.layer].color }}
+                    />
+                    <div>
+                      <strong>{LAYER_META[row.layer].label}</strong>
+                      <span>{LAYER_META[row.layer].description}</span>
+                    </div>
+                    <b>{formatPercent(row.weight)}</b>
+                  </div>
+                ))}
+              </div>
+            </section>
+          </div>
+
+          <section className="gf-section" id="exposure">
+            <div className="gf-section-header">
+              <h2>Exposure</h2>
+              <div className="gf-tabs" role="tablist" aria-label="风险暴露维度">
+                {[
+                  ['currency', '币种'],
+                  ['theme', '主题'],
+                  ['broker', '券商'],
+                ].map(([value, label]) => (
+                  <button
+                    key={value}
+                    className={exposureMode === value ? 'is-active' : ''}
+                    role="tab"
+                    aria-selected={exposureMode === value}
+                    onClick={() => setExposureMode(value as ExposureMode)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="gf-exposure-list">
+              {exposureRows.slice(0, 8).map((row) => (
+                <div className="gf-exposure-row" key={row.label}>
+                  <span title={row.label}>{row.label}</span>
+                  <div className="gf-bar-track">
+                    <div
+                      className="gf-bar-fill"
+                      style={{ width: `${row.weight * 100}%` }}
+                    />
+                  </div>
+                  <strong>{formatPercent(row.weight)}</strong>
+                </div>
+              ))}
+            </div>
+          </section>
+        </section>
+
+        <aside className="gf-sidebar">
+          <section className="gf-side-card">
+            <div className="gf-side-title">
+              <Layers3 size={18} />
+              <h2>Manage portfolio</h2>
+            </div>
+            <button className="gf-side-action" onClick={() => setAddOpen(true)}>
+              <Plus size={17} />
+              添加股票
+            </button>
+            <button className="gf-side-action" onClick={onReimport}>
+              <RefreshCcw size={17} />
+              上传 CSV / 截图 / 粘贴
+            </button>
+            <button
+              className="gf-side-action"
+              onClick={() => setEditorOpen((open) => !open)}
+            >
+              <ChevronRight size={17} />
+              修改数量和平均成本
+            </button>
+          </section>
+
+          <section className="gf-side-card">
+            <h2>Structure health</h2>
+            <div className="gf-health-line">
+              <span>最大持仓</span>
+              <strong>{formatPercent(largest)}</strong>
+            </div>
+            <div className="gf-health-line">
+              <span>Top 5</span>
+              <strong>{formatPercent(topFive)}</strong>
+            </div>
+            <div className="gf-health-line">
+              <span>集中度分数</span>
+              <strong>{Math.round(hhi * 100)}</strong>
+            </div>
+            <p>仅用于组合结构体检，不提供买卖建议。</p>
+          </section>
+
+          <section className="gf-side-card">
+            <h2>Shortcuts</h2>
+            <a
+              href="https://github.com/halftokyo/portfolio/blob/main/docs/methodology.zh.md"
+              target="_blank"
+              rel="noreferrer"
+            >
+              查看组合方法论
+            </a>
+            <button
+              className="gf-danger-action"
+              onClick={onClear}
+            >
+              <Trash2 size={15} />
+              清除全部本地数据
+            </button>
+          </section>
+        </aside>
+      </div>
+
+      {addOpen ? (
+        <div className="gf-modal-backdrop" role="presentation">
+          <form className="gf-add-modal" onSubmit={submitManualHolding}>
+            <div className="gf-modal-header">
+              <h2>添加股票</h2>
+              <button type="button" onClick={() => setAddOpen(false)}>
+                取消
+              </button>
+            </div>
+            <div className="gf-add-grid">
               <label>
                 <span>Ticker</span>
                 <input
@@ -409,23 +642,10 @@ export function ReportScreen({
                 >
                   {LAYERS.map((layer) => (
                     <option key={layer} value={layer}>
-                      {layer} · {LAYER_META[layer].label}
+                      {LAYER_META[layer].label}
                     </option>
                   ))}
                 </select>
-              </label>
-              <label>
-                <span>主题</span>
-                <input
-                  value={draft.theme}
-                  onChange={(event) =>
-                    setDraft((current) => ({
-                      ...current,
-                      theme: event.target.value,
-                    }))
-                  }
-                  placeholder="Technology"
-                />
               </label>
               <label>
                 <span>券商</span>
@@ -440,310 +660,61 @@ export function ReportScreen({
                   placeholder="手动添加"
                 />
               </label>
-              <div className="manual-form-actions">
-                <button type="button" onClick={() => setEditorOpen(false)}>
-                  取消
-                </button>
-                <button type="submit">添加到组合</button>
-              </div>
-            </form>
-          ) : null}
-
-          <div className="editor-table-wrap">
-            <table className="editor-table">
-              <thead>
-                <tr>
-                  <th>证券</th>
-                  <th>券商</th>
-                  <th>分层</th>
-                  <th className="numeric">数量</th>
-                  <th className="numeric">平均成本</th>
-                  <th className="numeric">当前价</th>
-                  <th className="numeric">市值</th>
-                  <th />
-                </tr>
-              </thead>
-              <tbody>
-                {holdings.map((holding) => (
-                  <EditableHoldingRow
-                    key={holding.id}
-                    holding={holding}
-                    baseCurrency={baseCurrency}
-                    onUpdate={onUpdateHolding}
-                    onRemove={onRemoveHolding}
-                  />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        <section className="allocation-section">
-          <div className="section-heading">
-            <h2>四层结构</h2>
-          </div>
-          <div className="allocation-bar" aria-label="四层资产结构">
-            {layerRows.map((row) =>
-              row.weight > 0 ? (
-                <div
-                  className={`allocation-segment ${
-                    row.weight < 0.09 ? 'is-compact' : ''
-                  }`}
-                  key={row.layer}
-                  style={{
-                    width: `${row.weight * 100}%`,
-                    background: LAYER_META[row.layer].color,
-                  }}
-                  title={`${LAYER_META[row.layer].label} ${formatPercent(row.weight)}`}
-                >
-                  {row.weight < 0.09 ? (
-                    <span>
-                      <b>{row.layer}</b> {formatPercent(row.weight)}
-                    </span>
-                  ) : (
-                    <>
-                      <span>
-                        <b>{row.layer}</b> {LAYER_META[row.layer].label}
-                      </span>
-                      <strong>{formatPercent(row.weight)}</strong>
-                    </>
-                  )}
-                </div>
-              ) : null,
-            )}
-          </div>
-          <div className="allocation-scale" aria-hidden="true">
-            <span>0%</span>
-            <span>25%</span>
-            <span>50%</span>
-            <span>75%</span>
-            <span>100%</span>
-          </div>
-        </section>
-
-        <div className="report-grid">
-          <section className="report-panel layer-panel">
-            <div className="section-heading">
-              <h2>分层明细</h2>
             </div>
-            <div className="table-labels">
-              <span>层级</span>
-              <span>资产（{baseCurrency}）</span>
-              <span>占比</span>
-            </div>
-            {layerRows.map((row) => (
-              <div className="layer-row" key={row.layer}>
-                <div className="layer-name">
-                  <span
-                    className="layer-dot"
-                    style={{ background: LAYER_META[row.layer].color }}
-                  />
-                  <div>
-                    <strong>
-                      {row.layer} {LAYER_META[row.layer].label}
-                    </strong>
-                    <span>{LAYER_META[row.layer].description}</span>
-                  </div>
-                </div>
-                <strong className="numeric">
-                  {formatMoney(row.value, baseCurrency)}
-                </strong>
-                <strong className="numeric">{formatPercent(row.weight)}</strong>
-              </div>
-            ))}
-            <div className="layer-total">
-              <strong>合计</strong>
-              <strong>{formatMoney(total, baseCurrency)}</strong>
-              <strong>100.0%</strong>
-            </div>
-          </section>
-
-          <section className="report-panel top-panel">
-            <div className="section-heading">
-              <h2>Top Holdings</h2>
-            </div>
-            <div className="top-table-labels">
-              <span>持仓</span>
-              <span>市值（{baseCurrency}）</span>
-              <span>占比</span>
-            </div>
-            <div className="ranked-bars">
-              {topRows.map((holding, index) => (
-                <div className="ranked-row" key={holding.ticker}>
-                  <span className="rank">{index + 1}</span>
-                  <span className="rank-name" title={holding.name}>
-                    {holding.name}
-                  </span>
-                  <span className="bar-track">
-                    <span
-                      className={`bar-fill ${
-                        holding.ticker === 'OTHER' ? 'is-other' : ''
-                      }`}
-                      style={{
-                        width: `${Math.max(
-                          Math.min((holding.weight / topBarMax) * 100, 100),
-                          1.4,
-                        )}%`,
-                      }}
-                    />
-                  </span>
-                  <strong>{formatMoney(holding.marketValueBase, baseCurrency)}</strong>
-                  <strong>{formatPercent(holding.weight)}</strong>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section className="report-panel exposure-panel">
-            <div className="section-heading with-tabs">
-              <h2>风险暴露</h2>
-              <div className="tabs" role="tablist" aria-label="风险暴露维度">
-                {[
-                  ['currency', '币种'],
-                  ['theme', '主题'],
-                  ['broker', '券商'],
-                ].map(([value, label]) => (
-                  <button
-                    key={value}
-                    className={exposureMode === value ? 'is-active' : ''}
-                    role="tab"
-                    aria-selected={exposureMode === value}
-                    onClick={() => setExposureMode(value as ExposureMode)}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="exposure-bars">
-              {exposureRows.slice(0, 8).map((row) => (
-                <div className="exposure-row" key={row.label}>
-                  <span title={row.label}>{row.label}</span>
-                  <div className="bar-track">
-                    <div
-                      className="bar-fill"
-                      style={{ width: `${row.weight * 100}%` }}
-                    />
-                  </div>
-                  <strong>{formatMoney(row.value, baseCurrency)}</strong>
-                  <strong>{formatPercent(row.weight)}</strong>
-                </div>
-              ))}
-            </div>
-            <div className="exposure-total">
-              <strong>合计</strong>
-              <strong>{formatMoney(total, baseCurrency)}</strong>
-              <strong>100.0%</strong>
-            </div>
-          </section>
-
-          <section className="report-panel health-panel">
-            <div className="section-heading">
-              <h2>结构体检</h2>
-            </div>
-            <div className="health-grid">
-              <div className="health-metric">
-                <Target size={31} />
-                <span>最大持仓占比</span>
-                <strong>{formatPercent(largest)}</strong>
-                <p>
-                  {largest <= 0.2
-                    ? '单一持仓处于较克制区间。'
-                    : '单一持仓对组合影响较大。'}
-                </p>
-              </div>
-              <div className="health-metric">
-                <Layers3 size={31} />
-                <span>Top 5 合计占比</span>
-                <strong>{formatPercent(topFive)}</strong>
-                <p>
-                  {topFive <= 0.6
-                    ? '前五大持仓分布相对均衡。'
-                    : '组合主要由前五大持仓驱动。'}
-                </p>
-              </div>
-              <div className="health-metric">
-                <CircleGauge size={31} />
-                <span>集中度分数</span>
-                <strong>{Math.round(hhi * 100)}</strong>
-                <p>
-                  {concentrationLabel(hhi)}，用于观察结构，不代表投资结论。
-                </p>
-              </div>
-            </div>
-            <p className="health-note">
-              以上指标基于当前持仓市值计算，仅用于结构体检，不构成投资建议。
-            </p>
-          </section>
+            <button className="gf-submit" type="submit">
+              添加到组合
+            </button>
+          </form>
         </div>
+      ) : null}
 
-        <section className="holdings-panel">
-          <button
-            className="holdings-summary"
-            aria-expanded={holdingsOpen}
-            onClick={() => setHoldingsOpen((open) => !open)}
-          >
-            <div>
-              <strong>完整持仓</strong>
-              <span>
-                共 {aggregated.length} 只证券 · 市值 {formatMoney(total, baseCurrency)}
-              </span>
+      {editorOpen ? (
+        <div className="gf-modal-backdrop" role="presentation">
+          <section className="gf-editor-modal">
+            <div className="gf-modal-header">
+              <div>
+                <h2>账户明细</h2>
+                <p>修改账户级数量、平均成本和当前价。</p>
+              </div>
+              <button type="button" onClick={() => setEditorOpen(false)}>
+                完成
+              </button>
             </div>
-            {holdingsOpen ? <ChevronDown size={19} /> : <ChevronRight size={19} />}
-          </button>
-          {holdingsOpen ? (
-            <div className="holdings-table-wrap">
-              <table className="holdings-table">
+            <div className="gf-editor-table-wrap">
+              <table className="gf-editor-table">
                 <thead>
                   <tr>
                     <th>证券</th>
-                    <th>Ticker</th>
+                    <th>券商</th>
                     <th>分层</th>
-                    <th>币种</th>
                     <th className="numeric">数量</th>
+                    <th className="numeric">平均成本</th>
+                    <th className="numeric">当前价</th>
                     <th className="numeric">市值</th>
-                    <th className="numeric">占比</th>
+                    <th />
                   </tr>
                 </thead>
                 <tbody>
-                  {aggregated.map((holding) => (
-                    <HoldingsRow
-                      key={holding.ticker}
+                  {holdings.map((holding) => (
+                    <EditableHoldingRow
+                      key={holding.id}
                       holding={holding}
                       baseCurrency={baseCurrency}
-                      expanded={expandedTicker === holding.ticker}
-                      onToggle={() =>
-                        setExpandedTicker((current) =>
-                          current === holding.ticker ? null : holding.ticker,
-                        )
-                      }
+                      onUpdate={onUpdateHolding}
+                      onRemove={onRemoveHolding}
                     />
                   ))}
                 </tbody>
               </table>
             </div>
-          ) : null}
-        </section>
-
-        <footer className="report-footer">
-          <a
-            href="https://github.com/halftokyo/portfolio/blob/main/docs/methodology.zh.md"
-            target="_blank"
-            rel="noreferrer"
-          >
-            查看组合方法论
-          </a>
-          <button className="danger-link" onClick={onClear}>
-            <Trash2 size={14} />
-            清除全部本地数据
-          </button>
-        </footer>
-      </div>
+          </section>
+        </div>
+      ) : null}
     </main>
   );
 }
 
-function HoldingsRow({
+function FinanceHoldingRow({
   holding,
   baseCurrency,
   expanded,
@@ -754,19 +725,25 @@ function HoldingsRow({
   expanded: boolean;
   onToggle: () => void;
 }) {
+  const firstAccount = holding.accounts[0];
   return (
     <>
-      <tr className="holding-main-row" onClick={onToggle}>
+      <tr className="gf-symbol-row" onClick={onToggle}>
         <td>
-          <button className="holding-name-button">
-            {expanded ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
-            <span>{holding.name}</span>
+          <button className="gf-symbol-cell">
+            {expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+            <span className="gf-symbol-logo">{holding.ticker.slice(0, 1)}</span>
+            <span>
+              <strong>{holding.ticker}</strong>
+              <small>{holding.name}</small>
+            </span>
           </button>
         </td>
-        <td>{holding.ticker}</td>
+        <td className="numeric">{formatMoney(holding.marketValueBase, baseCurrency)}</td>
+        <td className="numeric gf-positive">{formatPercent(holding.weight)}</td>
         <td>
           <span
-            className="layer-tag"
+            className="gf-layer-chip"
             style={{
               color: LAYER_META[holding.layer].color,
               background: LAYER_META[holding.layer].pale,
@@ -775,27 +752,26 @@ function HoldingsRow({
             {LAYER_META[holding.layer].label}
           </span>
         </td>
-        <td>{holding.currency}</td>
         <td className="numeric">{holding.quantity.toLocaleString('zh-CN')}</td>
         <td className="numeric">
-          {formatMoney(holding.marketValueBase, baseCurrency)}
+          {firstAccount?.marketPrice == null
+            ? '—'
+            : formatMoney(firstAccount.marketPrice, holding.currency)}
         </td>
-        <td className="numeric">{formatPercent(holding.weight)}</td>
       </tr>
       {expanded
         ? holding.accounts.map((account) => (
-            <tr className="account-detail-row" key={account.id}>
+            <tr className="gf-account-row" key={account.id}>
               <td colSpan={2}>
                 {account.broker}
                 {account.account ? ` · ${account.account}` : ''}
               </td>
-              <td>{account.theme}</td>
-              <td>{account.currency}</td>
+              <td className="numeric">{formatPercent((account.valueInBase ?? 0) / Math.max(holding.marketValueBase, 1))}</td>
+              <td>{account.theme || '未分类'}</td>
               <td className="numeric">{account.quantity.toLocaleString('zh-CN')}</td>
               <td className="numeric">
                 {formatMoney(account.valueInBase ?? 0, baseCurrency)}
               </td>
-              <td />
             </tr>
           ))
         : null}
@@ -815,22 +791,22 @@ function EditableHoldingRow({
   onRemove: (id: string) => Promise<void>;
 }) {
   return (
-    <tr className="editor-row">
+    <tr className="gf-editor-row">
       <td>
-        <div className="editor-security">
+        <div className="gf-editor-security">
           <strong>{holding.ticker || holding.name}</strong>
           <span>{holding.name || holding.ticker}</span>
         </div>
       </td>
       <td>
-        <div className="editor-broker">
+        <div className="gf-editor-security">
           <strong>{holding.broker || '未识别券商'}</strong>
           <span>{holding.account || holding.sourceType}</span>
         </div>
       </td>
       <td>
         <select
-          className="compact-select"
+          className="gf-compact-select"
           value={holding.layer}
           onChange={(event) =>
             void onUpdate(holding.id, { layer: event.target.value as Layer })
@@ -845,7 +821,7 @@ function EditableHoldingRow({
       </td>
       <td className="numeric">
         <input
-          className="compact-number"
+          className="gf-compact-number"
           type="number"
           inputMode="decimal"
           min="0"
@@ -858,7 +834,7 @@ function EditableHoldingRow({
       </td>
       <td className="numeric">
         <input
-          className="compact-number"
+          className="gf-compact-number"
           type="number"
           inputMode="decimal"
           min="0"
@@ -874,7 +850,7 @@ function EditableHoldingRow({
       </td>
       <td className="numeric">
         <input
-          className="compact-number"
+          className="gf-compact-number"
           type="number"
           inputMode="decimal"
           min="0"
@@ -890,11 +866,11 @@ function EditableHoldingRow({
       </td>
       <td className="numeric">
         <strong>{formatMoney(holding.valueInBase ?? 0, baseCurrency)}</strong>
-        <span className="editor-currency">{holding.currency}</span>
+        <span className="gf-editor-currency">{holding.currency}</span>
       </td>
       <td className="numeric">
         <button
-          className="row-delete"
+          className="gf-row-delete"
           aria-label={`删除 ${holding.ticker || holding.name}`}
           onClick={() => void onRemove(holding.id)}
         >

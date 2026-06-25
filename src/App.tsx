@@ -17,7 +17,7 @@ import {
 } from './lib/portfolio';
 import { clearSnapshot, loadSnapshot, saveSnapshot } from './lib/storage';
 import { ProcessingScreen } from './components/ProcessingScreen';
-import { ReportScreen } from './components/ReportScreen';
+import { FinanceReportScreen } from './components/FinanceReportScreen';
 import { ReviewScreen } from './components/ReviewScreen';
 import { UploadScreen } from './components/UploadScreen';
 import type {
@@ -450,7 +450,7 @@ function App() {
     }
     if (step === 'report') {
       return (
-        <ReportScreen
+        <FinanceReportScreen
           holdings={holdings}
           baseCurrency={baseCurrency}
           fx={fx}
