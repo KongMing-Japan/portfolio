@@ -27,6 +27,19 @@ export interface Holding {
   investmentThesis: string;
 }
 
+export interface ManualHoldingInput {
+  ticker: string;
+  name: string;
+  broker: string;
+  account: string;
+  currency: string;
+  quantity: number;
+  averagePrice: number;
+  marketPrice: number | null;
+  layer: Layer;
+  theme: string;
+}
+
 export interface QuoteResult {
   ticker: string;
   price: number | null;

@@ -1,11 +1,13 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type FormEvent } from 'react';
 import {
   ChevronDown,
   ChevronRight,
   CircleGauge,
   Download,
   Layers3,
+  Plus,
   RefreshCcw,
+  Search,
   Target,
   Trash2,
 } from 'lucide-react';
@@ -23,6 +25,7 @@ import type {
   BaseCurrency,
   Holding,
   Layer,
+  ManualHoldingInput,
   PortfolioSnapshot,
 } from '../types';
 
@@ -34,11 +37,28 @@ interface ReportScreenProps {
   onBaseCurrencyChange: (currency: BaseCurrency) => void;
   onReimport: () => void;
   onClear: () => void;
+  onAddHolding: (input: ManualHoldingInput) => Promise<void>;
+  onUpdateHolding: (id: string, patch: Partial<Holding>) => Promise<void>;
+  onRemoveHolding: (id: string) => Promise<void>;
 }
 
 type ExposureMode = 'currency' | 'theme' | 'broker';
 
 const LAYERS = Object.keys(LAYER_META) as Layer[];
+const CURRENCIES = ['USD', 'JPY', 'CNY', 'HKD'] as const;
+
+const EMPTY_DRAFT: ManualHoldingInput = {
+  ticker: '',
+  name: '',
+  broker: '',
+  account: '',
+  currency: 'USD',
+  quantity: 0,
+  averagePrice: 0,
+  marketPrice: null,
+  layer: 'Core',
+  theme: '',
+};
 
 function downloadJson(
   holdings: Holding[],
@@ -114,6 +134,12 @@ function topHoldingsWithOther(aggregated: AggregatedHolding[]) {
   ];
 }
 
+function formatEditableNumber(value: number | null) {
+  if (value == null) return '';
+  if (!Number.isFinite(value)) return '';
+  return Number.isInteger(value) ? String(value) : String(Number(value.toFixed(4)));
+}
+
 export function ReportScreen({
   holdings,
   baseCurrency,
@@ -122,10 +148,15 @@ export function ReportScreen({
   onBaseCurrencyChange,
   onReimport,
   onClear,
+  onAddHolding,
+  onUpdateHolding,
+  onRemoveHolding,
 }: ReportScreenProps) {
   const [exposureMode, setExposureMode] = useState<ExposureMode>('currency');
   const [holdingsOpen, setHoldingsOpen] = useState(false);
   const [expandedTicker, setExpandedTicker] = useState<string | null>(null);
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [draft, setDraft] = useState<ManualHoldingInput>(EMPTY_DRAFT);
 
   const aggregated = useMemo(() => aggregateHoldings(holdings), [holdings]);
   const total = useMemo(
@@ -167,6 +198,16 @@ export function ReportScreen({
   const topFive = aggregated
     .slice(0, 5)
     .reduce((sum, holding) => sum + holding.weight, 0);
+
+  const submitManualHolding = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!draft.ticker.trim() || draft.quantity <= 0 || draft.averagePrice <= 0) {
+      return;
+    }
+    await onAddHolding(draft);
+    setDraft({ ...EMPTY_DRAFT, currency: baseCurrency === 'CNY' ? 'CNY' : 'USD' });
+    setEditorOpen(false);
+  };
 
   return (
     <main className="report-page">
@@ -210,6 +251,14 @@ export function ReportScreen({
             <h1>我的投资组合</h1>
             <p>行情更新 {formatDateTime(quoteUpdatedAt)}</p>
           </div>
+          <button
+            className="finance-search-button"
+            onClick={() => setEditorOpen(true)}
+          >
+            <Search size={18} />
+            <span>搜索或添加股票代码</span>
+            <Plus size={17} />
+          </button>
         </div>
 
         <section className="summary-strip" aria-label="组合摘要">
@@ -228,6 +277,204 @@ export function ReportScreen({
           <div>
             <span>行情更新</span>
             <strong>{formatDateTime(quoteUpdatedAt)}</strong>
+          </div>
+        </section>
+
+        <section className="portfolio-editor-panel">
+          <div className="editor-heading">
+            <div>
+              <h2>持仓管理</h2>
+              <p>追加股票，或直接修改账户级数量、平均成本和当前价。</p>
+            </div>
+            <button
+              className="editor-add-button"
+              onClick={() => setEditorOpen((open) => !open)}
+            >
+              <Plus size={17} />
+              添加持仓
+            </button>
+          </div>
+
+          {editorOpen ? (
+            <form className="manual-holding-form" onSubmit={submitManualHolding}>
+              <label>
+                <span>Ticker</span>
+                <input
+                  value={draft.ticker}
+                  onChange={(event) =>
+                    setDraft((current) => ({
+                      ...current,
+                      ticker: event.target.value,
+                    }))
+                  }
+                  placeholder="AAPL / 7203.T"
+                  required
+                />
+              </label>
+              <label>
+                <span>名称</span>
+                <input
+                  value={draft.name}
+                  onChange={(event) =>
+                    setDraft((current) => ({
+                      ...current,
+                      name: event.target.value,
+                    }))
+                  }
+                  placeholder="Apple"
+                />
+              </label>
+              <label>
+                <span>数量</span>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  step="any"
+                  value={draft.quantity || ''}
+                  onChange={(event) =>
+                    setDraft((current) => ({
+                      ...current,
+                      quantity: Number(event.target.value),
+                    }))
+                  }
+                  required
+                />
+              </label>
+              <label>
+                <span>平均成本</span>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  step="any"
+                  value={draft.averagePrice || ''}
+                  onChange={(event) =>
+                    setDraft((current) => ({
+                      ...current,
+                      averagePrice: Number(event.target.value),
+                    }))
+                  }
+                  required
+                />
+              </label>
+              <label>
+                <span>当前价</span>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  step="any"
+                  value={draft.marketPrice ?? ''}
+                  onChange={(event) =>
+                    setDraft((current) => ({
+                      ...current,
+                      marketPrice:
+                        event.target.value === ''
+                          ? null
+                          : Number(event.target.value),
+                    }))
+                  }
+                  placeholder="默认同平均成本"
+                />
+              </label>
+              <label>
+                <span>币种</span>
+                <select
+                  value={draft.currency}
+                  onChange={(event) =>
+                    setDraft((current) => ({
+                      ...current,
+                      currency: event.target.value,
+                    }))
+                  }
+                >
+                  {CURRENCIES.map((currency) => (
+                    <option key={currency} value={currency}>
+                      {currency}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>分层</span>
+                <select
+                  value={draft.layer}
+                  onChange={(event) =>
+                    setDraft((current) => ({
+                      ...current,
+                      layer: event.target.value as Layer,
+                    }))
+                  }
+                >
+                  {LAYERS.map((layer) => (
+                    <option key={layer} value={layer}>
+                      {layer} · {LAYER_META[layer].label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>主题</span>
+                <input
+                  value={draft.theme}
+                  onChange={(event) =>
+                    setDraft((current) => ({
+                      ...current,
+                      theme: event.target.value,
+                    }))
+                  }
+                  placeholder="Technology"
+                />
+              </label>
+              <label>
+                <span>券商</span>
+                <input
+                  value={draft.broker}
+                  onChange={(event) =>
+                    setDraft((current) => ({
+                      ...current,
+                      broker: event.target.value,
+                    }))
+                  }
+                  placeholder="手动添加"
+                />
+              </label>
+              <div className="manual-form-actions">
+                <button type="button" onClick={() => setEditorOpen(false)}>
+                  取消
+                </button>
+                <button type="submit">添加到组合</button>
+              </div>
+            </form>
+          ) : null}
+
+          <div className="editor-table-wrap">
+            <table className="editor-table">
+              <thead>
+                <tr>
+                  <th>证券</th>
+                  <th>券商</th>
+                  <th>分层</th>
+                  <th className="numeric">数量</th>
+                  <th className="numeric">平均成本</th>
+                  <th className="numeric">当前价</th>
+                  <th className="numeric">市值</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {holdings.map((holding) => (
+                  <EditableHoldingRow
+                    key={holding.id}
+                    holding={holding}
+                    baseCurrency={baseCurrency}
+                    onUpdate={onUpdateHolding}
+                    onRemove={onRemoveHolding}
+                  />
+                ))}
+              </tbody>
+            </table>
           </div>
         </section>
 
@@ -553,5 +800,107 @@ function HoldingsRow({
           ))
         : null}
     </>
+  );
+}
+
+function EditableHoldingRow({
+  holding,
+  baseCurrency,
+  onUpdate,
+  onRemove,
+}: {
+  holding: Holding;
+  baseCurrency: BaseCurrency;
+  onUpdate: (id: string, patch: Partial<Holding>) => Promise<void>;
+  onRemove: (id: string) => Promise<void>;
+}) {
+  return (
+    <tr className="editor-row">
+      <td>
+        <div className="editor-security">
+          <strong>{holding.ticker || holding.name}</strong>
+          <span>{holding.name || holding.ticker}</span>
+        </div>
+      </td>
+      <td>
+        <div className="editor-broker">
+          <strong>{holding.broker || '未识别券商'}</strong>
+          <span>{holding.account || holding.sourceType}</span>
+        </div>
+      </td>
+      <td>
+        <select
+          className="compact-select"
+          value={holding.layer}
+          onChange={(event) =>
+            void onUpdate(holding.id, { layer: event.target.value as Layer })
+          }
+        >
+          {LAYERS.map((layer) => (
+            <option key={layer} value={layer}>
+              {LAYER_META[layer].label}
+            </option>
+          ))}
+        </select>
+      </td>
+      <td className="numeric">
+        <input
+          className="compact-number"
+          type="number"
+          inputMode="decimal"
+          min="0"
+          step="any"
+          value={holding.quantity}
+          onChange={(event) =>
+            void onUpdate(holding.id, { quantity: Number(event.target.value) })
+          }
+        />
+      </td>
+      <td className="numeric">
+        <input
+          className="compact-number"
+          type="number"
+          inputMode="decimal"
+          min="0"
+          step="any"
+          value={formatEditableNumber(holding.costPerUnit)}
+          onChange={(event) =>
+            void onUpdate(holding.id, {
+              costPerUnit:
+                event.target.value === '' ? null : Number(event.target.value),
+            })
+          }
+        />
+      </td>
+      <td className="numeric">
+        <input
+          className="compact-number"
+          type="number"
+          inputMode="decimal"
+          min="0"
+          step="any"
+          value={formatEditableNumber(holding.marketPrice)}
+          onChange={(event) =>
+            void onUpdate(holding.id, {
+              marketPrice:
+                event.target.value === '' ? null : Number(event.target.value),
+            })
+          }
+        />
+      </td>
+      <td className="numeric">
+        <strong>{formatMoney(holding.valueInBase ?? 0, baseCurrency)}</strong>
+        <span className="editor-currency">{holding.currency}</span>
+      </td>
+      <td className="numeric">
+        <button
+          className="row-delete"
+          aria-label={`删除 ${holding.ticker || holding.name}`}
+          onClick={() => void onRemove(holding.id)}
+        >
+          <Trash2 size={15} />
+        </button>
+      </td>
+    </tr>
   );
 }

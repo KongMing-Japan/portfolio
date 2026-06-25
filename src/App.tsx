@@ -9,6 +9,9 @@ import {
 } from './lib/csv';
 import {
   applyQuotes,
+  makeId,
+  marketFromTicker,
+  normalizeLayer,
   recalculateBaseValues,
   suggestBaseCurrency,
 } from './lib/portfolio';
@@ -21,6 +24,7 @@ import type {
   AppStep,
   BaseCurrency,
   Holding,
+  ManualHoldingInput,
   PortfolioSnapshot,
   ProcessingStatus,
   QuoteResponse,
@@ -43,6 +47,9 @@ function App() {
     useState<ProcessingStatus>(INITIAL_STATUS);
   const [error, setError] = useState<string | null>(null);
   const [hasSavedPortfolio, setHasSavedPortfolio] = useState(false);
+  const [shouldRestoreReport] = useState(
+    () => sessionStorage.getItem('portfolio-current-step') === 'report',
+  );
 
   useEffect(() => {
     let active = true;
@@ -50,15 +57,23 @@ function App() {
       .then((snapshot) => {
         if (!active || !snapshot?.holdings.length) return;
         setHasSavedPortfolio(true);
+        if (shouldRestoreReport) {
+          setHoldings(snapshot.holdings);
+          setBaseCurrency(snapshot.baseCurrency);
+          setFx(snapshot.fx);
+          setQuoteUpdatedAt(snapshot.quoteUpdatedAt);
+          setStep('report');
+        }
       })
       .catch(() => undefined);
     return () => {
       active = false;
     };
-  }, []);
+  }, [shouldRestoreReport]);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'auto' });
+    sessionStorage.setItem('portfolio-current-step', step);
   }, [step]);
 
   const persist = useCallback(
@@ -273,6 +288,109 @@ function App() {
     setHoldings((current) => current.filter((holding) => holding.id !== id));
   }, []);
 
+  const saveReportHoldings = useCallback(
+    async (
+      nextHoldings: Holding[],
+      nextFx: Record<string, number> = fx,
+      nextCurrency: BaseCurrency = baseCurrency,
+    ) => {
+      const recalculated = recalculateBaseValues(
+        nextHoldings,
+        nextFx,
+        nextCurrency,
+      );
+      setHoldings(recalculated);
+      setFx(nextFx);
+      await persist(recalculated, nextCurrency, nextFx);
+    },
+    [baseCurrency, fx, persist],
+  );
+
+  const addManualHolding = useCallback(
+    async (input: ManualHoldingInput) => {
+      const ticker = input.ticker.trim().toUpperCase();
+      const name = input.name.trim() || ticker;
+      const currency = input.currency.trim().toUpperCase() || baseCurrency;
+      const price =
+        input.marketPrice != null && input.marketPrice > 0
+          ? input.marketPrice
+          : input.averagePrice;
+      const nextFx: Record<string, number> = { JPY: 1, ...fx };
+      if (nextFx[currency] == null) {
+        nextFx[currency] =
+          currency === baseCurrency ? (nextFx[baseCurrency] ?? 1) : 1;
+      }
+      const holding: Holding = {
+        id: makeId(),
+        ticker,
+        name,
+        broker: input.broker.trim() || '手动添加',
+        account: input.account.trim(),
+        market: marketFromTicker(ticker),
+        currency,
+        quantity: input.quantity,
+        costPerUnit: input.averagePrice,
+        importedMarketValue: null,
+        marketPrice: price,
+        marketValue: price * input.quantity,
+        valueInBase: null,
+        layer: normalizeLayer(input.layer, ticker, name, input.theme),
+        theme: input.theme.trim() || '未分类',
+        sourceType: 'manual',
+        confidence: 1,
+        needsReview: false,
+        reviewReasons: [],
+        targetWeight: null,
+        investmentThesis: '',
+      };
+      await saveReportHoldings([...holdings, holding], nextFx);
+    },
+    [baseCurrency, fx, holdings, saveReportHoldings],
+  );
+
+  const updateReportHolding = useCallback(
+    async (id: string, patch: Partial<Holding>) => {
+      const nextHoldings = holdings.map((holding) => {
+        if (holding.id !== id) return holding;
+        const updated = { ...holding, ...patch };
+        const costChanged = Object.prototype.hasOwnProperty.call(
+          patch,
+          'costPerUnit',
+        );
+        const priceChanged = Object.prototype.hasOwnProperty.call(
+          patch,
+          'marketPrice',
+        );
+        if (
+          costChanged &&
+          !priceChanged &&
+          holding.sourceType === 'manual' &&
+          holding.marketPrice === holding.costPerUnit
+        ) {
+          updated.marketPrice = updated.costPerUnit;
+        }
+        updated.market =
+          patch.ticker != null ? marketFromTicker(updated.ticker) : updated.market;
+        updated.layer = normalizeLayer(
+          updated.layer,
+          updated.ticker,
+          updated.name,
+          updated.theme,
+        );
+        return updated;
+      });
+      await saveReportHoldings(nextHoldings);
+    },
+    [holdings, saveReportHoldings],
+  );
+
+  const removeReportHolding = useCallback(
+    async (id: string) => {
+      await saveReportHoldings(holdings.filter((holding) => holding.id !== id));
+    },
+    [holdings, saveReportHoldings],
+  );
+
   const confirmReview = useCallback(async () => {
     const confirmed = holdings.map((holding) => ({
       ...holding,
@@ -340,6 +458,9 @@ function App() {
           onBaseCurrencyChange={handleBaseCurrency}
           onReimport={resetToUpload}
           onClear={clearAll}
+          onAddHolding={addManualHolding}
+          onUpdateHolding={updateReportHolding}
+          onRemoveHolding={removeReportHolding}
         />
       );
     }
@@ -366,12 +487,15 @@ function App() {
     handleSample,
     hasSavedPortfolio,
     holdings,
+    addManualHolding,
     processing,
     quoteUpdatedAt,
     removeHolding,
+    removeReportHolding,
     resetToUpload,
     resumeSaved,
     step,
+    updateReportHolding,
     updateHolding,
   ]);
 
