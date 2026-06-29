@@ -34,15 +34,17 @@ const INITIAL_STATUS: ProcessingStatus = {
   parsing: 'pending',
   matching: 'pending',
   quotes: 'pending',
-  message: '准备处理文件',
+  message: 'Ready to process your files',
 };
+
+const LOCALE_STORAGE_KEY = 'portfolio-locale-v2';
 
 function App() {
   const [step, setStep] = useState<AppStep>('report');
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [baseCurrency, setBaseCurrency] = useState<BaseCurrency>('JPY');
   const [locale, setLocale] = useState<Locale>(
-    () => (localStorage.getItem('portfolio-locale') as Locale | null) ?? 'zh',
+    () => (localStorage.getItem(LOCALE_STORAGE_KEY) as Locale | null) ?? 'en',
   );
   const [fx, setFx] = useState<Record<string, number>>({ JPY: 1 });
   const [quoteUpdatedAt, setQuoteUpdatedAt] = useState<string | null>(null);
@@ -75,7 +77,9 @@ function App() {
   }, [step]);
 
   useEffect(() => {
-    localStorage.setItem('portfolio-locale', locale);
+    localStorage.setItem(LOCALE_STORAGE_KEY, locale);
+    document.documentElement.lang =
+      locale === 'zh' ? 'zh-CN' : locale === 'ja' ? 'ja' : 'en';
   }, [locale]);
 
   const persist = useCallback(
@@ -101,7 +105,7 @@ function App() {
 
   const finishImport = useCallback(
     async (parsed: Holding[]) => {
-      if (!parsed.length) throw new Error('没有识别到有效持仓');
+      if (!parsed.length) throw new Error('No valid positions were found.');
       const deduped = markDuplicates(parsed);
       const suggestedCurrency = suggestBaseCurrency(deduped);
       setBaseCurrency(suggestedCurrency);
@@ -109,7 +113,7 @@ function App() {
         parsing: 'done',
         matching: 'done',
         quotes: 'active',
-        message: '正在获取最新行情与汇率',
+        message: 'Fetching market prices and exchange rates',
       });
 
       let quoteResponse: QuoteResponse;
@@ -132,7 +136,7 @@ function App() {
         parsing: 'done',
         matching: 'done',
         quotes: 'done',
-        message: '组合已准备完成',
+        message: 'Your portfolio is ready',
       });
       await persist(
         enriched,
@@ -153,7 +157,7 @@ function App() {
         parsing: 'active',
         matching: 'pending',
         quotes: 'pending',
-        message: '正在读取上传文件',
+        message: 'Reading uploaded files',
       });
       try {
         const csvFiles = files.filter((file) => /\.csv$/i.test(file.name));
@@ -168,12 +172,12 @@ function App() {
           parsing: 'done',
           matching: 'active',
           quotes: 'pending',
-          message: '正在统一证券代码、币种和分层',
+          message: 'Matching symbols, currencies, and portfolio layers',
         });
         await finishImport([...csvGroups.flat(), ...imageGroups.flat()]);
       } catch (caught) {
         const message =
-          caught instanceof Error ? caught.message : '文件处理失败';
+          caught instanceof Error ? caught.message : 'File processing failed.';
         setError(message);
         setProcessing((current) => ({
           ...current,
@@ -194,22 +198,22 @@ function App() {
       parsing: 'active',
       matching: 'pending',
       quotes: 'pending',
-      message: '正在载入示例组合',
+      message: 'Loading the sample portfolio',
     });
     try {
       const response = await fetch('/sample-positions.csv');
-      if (!response.ok) throw new Error('示例数据不可用');
-      const parsed = parseHoldingsCsv(await response.text(), '示例组合');
+      if (!response.ok) throw new Error('The sample portfolio is unavailable.');
+      const parsed = parseHoldingsCsv(await response.text(), 'Sample portfolio');
       setProcessing({
         parsing: 'done',
         matching: 'active',
         quotes: 'pending',
-        message: '正在统一证券代码、币种和分层',
+        message: 'Matching symbols, currencies, and portfolio layers',
       });
       await finishImport(parsed);
     } catch (caught) {
       const message =
-        caught instanceof Error ? caught.message : '示例数据载入失败';
+        caught instanceof Error ? caught.message : 'The sample portfolio could not be loaded.';
       setError(message);
       setProcessing({
         parsing: 'error',
@@ -228,20 +232,20 @@ function App() {
         parsing: 'active',
         matching: 'pending',
         quotes: 'pending',
-        message: '正在读取手动输入的持仓',
+        message: 'Reading pasted positions',
       });
       try {
-        const parsed = parseHoldingsText(text, '手动输入');
+        const parsed = parseHoldingsText(text, 'Manual import');
         setProcessing({
           parsing: 'done',
           matching: 'active',
           quotes: 'pending',
-          message: '正在统一证券代码、币种和分层',
+          message: 'Matching symbols, currencies, and portfolio layers',
         });
         await finishImport(parsed);
       } catch (caught) {
         const message =
-          caught instanceof Error ? caught.message : '手动输入解析失败';
+          caught instanceof Error ? caught.message : 'The pasted positions could not be parsed.';
         setError(message);
         setProcessing({
           parsing: 'error',
@@ -257,7 +261,7 @@ function App() {
   const handleJsonImport = useCallback(async (file: File) => {
     const snapshot = JSON.parse(await file.text()) as PortfolioSnapshot;
     if (snapshot.version !== 1 || !Array.isArray(snapshot.holdings)) {
-      throw new Error('这不是有效的 Portfolio 文件');
+      throw new Error('This is not a valid Portfolio file.');
     }
     setHoldings(snapshot.holdings);
     setBaseCurrency(snapshot.baseCurrency);
@@ -326,7 +330,7 @@ function App() {
         id: makeId(),
         ticker,
         name,
-        broker: input.broker.trim() || '手动添加',
+        broker: input.broker.trim() || 'Manual',
         account: input.account.trim(),
         market: marketFromTicker(ticker),
         currency,
@@ -337,7 +341,7 @@ function App() {
         marketValue: price * input.quantity,
         valueInBase: null,
         layer: normalizeLayer(input.layer, ticker, name, input.theme),
-        theme: input.theme.trim() || '未分类',
+        theme: input.theme.trim() || 'Uncategorized',
         sourceType: 'manual',
         confidence: 1,
         needsReview: false,

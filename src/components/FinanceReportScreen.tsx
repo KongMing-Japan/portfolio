@@ -71,7 +71,9 @@ const COPY: Record<Locale, Record<string, string>> = {
     noUpdate: '未更新',
     addStock: '添加股票',
     securities: '只证券',
+    securitySingular: '只证券',
     brokers: '个券商',
+    brokerSingular: '个券商',
     base: '基准',
     yourPortfolio: '我的持仓',
     manageAccounts: '管理账户明细',
@@ -109,6 +111,18 @@ const COPY: Record<Locale, Record<string, string>> = {
     editDetails: '修改账户级数量、平均成本和当前价。',
     emptyTitle: '还没有持仓',
     emptyBody: '从右侧导入 CSV、截图或粘贴数据，dashboard 会直接在这里生成。',
+    other: '其他',
+    exportJson: '导出 JSON',
+    exposureDimension: '风险暴露维度',
+    delete: '删除',
+    name: '名称',
+    quantity: '数量',
+    averageCost: '平均成本',
+    currentPrice: '当前价',
+    currency: '币种',
+    broker: '券商',
+    manual: '手动添加',
+    defaultAverageCost: '默认同平均成本',
   },
   ja: {
     search: '銘柄を検索または追加',
@@ -124,7 +138,9 @@ const COPY: Record<Locale, Record<string, string>> = {
     noUpdate: '未更新',
     addStock: '銘柄を追加',
     securities: '銘柄',
+    securitySingular: '銘柄',
     brokers: '証券会社',
+    brokerSingular: '証券会社',
     base: '基準',
     yourPortfolio: 'ポートフォリオ',
     manageAccounts: '口座明細を編集',
@@ -162,9 +178,21 @@ const COPY: Record<Locale, Record<string, string>> = {
     editDetails: '口座ごとの数量、平均単価、現在価格を編集します。',
     emptyTitle: '保有データがありません',
     emptyBody: '右側からCSV、画像、貼り付けで取り込むと、ここにdashboardが生成されます。',
+    other: 'その他',
+    exportJson: 'JSONを書き出す',
+    exposureDimension: 'エクスポージャー分類',
+    delete: '削除',
+    name: '名称',
+    quantity: '数量',
+    averageCost: '平均単価',
+    currentPrice: '現在価格',
+    currency: '通貨',
+    broker: '証券会社',
+    manual: '手動追加',
+    defaultAverageCost: '平均単価と同じ',
   },
   en: {
-    search: 'Search or add stocks',
+    search: 'Search or add a security',
     lists: 'Lists',
     portfolio: 'Portfolio',
     holdings: 'Holdings',
@@ -173,14 +201,16 @@ const COPY: Record<Locale, Record<string, string>> = {
     allHoldings: 'All holdings',
     layers: 'Layers',
     topSymbols: 'Top symbols',
-    updated: 'Updated',
+    updated: 'Market data',
     noUpdate: 'Not updated',
     addStock: 'Add stock',
     securities: 'securities',
+    securitySingular: 'security',
     brokers: 'brokers',
+    brokerSingular: 'broker',
     base: 'Base',
     yourPortfolio: 'Your portfolio',
-    manageAccounts: 'Manage accounts',
+    manageAccounts: 'Edit positions',
     symbol: 'Symbol',
     value: 'Value',
     weight: 'Weight',
@@ -189,7 +219,7 @@ const COPY: Record<Locale, Record<string, string>> = {
     price: 'Price',
     topHoldings: 'Top holdings',
     managePortfolio: 'Manage portfolio',
-    importPositions: 'Upload CSV / image / paste',
+    importPositions: 'Import positions',
     editCost: 'Edit shares and cost basis',
     structureHealth: 'Structure health',
     largest: 'Largest holding',
@@ -200,9 +230,9 @@ const COPY: Record<Locale, Record<string, string>> = {
     methodology: 'View methodology',
     clear: 'Clear all local data',
     importTitle: 'Import positions',
-    uploadFile: 'Upload',
+    uploadFile: 'Upload files',
     paste: 'Type / paste',
-    drop: 'Drop CSV or screenshots',
+    drop: 'Drop CSV files or screenshots here',
     choose: 'Choose files',
     sample: 'Use Berkshire sample',
     json: 'Import Portfolio JSON',
@@ -214,7 +244,19 @@ const COPY: Record<Locale, Record<string, string>> = {
     accountDetails: 'Account details',
     editDetails: 'Edit account-level quantity, average cost, and current price.',
     emptyTitle: 'No holdings yet',
-    emptyBody: 'Import CSV, screenshots, or pasted positions from the right panel. The dashboard will render here.',
+    emptyBody: 'Import a CSV, screenshot, or pasted list to build your portfolio dashboard.',
+    other: 'Other',
+    exportJson: 'Export JSON',
+    exposureDimension: 'Exposure dimension',
+    delete: 'Delete',
+    name: 'Name',
+    quantity: 'Quantity',
+    averageCost: 'Average cost',
+    currentPrice: 'Current price',
+    currency: 'Currency',
+    broker: 'Broker',
+    manual: 'Manual',
+    defaultAverageCost: 'Defaults to average cost',
   },
 };
 
@@ -267,8 +309,8 @@ function groupExposure(
       mode === 'currency'
         ? holding.currency
         : mode === 'theme'
-          ? holding.theme || '未分类'
-          : holding.broker || '未识别券商';
+          ? holding.theme || 'Uncategorized'
+          : holding.broker || 'Unknown broker';
     groups.set(key, (groups.get(key) ?? 0) + (holding.valueInBase ?? 0));
   }
   return [...groups.entries()]
@@ -280,7 +322,7 @@ function groupExposure(
     .sort((a, b) => b.value - a.value);
 }
 
-function topHoldingsWithOther(aggregated: AggregatedHolding[]) {
+function topHoldingsWithOther(aggregated: AggregatedHolding[], otherLabel: string) {
   if (aggregated.length <= 8) return aggregated;
   const top = aggregated.slice(0, 8);
   const others = aggregated.slice(8);
@@ -293,7 +335,7 @@ function topHoldingsWithOther(aggregated: AggregatedHolding[]) {
     ...top,
     {
       ticker: 'OTHER',
-      name: `其他 ${others.length} 项`,
+      name: `${otherLabel} (${others.length})`,
       currency: '',
       layer: 'Defensive' as Layer,
       theme: '',
@@ -375,7 +417,10 @@ export function FinanceReportScreen({
     () => groupExposure(holdings, exposureMode, total),
     [exposureMode, holdings, total],
   );
-  const topRows = useMemo(() => topHoldingsWithOther(aggregated), [aggregated]);
+  const topRows = useMemo(
+    () => topHoldingsWithOther(aggregated, t.other),
+    [aggregated, t.other],
+  );
   const topBarMax = useMemo(
     () =>
       Math.max(...aggregated.slice(0, 8).map((holding) => holding.weight), 0.01),
@@ -447,14 +492,14 @@ export function FinanceReportScreen({
               value={locale}
               onChange={(event) => onLocaleChange(event.target.value as Locale)}
             >
+              <option value="en">English</option>
               <option value="zh">中文</option>
               <option value="ja">日本語</option>
-              <option value="en">English</option>
             </select>
           </label>
           <button
             className="gf-icon-button"
-            aria-label="导出 JSON"
+            aria-label={t.exportJson}
             onClick={() =>
               downloadJson(holdings, baseCurrency, fx, quoteUpdatedAt)
             }
@@ -484,7 +529,7 @@ export function FinanceReportScreen({
         <aside className="gf-left-rail" aria-label="Portfolio lists">
           <div className="gf-left-heading">
             <h2>{t.lists}</h2>
-            <button onClick={() => setAddOpen(true)} aria-label="添加列表项目">
+            <button onClick={() => setAddOpen(true)} aria-label={t.addStock}>
               <Plus size={16} />
             </button>
           </div>
@@ -526,8 +571,11 @@ export function FinanceReportScreen({
             </div>
             <div className="gf-total-value">{formatMoney(total, baseCurrency)}</div>
             <div className="gf-stat-row">
-              <span>{aggregated.length} {t.securities}</span>
-              <span>{brokers} {t.brokers}</span>
+              <span>
+                {aggregated.length}{' '}
+                {aggregated.length === 1 ? t.securitySingular : t.securities}
+              </span>
+              <span>{brokers} {brokers === 1 ? t.brokerSingular : t.brokers}</span>
               <span>{t.base} {baseCurrency}</span>
               <span>{concentrationLabel(hhi)}</span>
             </div>
@@ -658,11 +706,11 @@ export function FinanceReportScreen({
           <section className="gf-section" id="exposure">
             <div className="gf-section-header">
               <h2>{t.exposure}</h2>
-              <div className="gf-tabs" role="tablist" aria-label="风险暴露维度">
+              <div className="gf-tabs" role="tablist" aria-label={t.exposureDimension}>
                 {[
-                  ['currency', locale === 'ja' ? '通貨' : locale === 'en' ? 'Currency' : '币种'],
-                  ['theme', locale === 'ja' ? 'テーマ' : locale === 'en' ? 'Theme' : '主题'],
-                  ['broker', locale === 'ja' ? '証券会社' : locale === 'en' ? 'Broker' : '券商'],
+                  ['currency', t.currency],
+                  ['theme', locale === 'ja' ? 'テーマ' : locale === 'zh' ? '主题' : 'Theme'],
+                  ['broker', t.broker],
                 ].map(([value, label]) => (
                   <button
                     key={value}
@@ -736,7 +784,11 @@ export function FinanceReportScreen({
           <section className="gf-side-card">
             <h2>{t.shortcuts}</h2>
             <a
-              href="https://github.com/halftokyo/portfolio/blob/main/docs/methodology.zh.md"
+              href={
+                locale === 'en'
+                  ? 'https://github.com/KongMing-Japan/portfolio/blob/main/docs/methodology.en.md'
+                  : 'https://github.com/KongMing-Japan/portfolio/blob/main/docs/methodology.zh.md'
+              }
               target="_blank"
               rel="noreferrer"
             >
@@ -877,7 +929,7 @@ export function FinanceReportScreen({
                 />
               </label>
               <label>
-                <span>{locale === 'en' ? 'Name' : locale === 'ja' ? '名称' : '名称'}</span>
+                <span>{t.name}</span>
                 <input
                   value={draft.name}
                   onChange={(event) =>
@@ -890,7 +942,7 @@ export function FinanceReportScreen({
                 />
               </label>
               <label>
-                <span>{locale === 'en' ? 'Quantity' : locale === 'ja' ? '数量' : '数量'}</span>
+                <span>{t.quantity}</span>
                 <input
                   type="number"
                   inputMode="decimal"
@@ -907,7 +959,7 @@ export function FinanceReportScreen({
                 />
               </label>
               <label>
-                <span>{locale === 'en' ? 'Average cost' : locale === 'ja' ? '平均単価' : '平均成本'}</span>
+                <span>{t.averageCost}</span>
                 <input
                   type="number"
                   inputMode="decimal"
@@ -924,7 +976,7 @@ export function FinanceReportScreen({
                 />
               </label>
               <label>
-                <span>{locale === 'en' ? 'Current price' : locale === 'ja' ? '現在価格' : '当前价'}</span>
+                <span>{t.currentPrice}</span>
                 <input
                   type="number"
                   inputMode="decimal"
@@ -940,11 +992,11 @@ export function FinanceReportScreen({
                           : Number(event.target.value),
                     }))
                   }
-                  placeholder={locale === 'en' ? 'Defaults to average cost' : locale === 'ja' ? '平均単価と同じ' : '默认同平均成本'}
+                  placeholder={t.defaultAverageCost}
                 />
               </label>
               <label>
-                <span>{locale === 'en' ? 'Currency' : locale === 'ja' ? '通貨' : '币种'}</span>
+                <span>{t.currency}</span>
                 <select
                   value={draft.currency}
                   onChange={(event) =>
@@ -980,7 +1032,7 @@ export function FinanceReportScreen({
                 </select>
               </label>
               <label>
-                <span>{locale === 'en' ? 'Broker' : locale === 'ja' ? '証券会社' : '券商'}</span>
+                <span>{t.broker}</span>
                 <input
                   value={draft.broker}
                   onChange={(event) =>
@@ -989,7 +1041,7 @@ export function FinanceReportScreen({
                       broker: event.target.value,
                     }))
                   }
-                  placeholder={locale === 'en' ? 'Manual' : locale === 'ja' ? '手動追加' : '手动添加'}
+                  placeholder={t.manual}
                 />
               </label>
             </div>
@@ -1017,10 +1069,10 @@ export function FinanceReportScreen({
                 <thead>
                   <tr>
                     <th>{t.symbol}</th>
-                    <th>{locale === 'en' ? 'Broker' : locale === 'ja' ? '証券会社' : '券商'}</th>
+                    <th>{t.broker}</th>
                     <th>{t.layer}</th>
                     <th className="numeric">{t.qty}</th>
-                    <th className="numeric">{locale === 'en' ? 'Average cost' : locale === 'ja' ? '平均単価' : '平均成本'}</th>
+                    <th className="numeric">{t.averageCost}</th>
                     <th className="numeric">{t.price}</th>
                     <th className="numeric">{t.value}</th>
                     <th />
@@ -1032,6 +1084,7 @@ export function FinanceReportScreen({
                       key={holding.id}
                       holding={holding}
                       baseCurrency={baseCurrency}
+                      deleteLabel={t.delete}
                       onUpdate={onUpdateHolding}
                       onRemove={onRemoveHolding}
                     />
@@ -1084,7 +1137,7 @@ function FinanceHoldingRow({
             {LAYER_META[holding.layer].label}
           </span>
         </td>
-        <td className="numeric">{holding.quantity.toLocaleString('zh-CN')}</td>
+        <td className="numeric">{holding.quantity.toLocaleString('en-US')}</td>
         <td className="numeric">
           {firstAccount?.marketPrice == null
             ? '—'
@@ -1099,8 +1152,8 @@ function FinanceHoldingRow({
                 {account.account ? ` · ${account.account}` : ''}
               </td>
               <td className="numeric">{formatPercent((account.valueInBase ?? 0) / Math.max(holding.marketValueBase, 1))}</td>
-              <td>{account.theme || '未分类'}</td>
-              <td className="numeric">{account.quantity.toLocaleString('zh-CN')}</td>
+              <td>{account.theme || 'Uncategorized'}</td>
+              <td className="numeric">{account.quantity.toLocaleString('en-US')}</td>
               <td className="numeric">
                 {formatMoney(account.valueInBase ?? 0, baseCurrency)}
               </td>
@@ -1114,11 +1167,13 @@ function FinanceHoldingRow({
 function EditableHoldingRow({
   holding,
   baseCurrency,
+  deleteLabel,
   onUpdate,
   onRemove,
 }: {
   holding: Holding;
   baseCurrency: BaseCurrency;
+  deleteLabel: string;
   onUpdate: (id: string, patch: Partial<Holding>) => Promise<void>;
   onRemove: (id: string) => Promise<void>;
 }) {
@@ -1132,7 +1187,7 @@ function EditableHoldingRow({
       </td>
       <td>
         <div className="gf-editor-security">
-          <strong>{holding.broker || '未识别券商'}</strong>
+          <strong>{holding.broker || 'Unknown broker'}</strong>
           <span>{holding.account || holding.sourceType}</span>
         </div>
       </td>
@@ -1203,7 +1258,7 @@ function EditableHoldingRow({
       <td className="numeric">
         <button
           className="gf-row-delete"
-          aria-label={`删除 ${holding.ticker || holding.name}`}
+          aria-label={`${deleteLabel} ${holding.ticker || holding.name}`}
           onClick={() => void onRemove(holding.id)}
         >
           <Trash2 size={15} />

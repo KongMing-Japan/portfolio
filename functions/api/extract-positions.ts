@@ -74,7 +74,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     return json(
       {
         error:
-          '截图识别服务尚未配置。请使用 CSV，或在 Cloudflare Pages 中设置 GROQ_API_KEY。',
+          'Screenshot recognition is not configured. Use CSV or set GROQ_API_KEY in Cloudflare Pages.',
       },
       503,
     );
@@ -84,24 +84,24 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     context.request.headers.get('content-length') ?? 0,
   );
   if (contentLength > MAX_REQUEST_BYTES) {
-    return json({ error: '截图请求不能超过 4 MB。' }, 413);
+    return json({ error: 'Screenshot requests must be 4 MB or smaller.' }, 413);
   }
 
   let body: ExtractRequest;
   try {
     body = await context.request.json<ExtractRequest>();
   } catch {
-    return json({ error: '请求格式无效。' }, 400);
+    return json({ error: 'Invalid request format.' }, 400);
   }
 
   const image = typeof body.image === 'string' ? body.image : '';
   if (!ALLOWED_IMAGE_PREFIXES.some((prefix) => image.startsWith(prefix))) {
-    return json({ error: '仅支持 PNG、JPG 和 WebP 图片。' }, 400);
+    return json({ error: 'Only PNG, JPG, and WebP images are supported.' }, 400);
   }
   const base64 = image.slice(image.indexOf(',') + 1);
   const estimatedBytes = Math.ceil((base64.length * 3) / 4);
   if (estimatedBytes > MAX_IMAGE_BYTES) {
-    return json({ error: 'Base64 截图请求不能超过 4 MB。' }, 413);
+    return json({ error: 'Base64 screenshot requests must be 4 MB or smaller.' }, 413);
   }
 
   const upstream = await fetch(
@@ -167,8 +167,8 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       {
         error:
           upstream.status === 429
-            ? '免费 OCR 暂时达到使用限制，请稍后重试或改用 CSV。'
-            : '截图未能识别，请换一张更清晰的图片或改用 CSV。',
+            ? 'The free OCR limit has been reached. Try again later or use CSV.'
+            : 'The screenshot could not be recognized. Use a clearer image or CSV.',
       },
       upstream.status === 429 ? 429 : 502,
     );
@@ -177,7 +177,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   const result = await upstream.json<GroqResponse>();
   const content = result.choices?.[0]?.message?.content;
   if (!content) {
-    return json({ error: '截图识别没有返回结果，请改用 CSV。' }, 502);
+    return json({ error: 'Screenshot recognition returned no positions. Try CSV instead.' }, 502);
   }
 
   try {
@@ -193,7 +193,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
         error: error instanceof Error ? error.message : String(error),
       }),
     );
-    return json({ error: '截图识别结果格式异常，请重试或改用 CSV。' }, 502);
+    return json({ error: 'The screenshot result was invalid. Try again or use CSV.' }, 502);
   }
 };
 

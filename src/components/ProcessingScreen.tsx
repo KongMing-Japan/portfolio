@@ -8,9 +8,9 @@ interface ProcessingScreenProps {
 }
 
 const STEPS = [
-  { key: 'parsing', label: '读取文件', description: '解析账户与持仓字段' },
-  { key: 'matching', label: '统一证券', description: '匹配代码、币种与组合分层' },
-  { key: 'quotes', label: '获取行情', description: '更新价格与汇率' },
+  { key: 'parsing', label: 'Read files', description: 'Parse accounts and position data' },
+  { key: 'matching', label: 'Match securities', description: 'Normalize symbols, currencies, and layers' },
+  { key: 'quotes', label: 'Fetch market data', description: 'Update prices and exchange rates' },
 ] as const;
 
 export function ProcessingScreen({
@@ -23,7 +23,7 @@ export function ProcessingScreen({
       <div className="processing-mark">
         {error ? <FileSearch size={28} /> : <RefreshCw size={28} />}
       </div>
-      <h1>{error ? '这次没有完成' : '正在生成你的组合报告'}</h1>
+      <h1>{error ? 'Import not completed' : 'Building your portfolio'}</h1>
       <p className="processing-message">{status.message}</p>
       <div className="processing-list">
         {STEPS.map((item) => {
@@ -49,7 +49,7 @@ export function ProcessingScreen({
       {error ? (
         <button className="secondary-button" onClick={onBack}>
           <ArrowLeft size={16} />
-          返回重新上传
+          Back to portfolio
         </button>
       ) : null}
     </main>

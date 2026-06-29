@@ -145,14 +145,14 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   try {
     body = await context.request.json<QuoteBody>();
   } catch {
-    return json({ error: '请求格式无效。' }, 400);
+    return json({ error: 'Invalid request format.' }, 400);
   }
   if (!Array.isArray(body.holdings)) {
-    return json({ error: '缺少持仓数据。' }, 400);
+    return json({ error: 'Positions are required.' }, 400);
   }
   const holdings = body.holdings.filter(isQuoteItem);
   if (holdings.length === 0 || holdings.length > 200) {
-    return json({ error: '持仓数量必须在 1–200 之间。' }, 400);
+    return json({ error: 'The request must contain between 1 and 200 positions.' }, 400);
   }
 
   const sanitized = holdings.map((item) => ({

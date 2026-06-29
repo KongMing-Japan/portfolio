@@ -78,18 +78,18 @@ function rowToHolding(
   const costPerUnit = parseNumber(normalized.cost);
   const importedMarketValue = parseNumber(normalized.marketValue);
   const marketPrice = parseNumber(normalized.marketPrice);
-  const theme = String(normalized.theme ?? '').trim() || '未分类';
+  const theme = String(normalized.theme ?? '').trim() || 'Uncategorized';
   const broker = String(normalized.broker ?? '').trim() || sourceName;
   const reviewReasons: string[] = [];
 
-  if (!ticker) reviewReasons.push('缺少证券代码');
-  if (!currency) reviewReasons.push('缺少币种');
-  if (quantity == null || quantity < 0) reviewReasons.push('数量异常');
+  if (!ticker) reviewReasons.push('Missing ticker');
+  if (!currency) reviewReasons.push('Missing currency');
+  if (quantity == null || quantity < 0) reviewReasons.push('Invalid quantity');
 
   return {
     id: makeId(),
     ticker,
-    name: name || ticker || '未命名证券',
+    name: name || ticker || 'Unnamed security',
     broker,
     account: String(normalized.account ?? '').trim(),
     market: marketFromTicker(ticker),
@@ -122,14 +122,14 @@ function rowToHolding(
   };
 }
 
-export function parseHoldingsCsv(text: string, sourceName = 'CSV 导入') {
+export function parseHoldingsCsv(text: string, sourceName = 'CSV import') {
   const result = Papa.parse<CsvRow>(text, {
     header: true,
     skipEmptyLines: 'greedy',
     transformHeader: (header) => header.replace(/^\uFEFF/, '').trim(),
   });
   if (result.errors.length && result.data.length === 0) {
-    throw new Error(result.errors[0]?.message ?? 'CSV 无法解析');
+    throw new Error(result.errors[0]?.message ?? 'The CSV could not be parsed.');
   }
   return result.data
     .map((row) => rowToHolding(row, sourceName))
@@ -154,9 +154,9 @@ function looksLikeHeader(line: string) {
   ].some((token) => normalized.includes(token));
 }
 
-export function parseHoldingsText(text: string, sourceName = '手动输入') {
+export function parseHoldingsText(text: string, sourceName = 'Manual import') {
   const trimmed = text.trim();
-  if (!trimmed) throw new Error('请先粘贴或手写持仓数据');
+  if (!trimmed) throw new Error('Paste or type at least one position first.');
 
   const firstLine = trimmed.split(/\r?\n/).find((line) => line.trim()) ?? '';
   if (looksLikeHeader(firstLine)) {
@@ -191,7 +191,7 @@ export function parseHoldingsText(text: string, sourceName = '手动输入') {
   const parsed = rows
     .map((row) => rowToHolding(row, sourceName, 'manual'))
     .filter((holding): holding is Holding => holding != null);
-  if (!parsed.length) throw new Error('没有识别到有效持仓');
+  if (!parsed.length) throw new Error('No valid positions were found.');
   return parsed;
 }
 
@@ -216,9 +216,9 @@ export function markDuplicates(holdings: Holding[]) {
       item.costPerUnit ?? '',
     ].join('|');
     if ((keys.get(key) ?? 0) < 2) return item;
-    const reasons = item.reviewReasons.includes('可能重复导入')
+    const reasons = item.reviewReasons.includes('Possible duplicate import')
       ? item.reviewReasons
-      : [...item.reviewReasons, '可能重复导入'];
+      : [...item.reviewReasons, 'Possible duplicate import'];
     return { ...item, needsReview: true, reviewReasons: reasons };
   });
 }

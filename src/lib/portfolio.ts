@@ -11,26 +11,26 @@ export const LAYER_META: Record<
   { label: string; description: string; color: string; pale: string }
 > = {
   Core: {
-    label: '核心仓',
-    description: '长期结构资产，承载主要投资信念',
+    label: 'Core',
+    description: 'Long-term holdings that anchor the portfolio',
     color: '#124f9b',
     pale: '#eaf2fb',
   },
   Satellite: {
-    label: '卫星仓',
-    description: '主题与成长机会，增强组合收益来源',
+    label: 'Satellite',
+    description: 'Thematic and growth opportunities around the core',
     color: '#b78a22',
     pale: '#faf3df',
   },
   Defensive: {
-    label: '防御仓',
-    description: '低波动与稳定收益，降低组合波动',
+    label: 'Defensive',
+    description: 'Lower-volatility assets that balance portfolio risk',
     color: '#66731b',
     pale: '#f1f3e5',
   },
   Cash: {
-    label: '现金',
-    description: '流动性储备，为调整保留空间',
+    label: 'Cash',
+    description: 'Liquid reserves available for future allocation',
     color: '#6b7280',
     pale: '#f1f3f5',
   },
@@ -121,9 +121,9 @@ export function applyQuotes(
       holding.importedMarketValue == null &&
       !CASH_PATTERN.test(holding.ticker);
     const reviewReasons = holding.reviewReasons.filter(
-      (reason) => reason !== '未获取到最新行情',
+      (reason) => reason !== 'Latest quote unavailable' && reason !== '未获取到最新行情',
     );
-    if (missingQuote) reviewReasons.push('未获取到最新行情');
+    if (missingQuote) reviewReasons.push('Latest quote unavailable');
 
     return {
       ...holding,
@@ -172,7 +172,7 @@ export function aggregateHoldings(holdings: Holding[]): AggregatedHolding[] {
         name: holding.name || holding.ticker,
         currency: holding.currency,
         layer: holding.layer,
-        theme: holding.theme || '未分类',
+        theme: holding.theme || 'Uncategorized',
         quantity: holding.quantity,
         marketValueBase: holding.valueInBase ?? 0,
         accounts: [holding],
@@ -196,9 +196,9 @@ export function concentrationScore(aggregated: AggregatedHolding[]) {
 }
 
 export function concentrationLabel(score: number) {
-  if (score < 0.15) return '较为分散';
-  if (score <= 0.25) return '中等集中';
-  return '集中度偏高';
+  if (score < 0.15) return 'Broadly diversified';
+  if (score <= 0.25) return 'Moderately concentrated';
+  return 'Highly concentrated';
 }
 
 export function formatMoney(value: number, currency: string) {
@@ -229,8 +229,8 @@ export function formatPercent(value: number, digits = 1) {
 }
 
 export function formatDateTime(value: string | null) {
-  if (!value) return '未更新';
-  return new Intl.DateTimeFormat('zh-CN', {
+  if (!value) return 'Not updated';
+  return new Intl.DateTimeFormat('en-US', {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
