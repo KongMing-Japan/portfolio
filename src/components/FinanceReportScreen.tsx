@@ -1,4 +1,12 @@
-import { useMemo, useRef, useState, type FormEvent } from 'react';
+import {
+  lazy,
+  Suspense,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+} from 'react';
 import {
   ChevronDown,
   ChevronRight,
@@ -30,6 +38,12 @@ import type {
   PortfolioSnapshot,
 } from '../types';
 
+const SuperinvestorsScreen = lazy(() =>
+  import('./SuperinvestorsScreen').then((module) => ({
+    default: module.SuperinvestorsScreen,
+  })),
+);
+
 interface FinanceReportScreenProps {
   holdings: Holding[];
   baseCurrency: BaseCurrency;
@@ -51,6 +65,7 @@ interface FinanceReportScreenProps {
 
 type ExposureMode = 'currency' | 'theme' | 'broker';
 type ImportMode = 'upload' | 'paste';
+type WorkspaceView = 'portfolio' | 'superinvestors';
 
 const LAYERS = Object.keys(LAYER_META) as Layer[];
 const CURRENCIES = ['USD', 'JPY', 'CNY', 'HKD'] as const;
@@ -61,6 +76,7 @@ const COPY: Record<Locale, Record<string, string>> = {
     search: '搜索或添加股票',
     lists: '列表',
     portfolio: 'Portfolio',
+    superinvestors: '投资大师',
     holdings: '持仓',
     allocation: '结构',
     exposure: '暴露',
@@ -128,6 +144,7 @@ const COPY: Record<Locale, Record<string, string>> = {
     search: '銘柄を検索または追加',
     lists: 'リスト',
     portfolio: 'ポートフォリオ',
+    superinvestors: '著名投資家',
     holdings: '保有銘柄',
     allocation: '配分',
     exposure: 'エクスポージャー',
@@ -195,6 +212,7 @@ const COPY: Record<Locale, Record<string, string>> = {
     search: 'Search or add a security',
     lists: 'Lists',
     portfolio: 'Portfolio',
+    superinvestors: 'Superinvestors',
     holdings: 'Holdings',
     allocation: 'Allocation',
     exposure: 'Exposure',
@@ -381,11 +399,28 @@ export function FinanceReportScreen({
   const [dragging, setDragging] = useState(false);
   const [manualText, setManualText] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
+  const [workspaceView, setWorkspaceView] = useState<WorkspaceView>(() =>
+    window.location.hash.startsWith('#superinvestors')
+      ? 'superinvestors'
+      : 'portfolio',
+  );
   const [draft, setDraft] = useState<ManualHoldingInput>({
     ...EMPTY_DRAFT,
     currency: baseCurrency === 'CNY' ? 'CNY' : 'USD',
   });
   const t = COPY[locale];
+
+  useEffect(() => {
+    const syncHash = () => {
+      setWorkspaceView(
+        window.location.hash.startsWith('#superinvestors')
+          ? 'superinvestors'
+          : 'portfolio',
+      );
+    };
+    window.addEventListener('hashchange', syncHash);
+    return () => window.removeEventListener('hashchange', syncHash);
+  }, []);
 
   const aggregated = useMemo(() => aggregateHoldings(holdings), [holdings]);
   const total = useMemo(
@@ -475,10 +510,30 @@ export function FinanceReportScreen({
     }
   };
 
+  const openWorkspace = (view: WorkspaceView, section?: string) => {
+    setWorkspaceView(view);
+    if (view === 'superinvestors') {
+      window.location.hash = 'superinvestors';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+    const target = section || 'portfolio';
+    window.location.hash = target;
+    window.setTimeout(() => {
+      document.getElementById(target)?.scrollIntoView({ behavior: 'smooth' });
+    }, 0);
+  };
+
   return (
     <main className="gf-page">
       <header className="gf-topbar">
-        <button className="gf-brand" onClick={() => setImportOpen(false)}>
+        <button
+          className="gf-brand"
+          onClick={() => {
+            setImportOpen(false);
+            openWorkspace('portfolio');
+          }}
+        >
           Portfolio
         </button>
         <button className="gf-search" onClick={() => setAddOpen(true)}>
@@ -517,14 +572,41 @@ export function FinanceReportScreen({
       </header>
 
       <nav className="gf-nav" aria-label="Portfolio navigation">
-        <a href="#portfolio" className="is-active">
+        <button
+          className={workspaceView === 'portfolio' ? 'is-active' : ''}
+          onClick={() => openWorkspace('portfolio')}
+        >
           {t.portfolio}
-        </a>
-        <a href="#holdings">{t.holdings}</a>
-        <a href="#allocation">{t.allocation}</a>
-        <a href="#exposure">{t.exposure}</a>
+        </button>
+        <button
+          className={workspaceView === 'superinvestors' ? 'is-active' : ''}
+          onClick={() => openWorkspace('superinvestors')}
+        >
+          {t.superinvestors}
+        </button>
+        <button onClick={() => openWorkspace('portfolio', 'holdings')}>
+          {t.holdings}
+        </button>
+        <button onClick={() => openWorkspace('portfolio', 'allocation')}>
+          {t.allocation}
+        </button>
+        <button onClick={() => openWorkspace('portfolio', 'exposure')}>
+          {t.exposure}
+        </button>
       </nav>
 
+      {workspaceView === 'superinvestors' ? (
+        <Suspense
+          fallback={
+            <section className="si-state" aria-live="polite">
+              <h1>Loading quarterly filings</h1>
+              <p>Preparing the latest SEC 13F portfolios.</p>
+            </section>
+          }
+        >
+          <SuperinvestorsScreen />
+        </Suspense>
+      ) : (
       <div className="gf-shell" id="portfolio">
         <aside className="gf-left-rail" aria-label="Portfolio lists">
           <div className="gf-left-heading">
@@ -804,6 +886,7 @@ export function FinanceReportScreen({
           </section>
         </aside>
       </div>
+      )}
 
       {importOpen ? (
         <div className="gf-modal-backdrop" role="presentation">

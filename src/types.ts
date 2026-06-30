@@ -82,3 +82,57 @@ export interface ProcessingStatus {
   quotes: 'pending' | 'active' | 'done' | 'error';
   message: string;
 }
+
+export type SuperinvestorHoldingStatus =
+  | 'new'
+  | 'increased'
+  | 'decreased'
+  | 'unchanged'
+  | 'exited';
+
+export interface SuperinvestorHolding {
+  cusip: string;
+  ticker: string;
+  issuer: string;
+  classTitle: string;
+  value: number;
+  shares: number;
+  weight: number;
+  status: SuperinvestorHoldingStatus;
+  sharesChange: number;
+  weightChange: number;
+}
+
+export interface SuperinvestorMove {
+  ticker: string;
+  issuer: string;
+  status: SuperinvestorHoldingStatus;
+  weightChange: number;
+}
+
+export interface Superinvestor {
+  id: string;
+  name: string;
+  firm: string;
+  cik: string;
+  portrait: string;
+  accent: string;
+  secEntityUrl: string;
+  reportDate: string;
+  filedAt: string;
+  previousReportDate: string;
+  filingUrl: string;
+  totalValue: number;
+  totalValueChange: number | null;
+  positionCount: number;
+  holdings: SuperinvestorHolding[];
+  topMoves: SuperinvestorMove[];
+}
+
+export interface SuperinvestorData {
+  version: 1;
+  source: string;
+  sourceUpdatedAt: string;
+  caveat: string;
+  investors: Superinvestor[];
+}

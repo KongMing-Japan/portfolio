@@ -13,7 +13,8 @@
     "test:watch": "vitest",
     "deploy:cf": "npm run build && wrangler pages deploy dist --project-name=portfolio",
     "cf:types": "wrangler types --strict-vars false",
-    "fetch:prices": "node scripts/fetch-prices.js"
+    "fetch:prices": "node scripts/fetch-prices.js",
+    "fetch:superinvestors": "node scripts/fetch-superinvestors.mjs"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.2.8",
@@ -21,7 +22,8 @@
     "lucide-react": "^1.21.0",
     "papaparse": "^5.5.4",
     "react": "^19.2.7",
-    "react-dom": "^19.2.7"
+    "react-dom": "^19.2.7",
+    "recharts": "^3.9.1"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260623.1",

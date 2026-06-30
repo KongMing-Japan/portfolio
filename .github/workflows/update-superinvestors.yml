@@ -1,0 +1,32 @@
+name: Update Superinvestors
+
+on:
+  schedule:
+    - cron: "17 12 * * 1"
+  workflow_dispatch: {}
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: update-superinvestors
+      cancel-in-progress: true
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm ci
+      - name: Fetch the latest SEC 13F filings
+        env:
+          SEC_USER_AGENT: Portfolio Dashboard hello@kongmingjapan.com
+        run: npm run fetch:superinvestors
+      - name: Commit updated filings
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add public/data/superinvestors.json
+          git commit -m "chore: update superinvestors [skip ci]" || echo "no changes"
+          git push
