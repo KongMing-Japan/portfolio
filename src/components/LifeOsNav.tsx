@@ -42,6 +42,15 @@ export function LifeOsNav({ locale }: LifeOsNavProps) {
             </a>
           );
         })}
+        <a href="https://radar.kongmingjapan.com/" target="_blank" rel="noreferrer" style={{ opacity: 0.75, fontSize: '0.8rem', marginLeft: '0.4rem', textDecoration: 'none', color: 'inherit' }}>
+          Radar
+        </a>
+        <a href="https://lab.kongmingjapan.com/" target="_blank" rel="noreferrer" style={{ opacity: 0.75, fontSize: '0.8rem', marginLeft: '0.4rem', textDecoration: 'none', color: 'inherit' }}>
+          Lab
+        </a>
+        <a href="https://kids.kongmingjapan.com/" target="_blank" rel="noreferrer" style={{ opacity: 0.75, fontSize: '0.8rem', marginLeft: '0.4rem', textDecoration: 'none', color: 'inherit' }}>
+          Kids
+        </a>
       </div>
     </nav>
   );
