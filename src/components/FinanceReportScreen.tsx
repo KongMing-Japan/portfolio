@@ -572,42 +572,6 @@ export function FinanceReportScreen({
         </div>
       </header>
 
-      <nav className="gf-nav" aria-label="Portfolio navigation">
-        <button
-          className={workspaceView === 'portfolio' ? 'is-active' : ''}
-          onClick={() => openWorkspace('portfolio')}
-        >
-          {t.portfolio}
-        </button>
-        <button
-          className={workspaceView === 'superinvestors' ? 'is-active' : ''}
-          onClick={() => openWorkspace('superinvestors')}
-        >
-          {t.superinvestors}
-        </button>
-        <button onClick={() => openWorkspace('portfolio', 'holdings')}>
-          {t.holdings}
-        </button>
-        <button onClick={() => openWorkspace('portfolio', 'allocation')}>
-          {t.allocation}
-        </button>
-        <button onClick={() => openWorkspace('portfolio', 'exposure')}>
-          {t.exposure}
-        </button>
-      </nav>
-
-      {workspaceView === 'superinvestors' ? (
-        <Suspense
-          fallback={
-            <section className="si-state" aria-live="polite">
-              <h1>Loading quarterly filings</h1>
-              <p>Preparing the latest SEC 13F portfolios.</p>
-            </section>
-          }
-        >
-          <SuperinvestorsScreen />
-        </Suspense>
-      ) : (
       <div className="gf-shell" id="portfolio">
         <aside className="gf-left-rail" aria-label="Portfolio lists">
           <div className="gf-left-heading">
@@ -822,6 +786,20 @@ export function FinanceReportScreen({
               ))}
             </div>
           </section>
+
+          <section className="gf-card gf-superinvestors-section" id="superinvestors" style={{ marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px solid #e4e9f0' }}>
+            <div className="gf-card-heading" style={{ marginBottom: '1.25rem' }}>
+              <div>
+                <h2>{t.superinvestors}</h2>
+                <p style={{ margin: '0.25rem 0 0', fontSize: '0.8rem', color: '#64748b' }}>
+                  {locale === 'zh' ? '参考巴菲特（Berkshire）等机构投资大师的公开持仓与配置。' : locale === 'en' ? 'Benchmark against institutional 13F portfolios like Berkshire Hathaway.' : 'バフェット等の機関投資家ポートフォリオを参考。'}
+                </p>
+              </div>
+            </div>
+            <Suspense fallback={<div className="si-state"><p>Loading quarterly filings...</p></div>}>
+              <SuperinvestorsScreen />
+            </Suspense>
+          </section>
         </section>
 
         <aside className="gf-sidebar">
@@ -889,7 +867,6 @@ export function FinanceReportScreen({
           </section>
         </aside>
       </div>
-      )}
 
       {importOpen ? (
         <div className="gf-modal-backdrop" role="presentation">
