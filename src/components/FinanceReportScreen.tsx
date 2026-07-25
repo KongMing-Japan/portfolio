@@ -13,9 +13,11 @@ import {
   ClipboardList,
   Download,
   Layers3,
+  PieChart,
   Plus,
   RefreshCcw,
   Search,
+  ShieldCheck,
   Trash2,
   Upload,
 } from 'lucide-react';
@@ -449,9 +451,9 @@ export function FinanceReportScreen({
       }),
     [aggregated, total],
   );
-  const exposureRows = useMemo(
-    () => groupExposure(holdings, exposureMode, total),
-    [exposureMode, holdings, total],
+  const themeRows = useMemo(
+    () => groupExposure(holdings, 'theme', total),
+    [holdings, total],
   );
   const topRows = useMemo(
     () => topHoldingsWithOther(aggregated, t.other),
@@ -710,30 +712,6 @@ export function FinanceReportScreen({
             </div>
           </section>
 
-          <div className="gf-two-column" id="allocation">
-
-
-            <section className="gf-section">
-              <div className="gf-section-header">
-                <h2>{t.layers}</h2>
-              </div>
-              <div className="gf-layer-list">
-                {layerRows.map((row) => (
-                  <div className="gf-layer-item" key={row.layer}>
-                    <span
-                      className="gf-layer-dot"
-                      style={{ background: LAYER_META[row.layer].color }}
-                    />
-                    <div>
-                      <strong>{LAYER_META[row.layer].label}</strong>
-                      <span>{LAYER_META[row.layer].description}</span>
-                    </div>
-                    <b>{formatPercent(row.weight)}</b>
-                  </div>
-                ))}
-              </div>
-            </section>
-          </div>
         </section>
 
         <aside className="gf-sidebar">
@@ -807,28 +785,29 @@ export function FinanceReportScreen({
 
           <section className="gf-side-card">
             <div className="gf-side-title">
-              <Plus size={18} />
-              <h2>{t.managePortfolio}</h2>
+              <PieChart size={18} />
+              <h2>{locale === 'zh' ? '赛道与主题暴露分布' : locale === 'en' ? 'Theme & Sector Exposure' : 'セクター・テーマ露出'}</h2>
             </div>
-            <button className="gf-side-action" onClick={() => setAddOpen(true)}>
-              <Plus size={17} />
-              {t.addStock}
-            </button>
-            <button className="gf-side-action" onClick={() => setImportOpen(true)}>
-              <RefreshCcw size={17} />
-              {t.importPositions}
-            </button>
-            <button
-              className="gf-side-action"
-              onClick={() => setEditorOpen((open) => !open)}
-            >
-              <ChevronRight size={17} />
-              {t.editCost}
-            </button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.5rem' }}>
+              {themeRows.slice(0, 5).map((row) => (
+                <div key={row.label} style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: '#334155' }}>
+                    <span style={{ fontWeight: 500 }} title={row.label}>{row.label}</span>
+                    <strong style={{ color: '#0f172a' }}>{formatPercent(row.weight)}</strong>
+                  </div>
+                  <div style={{ height: '5px', width: '100%', background: '#f1f5f9', borderRadius: '99px', overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${Math.min(row.weight * 100, 100)}%`, background: '#3b82f6', borderRadius: '99px' }} />
+                  </div>
+                </div>
+              ))}
+            </div>
           </section>
 
           <section className="gf-side-card">
-            <h2>{t.structureHealth}</h2>
+            <div className="gf-side-title">
+              <ShieldCheck size={18} />
+              <h2>{t.structureHealth}</h2>
+            </div>
             <div className="gf-health-line">
               <span>{t.largest}</span>
               <strong>{formatPercent(largest)}</strong>
@@ -841,34 +820,62 @@ export function FinanceReportScreen({
               <span>{t.concentration}</span>
               <strong>{Math.round(hhi * 100)}</strong>
             </div>
-            <p>{t.healthNote}</p>
-          </section>
-
-          <LifeOsNextSteps locale={locale} total={total} baseCurrency={baseCurrency} />
-
-          <section className="gf-side-card">
-            <h2>{t.shortcuts}</h2>
-            <a
-              href={
-                locale === 'en'
-                  ? 'https://github.com/KongMing-Japan/portfolio/blob/main/docs/methodology.en.md'
-                  : 'https://github.com/KongMing-Japan/portfolio/blob/main/docs/methodology.zh.md'
-              }
-              target="_blank"
-              rel="noreferrer"
-            >
-              {t.methodology}
-            </a>
-            <button
-              className="gf-danger-action"
-              onClick={onClear}
-            >
-              <Trash2 size={15} />
-              {t.clear}
-            </button>
+            <p style={{ marginTop: '0.6rem', fontSize: '0.76rem', color: '#64748b', lineHeight: 1.4 }}>{t.healthNote}</p>
           </section>
         </aside>
       </div>
+
+      <section className="gf-bottom-section" style={{ width: 'min(1440px, calc(100% - 48px))', margin: '2.5rem auto 0', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+        <LifeOsNextSteps locale={locale} total={total} baseCurrency={baseCurrency} />
+
+        <div className="gf-seo-faq-card" style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '1.8rem 2rem' }}>
+          <h2 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#0f172a', margin: '0 0 1rem' }}>
+            {locale === 'zh' ? '持仓分析方法论与常见问题 (FAQ)' : locale === 'en' ? 'Portfolio Rebalancing Methodology & FAQ' : 'ポートフォリオ調整方法論・FAQ'}
+          </h2>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
+            <div>
+              <h3 style={{ fontSize: '0.88rem', fontWeight: 600, color: '#1e293b', margin: '0 0 0.4rem' }}>
+                📌 什么是持仓四层金字塔（Core / Satellite）？
+              </h3>
+              <p style={{ fontSize: '0.8rem', color: '#64748b', lineHeight: 1.5, margin: 0 }}>
+                机构投资标准通常将资产划分为核心基石（Core: S&P 500/宽基 ETF，50-60%）、卫星进攻（Satellite: 高成长的个股/赛道，20-30%）、防守缓冲（Defensive: 债券/固收，10-15%）与现金（Cash: 5-10%），以规避单一点位的黑天鹅冲击。
+              </p>
+            </div>
+            <div>
+              <h3 style={{ fontSize: '0.88rem', fontWeight: 600, color: '#1e293b', margin: '0 0 0.4rem' }}>
+                ⚖️ 为什么要限制单一标的权重不超过 20%？
+              </h3>
+              <p style={{ fontSize: '0.8rem', color: '#64748b', lineHeight: 1.5, margin: 0 }}>
+                在机构风控体系中，当单一持仓超过总资产 20% 时，其个别回调风险将大幅挤占组合阿尔法收益。系统通过黄色/红色勋章提示触发阶段分批调仓减仓。
+              </p>
+            </div>
+          </div>
+          <div style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', fontSize: '0.8rem', color: '#64748b' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <a
+                href={
+                  locale === 'en'
+                    ? 'https://github.com/KongMing-Japan/portfolio/blob/main/docs/methodology.en.md'
+                    : 'https://github.com/KongMing-Japan/portfolio/blob/main/docs/methodology.zh.md'
+                }
+                target="_blank"
+                rel="noreferrer"
+                style={{ color: '#2563eb', fontWeight: 600, textDecoration: 'none' }}
+              >
+                📖 查阅详细计算方法论 (Methodology) →
+              </a>
+            </div>
+            <button
+              className="gf-danger-action"
+              onClick={onClear}
+              style={{ fontSize: '0.75rem', padding: '0.35rem 0.75rem', border: '1px solid #fecaca', background: '#fef2f2', color: '#dc2626', borderRadius: '6px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+            >
+              <Trash2 size={13} />
+              {t.clear}
+            </button>
+          </div>
+        </div>
+      </section>
 
       <section className="gf-full-superinvestors" id="superinvestors" style={{ width: '100%', marginTop: '3rem', paddingTop: '2rem', borderTop: '1px solid #e4e9f0' }}>
         <Suspense fallback={<div className="si-state"><p>Loading quarterly filings...</p></div>}>
