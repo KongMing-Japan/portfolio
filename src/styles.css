@@ -83,7 +83,7 @@ a:focus-visible {
 }
 
 .lifeos-nav {
-  width: min(1440px, calc(100% - 32px));
+  width: min(1100px, calc(100% - 32px));
   min-height: 44px;
   margin: 12px auto;
   border: 1px solid #d9e1ea;
@@ -778,7 +778,7 @@ a:focus-visible {
 }
 
 .report-content {
-  width: min(1440px, calc(100% - 48px));
+  width: min(1100px, calc(100% - 48px));
   margin: 0 auto;
   padding: 34px 0 40px;
 }
@@ -2140,11 +2140,11 @@ body {
 }
 
 .gf-shell {
-  width: min(1440px, calc(100% - 48px));
+  width: min(1100px, calc(100% - 48px));
   margin: 0 auto;
   padding: 24px 0 36px;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 380px;
+  grid-template-columns: minmax(0, 1fr) 340px;
   gap: 28px;
 }
 
@@ -2715,8 +2715,8 @@ body {
 }
 
 .gf-lifeos-card {
-  border-color: #bfd1e6;
-  background: linear-gradient(145deg, #f5f9ff, #fff 72%);
+  border-color: #dadce0;
+  background: #fff;
 }
 
 .gf-lifeos-label {
@@ -3051,7 +3051,7 @@ body {
 .si-index,
 .si-detail,
 .si-state {
-  width: min(1180px, calc(100% - 48px));
+  width: min(1100px, calc(100% - 48px));
   margin: 0 auto;
 }
 
@@ -3138,8 +3138,8 @@ body {
 
 .si-card {
   min-width: 0;
-  border: 1px solid #dfe3e8;
-  border-radius: 14px;
+  border: 1px solid #dadce0;
+  border-radius: 8px;
   background: #fff;
   padding: 16px;
   position: relative;
@@ -3355,7 +3355,7 @@ body {
 .si-detail-hero {
   margin-top: 12px;
   border: 1px solid #dadce0;
-  border-radius: 16px;
+  border-radius: 8px;
   padding: 24px;
   display: flex;
   align-items: center;
@@ -3953,7 +3953,7 @@ body {
     min-height: 192px;
     grid-template-columns: minmax(0, 1fr) 110px;
     gap: 8px;
-    border-radius: 14px;
+    border-radius: 8px;
     padding: 14px 12px 14px 16px;
   }
 

@@ -367,17 +367,93 @@ function InvestorDetail({
   );
 }
 
-function selectedInvestorFromHash() {
-  const match = window.location.hash.match(/^#superinvestors\/([^/]+)$/);
-  return match?.[1] || null;
-}
-
+/**
+ * List-only component: renders the 4 investor quick-entrance cards.
+ * Card clicks trigger hash navigation — the App handles the detail page.
+ */
 export function SuperinvestorsScreen() {
   const [data, setData] = useState<SuperinvestorData | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(
-    selectedInvestorFromHash,
+
+  useEffect(() => {
+    let active = true;
+    fetch('/data/superinvestors.json')
+      .then((response) => {
+        if (!response.ok) throw new Error('Quarterly filings are unavailable.');
+        return response.json() as Promise<SuperinvestorData>;
+      })
+      .then((payload) => {
+        if (active) setData(payload);
+      })
+      .catch((caught) => {
+        if (active) {
+          setError(
+            caught instanceof Error
+              ? caught.message
+              : 'Quarterly filings are unavailable.',
+          );
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const openInvestor = (investor: Superinvestor) => {
+    window.location.hash = `superinvestors/${investor.id}`;
+  };
+
+  if (error) {
+    return (
+      <section className="si-state">
+        <RefreshCw size={22} />
+        <h1>Superinvestors</h1>
+        <p>{error}</p>
+      </section>
+    );
+  }
+
+  if (!data) {
+    return (
+      <section className="si-state" aria-live="polite">
+        <RefreshCw className="spin" size={22} />
+        <h1>Loading quarterly filings</h1>
+        <p>Reading the latest SEC 13F portfolio disclosures.</p>
+      </section>
+    );
+  }
+
+  return (
+    <section className="si-index">
+      <header className="si-index-header" style={{ marginBottom: '1.2rem' }}>
+        <div>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#202124', margin: 0 }}>投資大師持倉標桿</h2>
+          <p style={{ margin: '0.25rem 0 0', fontSize: '0.82rem', color: '#5f6368' }}>
+            参考巴菲特（Berkshire Hathaway）等経典機構の季度公開持倉と比例配比。
+          </p>
+        </div>
+      </header>
+      <div className="si-card-grid">
+        {data.investors.map((investor) => (
+          <InvestorCard
+            key={investor.id}
+            investor={investor}
+            onOpen={() => openInvestor(investor)}
+          />
+        ))}
+      </div>
+      <p className="si-index-caveat">{data.caveat}</p>
+    </section>
   );
+}
+
+/**
+ * Standalone detail page: fetches data and renders the selected investor.
+ * Rendered at the App level when hash matches `#superinvestors/:id`.
+ */
+export function SuperinvestorDetailPage({ investorId }: { investorId: string }) {
+  const [data, setData] = useState<SuperinvestorData | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -404,71 +480,69 @@ export function SuperinvestorsScreen() {
   }, []);
 
   useEffect(() => {
-    const syncHash = () => setSelectedId(selectedInvestorFromHash());
-    window.addEventListener('hashchange', syncHash);
-    return () => window.removeEventListener('hashchange', syncHash);
-  }, []);
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  }, [investorId]);
 
-  const selected = data?.investors.find((investor) => investor.id === selectedId);
-
-  const openInvestor = (investor: Superinvestor) => {
-    setSelectedId(investor.id);
-    window.location.hash = `superinvestors/${investor.id}`;
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const closeInvestor = () => {
-    setSelectedId(null);
-    window.location.hash = 'superinvestors';
+  const goBack = () => {
+    window.location.hash = '';
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   if (error) {
     return (
-      <section className="si-state">
-        <RefreshCw size={22} />
-        <h1>Superinvestors</h1>
-        <p>{error}</p>
-      </section>
+      <main className="gf-page">
+        <section className="si-state">
+          <RefreshCw size={22} />
+          <h1>Superinvestors</h1>
+          <p>{error}</p>
+        </section>
+      </main>
     );
   }
 
   if (!data) {
     return (
-      <section className="si-state" aria-live="polite">
-        <RefreshCw className="spin" size={22} />
-        <h1>Loading quarterly filings</h1>
-        <p>Reading the latest SEC 13F portfolio disclosures.</p>
-      </section>
+      <main className="gf-page">
+        <section className="si-state" aria-live="polite">
+          <RefreshCw className="spin" size={22} />
+          <h1>Loading quarterly filings</h1>
+          <p>Reading the latest SEC 13F portfolio disclosures.</p>
+        </section>
+      </main>
     );
   }
 
-  if (selected) {
+  const investor = data.investors.find((i) => i.id === investorId);
+  if (!investor) {
     return (
-      <InvestorDetail investor={selected} caveat={data.caveat} onBack={closeInvestor} />
+      <main className="gf-page">
+        <section className="si-state">
+          <h1>Investor not found</h1>
+          <button className="si-back" onClick={goBack}>
+            <ArrowLeft size={17} />
+            Back to portfolio
+          </button>
+        </section>
+      </main>
     );
   }
 
   return (
-    <section className="si-index">
-      <header className="si-index-header" style={{ marginBottom: '1.2rem' }}>
-        <div>
-          <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#111827', margin: 0 }}>投资大师持仓标杆</h2>
-          <p style={{ margin: '0.25rem 0 0', fontSize: '0.82rem', color: '#6b7280' }}>
-            参考巴菲特（Berkshire Hathaway）等经典机构的季度公开持仓与比例配比。
-          </p>
+    <main className="gf-page">
+      <InvestorDetail investor={investor} caveat={data.caveat} onBack={goBack} />
+      <footer className="gf-footer" style={{ width: 'min(1100px, calc(100% - 48px))', margin: '3.5rem auto 0', paddingTop: '1.8rem', paddingBottom: '2.5rem', borderTop: '1px solid #dadce0', textAlign: 'center', fontSize: '0.75rem', color: '#5f6368', opacity: 0.78 }}>
+        <div style={{ marginBottom: '0.5rem' }}>
+          <span>KongMing Network: </span>
+          <a href="https://kongmingjapan.com/" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>Studio</a> ·{' '}
+          <a href="https://radar.kongmingjapan.com/" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>Radar</a> ·{' '}
+          <a href="https://lab.kongmingjapan.com/" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>Lab</a> ·{' '}
+          <a href="https://kids.kongmingjapan.com/" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>Kids</a> ·{' '}
+          <a href="https://tax.kongmingjapan.com/" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>Tax</a> ·{' '}
+          <a href="https://planner.kongmingjapan.com/" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>Planner</a> ·{' '}
+          <a href="https://portfolio.kongmingjapan.com/" style={{ color: 'inherit', fontWeight: 600 }}>Portfolio</a>
         </div>
-      </header>
-      <div className="si-card-grid">
-        {data.investors.map((investor) => (
-          <InvestorCard
-            key={investor.id}
-            investor={investor}
-            onOpen={() => openInvestor(investor)}
-          />
-        ))}
-      </div>
-      <p className="si-index-caveat">{data.caveat}</p>
-    </section>
+        <p style={{ margin: 0 }}>© 2026 KongMing LLC. All rights reserved.</p>
+      </footer>
+    </main>
   );
 }

@@ -1,6 +1,4 @@
 import {
-  lazy,
-  Suspense,
   useEffect,
   useMemo,
   useRef,
@@ -31,6 +29,7 @@ import {
   LAYER_META,
 } from '../lib/portfolio';
 import { LifeOsNextSteps } from './LifeOsNextSteps';
+import { SuperinvestorsScreen } from './SuperinvestorsScreen';
 import type {
   AggregatedHolding,
   BaseCurrency,
@@ -40,12 +39,6 @@ import type {
   ManualHoldingInput,
   PortfolioSnapshot,
 } from '../types';
-
-const SuperinvestorsScreen = lazy(() =>
-  import('./SuperinvestorsScreen').then((module) => ({
-    default: module.SuperinvestorsScreen,
-  })),
-);
 
 interface FinanceReportScreenProps {
   holdings: Holding[];
@@ -720,7 +713,7 @@ export function FinanceReportScreen({
               <Layers3 size={18} />
               <h2>{locale === 'zh' ? '四层资产配比与目标偏离' : locale === 'en' ? 'Layer Allocation & Target Status' : '層別配分と目標偏離'}</h2>
             </div>
-            <p style={{ margin: '0.2rem 0 0.8rem', fontSize: '0.78rem', color: '#64748b' }}>
+            <p style={{ margin: '0.2rem 0 0.8rem', fontSize: '0.78rem', color: '#5f6368' }}>
               {locale === 'zh' ? '机构风控基准偏离度 (红/黄/绿状态标注)' : 'Institutional benchmark deviation status'}
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
@@ -752,11 +745,11 @@ export function FinanceReportScreen({
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.82rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                         <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: LAYER_META[row.layer].color }} />
-                        <strong style={{ color: '#1e293b' }}>{LAYER_META[row.layer].label}</strong>
-                        <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>({targetText})</span>
+                        <strong style={{ color: '#202124' }}>{LAYER_META[row.layer].label}</strong>
+                        <span style={{ fontSize: '0.72rem', color: '#80868b' }}>({targetText})</span>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                        <strong style={{ color: '#0f172a' }}>{formatPercent(row.weight)}</strong>
+                        <strong style={{ color: '#202124' }}>{formatPercent(row.weight)}</strong>
                         {status === 'over' ? (
                           <span className="gf-target-badge is-over">超标</span>
                         ) : status === 'under' ? (
@@ -771,7 +764,7 @@ export function FinanceReportScreen({
                         style={{
                           height: '100%',
                           width: `${Math.min(row.weight * 100, 100)}%`,
-                          background: status === 'over' ? '#ef4444' : status === 'under' ? '#f59e0b' : LAYER_META[row.layer].color,
+                          background: status === 'over' ? '#d93025' : status === 'under' ? '#f9ab00' : LAYER_META[row.layer].color,
                           borderRadius: '99px',
                           transition: 'width 0.3s ease',
                         }}
@@ -791,9 +784,9 @@ export function FinanceReportScreen({
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.5rem' }}>
               {themeRows.slice(0, 5).map((row) => (
                 <div key={row.label} style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: '#334155' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: '#3c4043' }}>
                     <span style={{ fontWeight: 500 }} title={row.label}>{row.label}</span>
-                    <strong style={{ color: '#0f172a' }}>{formatPercent(row.weight)}</strong>
+                    <strong style={{ color: '#202124' }}>{formatPercent(row.weight)}</strong>
                   </div>
                   <div style={{ height: '5px', width: '100%', background: '#f1f5f9', borderRadius: '99px', overflow: 'hidden' }}>
                     <div style={{ height: '100%', width: `${Math.min(row.weight * 100, 100)}%`, background: '#3b82f6', borderRadius: '99px' }} />
@@ -820,41 +813,39 @@ export function FinanceReportScreen({
               <span>{t.concentration}</span>
               <strong>{Math.round(hhi * 100)}</strong>
             </div>
-            <p style={{ marginTop: '0.6rem', fontSize: '0.76rem', color: '#64748b', lineHeight: 1.4 }}>{t.healthNote}</p>
+            <p style={{ marginTop: '0.6rem', fontSize: '0.76rem', color: '#5f6368', lineHeight: 1.4 }}>{t.healthNote}</p>
           </section>
         </aside>
       </div>
 
-      <section className="gf-full-superinvestors" id="superinvestors" style={{ width: 'min(1440px, calc(100% - 48px))', margin: '2.5rem auto 0', paddingTop: '2rem', borderTop: '1px solid #e4e9f0' }}>
-        <Suspense fallback={<div className="si-state"><p>Loading quarterly filings...</p></div>}>
-          <SuperinvestorsScreen />
-        </Suspense>
+      <section className="gf-full-superinvestors" id="superinvestors" style={{ width: 'min(1100px, calc(100% - 48px))', margin: '2.5rem auto 0', paddingTop: '2rem', borderTop: '1px solid #dadce0' }}>
+        <SuperinvestorsScreen />
       </section>
 
-      <section className="gf-seo-faq-section" style={{ width: 'min(1440px, calc(100% - 48px))', margin: '2.5rem auto 0' }}>
-        <div className="gf-seo-faq-card" style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '1.8rem 2rem' }}>
-          <h2 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#0f172a', margin: '0 0 1rem' }}>
+      <section className="gf-seo-faq-section" style={{ width: 'min(1100px, calc(100% - 48px))', margin: '2.5rem auto 0' }}>
+        <div className="gf-seo-faq-card" style={{ background: '#fff', border: '1px solid #dadce0', borderRadius: '8px', padding: '1.8rem 2rem' }}>
+          <h2 style={{ fontSize: '1.1rem', fontWeight: 500, color: '#202124', margin: '0 0 1rem' }}>
             {locale === 'zh' ? '持仓分析方法论与常见问题 (FAQ)' : locale === 'en' ? 'Portfolio Rebalancing Methodology & FAQ' : 'ポートフォリオ調整方法論・FAQ'}
           </h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
             <div>
-              <h3 style={{ fontSize: '0.88rem', fontWeight: 600, color: '#1e293b', margin: '0 0 0.4rem' }}>
+              <h3 style={{ fontSize: '0.88rem', fontWeight: 500, color: '#202124', margin: '0 0 0.4rem' }}>
                 📌 什么是持仓四层金字塔（Core / Satellite）？
               </h3>
-              <p style={{ fontSize: '0.8rem', color: '#64748b', lineHeight: 1.5, margin: 0 }}>
+              <p style={{ fontSize: '0.8rem', color: '#5f6368', lineHeight: 1.5, margin: 0 }}>
                 机构投资标准通常将资产划分为核心基石（Core: S&P 500/宽基 ETF，50-60%）、卫星进攻（Satellite: 高成长的个股/赛道，20-30%）、防守缓冲（Defensive: 债券/固收，10-15%）与现金（Cash: 5-10%），以规避单一点位的黑天鹅冲击。
               </p>
             </div>
             <div>
-              <h3 style={{ fontSize: '0.88rem', fontWeight: 600, color: '#1e293b', margin: '0 0 0.4rem' }}>
+              <h3 style={{ fontSize: '0.88rem', fontWeight: 500, color: '#202124', margin: '0 0 0.4rem' }}>
                 ⚖️ 为什么要限制单一标的权重不超过 20%？
               </h3>
-              <p style={{ fontSize: '0.8rem', color: '#64748b', lineHeight: 1.5, margin: 0 }}>
+              <p style={{ fontSize: '0.8rem', color: '#5f6368', lineHeight: 1.5, margin: 0 }}>
                 在机构风控体系中，当单一持仓超过总资产 20% 时，其个别回调风险将大幅挤占组合阿尔法收益。系统通过黄色/红色勋章提示触发阶段分批调仓减仓。
               </p>
             </div>
           </div>
-          <div style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', fontSize: '0.8rem', color: '#64748b' }}>
+          <div style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid #dadce0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', fontSize: '0.8rem', color: '#5f6368' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
               <a
                 href={
@@ -872,7 +863,7 @@ export function FinanceReportScreen({
             <button
               className="gf-danger-action"
               onClick={onClear}
-              style={{ fontSize: '0.75rem', padding: '0.35rem 0.75rem', border: '1px solid #fecaca', background: '#fef2f2', color: '#dc2626', borderRadius: '6px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+              style={{ fontSize: '0.75rem', padding: '0.35rem 0.75rem', border: '1px solid #dadce0', background: '#fff', color: '#d93025', borderRadius: '6px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
             >
               <Trash2 size={13} />
               {t.clear}
@@ -881,11 +872,11 @@ export function FinanceReportScreen({
         </div>
       </section>
 
-      <section className="gf-cta-section" style={{ width: 'min(1440px, calc(100% - 48px))', margin: '2.5rem auto 0' }}>
+      <section className="gf-cta-section" style={{ width: 'min(1100px, calc(100% - 48px))', margin: '2.5rem auto 0' }}>
         <LifeOsNextSteps locale={locale} total={total} baseCurrency={baseCurrency} />
       </section>
 
-      <footer className="gf-footer" style={{ width: 'min(1440px, calc(100% - 48px))', margin: '3.5rem auto 0', paddingTop: '1.8rem', paddingBottom: '2.5rem', borderTop: '1px solid #e4e9f0', textAlign: 'center', fontSize: '0.75rem', color: '#7a8798', opacity: 0.78 }}>
+      <footer className="gf-footer" style={{ width: 'min(1100px, calc(100% - 48px))', margin: '3.5rem auto 0', paddingTop: '1.8rem', paddingBottom: '2.5rem', borderTop: '1px solid #dadce0', textAlign: 'center', fontSize: '0.75rem', color: '#5f6368', opacity: 0.78 }}>
         <div style={{ marginBottom: '0.5rem' }}>
           <span>KongMing Network: </span>
           <a href="https://kongmingjapan.com/" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>Studio</a> ·{' '}

@@ -20,6 +20,7 @@ import { ProcessingScreen } from './components/ProcessingScreen';
 import { FinanceReportScreen } from './components/FinanceReportScreen';
 import { ReviewScreen } from './components/ReviewScreen';
 import { LifeOsNav } from './components/LifeOsNav';
+import { SuperinvestorDetailPage } from './components/SuperinvestorsScreen';
 import type {
   AppStep,
   BaseCurrency,
@@ -53,6 +54,21 @@ function App() {
     useState<ProcessingStatus>(INITIAL_STATUS);
   const [error, setError] = useState<string | null>(null);
   const [hasSavedPortfolio, setHasSavedPortfolio] = useState(false);
+
+  // Hash-based route: #superinvestors/:id -> standalone detail page
+  const [superinvestorId, setSuperinvestorId] = useState<string | null>(() => {
+    const match = window.location.hash.match(/^#superinvestors\/([^/]+)$/);
+    return match?.[1] || null;
+  });
+
+  useEffect(() => {
+    const syncRoute = () => {
+      const match = window.location.hash.match(/^#superinvestors\/([^/]+)$/);
+      setSuperinvestorId(match?.[1] || null);
+    };
+    window.addEventListener('hashchange', syncRoute);
+    return () => window.removeEventListener('hashchange', syncRoute);
+  }, []);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'auto' });
@@ -499,13 +515,19 @@ function App() {
 
   return (
     <div className="app-shell">
-      {error && step !== 'processing' ? (
-        <div className="global-error" role="alert">
-          <AlertCircle size={17} />
-          {error}
-        </div>
-      ) : null}
-      {appContent}
+      {superinvestorId ? (
+        <SuperinvestorDetailPage investorId={superinvestorId} />
+      ) : (
+        <>
+          {error && step !== 'processing' ? (
+            <div className="global-error" role="alert">
+              <AlertCircle size={17} />
+              {error}
+            </div>
+          ) : null}
+          {appContent}
+        </>
+      )}
     </div>
   );
 }
