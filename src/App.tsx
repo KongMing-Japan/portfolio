@@ -19,6 +19,7 @@ import { clearSnapshot, loadSnapshot, saveSnapshot } from './lib/storage';
 import { ProcessingScreen } from './components/ProcessingScreen';
 import { FinanceReportScreen } from './components/FinanceReportScreen';
 import { ReviewScreen } from './components/ReviewScreen';
+import { LifeOsNav } from './components/LifeOsNav';
 import type {
   AppStep,
   BaseCurrency,
@@ -80,6 +81,7 @@ function App() {
     localStorage.setItem(LOCALE_STORAGE_KEY, locale);
     document.documentElement.lang =
       locale === 'zh' ? 'zh-CN' : locale === 'ja' ? 'ja' : 'en';
+    document.title = 'LifeOS Portfolio | Kong Ming';
   }, [locale]);
 
   const persist = useCallback(
@@ -491,6 +493,7 @@ function App() {
 
   return (
     <div className="app-shell">
+      <LifeOsNav locale={locale} />
       {error && step !== 'processing' ? (
         <div className="global-error" role="alert">
           <AlertCircle size={17} />

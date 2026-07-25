@@ -28,6 +28,7 @@ import {
   formatPercent,
   LAYER_META,
 } from '../lib/portfolio';
+import { LifeOsNextSteps } from './LifeOsNextSteps';
 import type {
   AggregatedHolding,
   BaseCurrency,
@@ -534,7 +535,7 @@ export function FinanceReportScreen({
             openWorkspace('portfolio');
           }}
         >
-          Portfolio
+          LifeOS Portfolio
         </button>
         <button className="gf-search" onClick={() => setAddOpen(true)}>
           <Search size={18} />
@@ -862,6 +863,8 @@ export function FinanceReportScreen({
             </div>
             <p>{t.healthNote}</p>
           </section>
+
+          <LifeOsNextSteps locale={locale} total={total} baseCurrency={baseCurrency} />
 
           <section className="gf-side-card">
             <h2>{t.shortcuts}</h2>

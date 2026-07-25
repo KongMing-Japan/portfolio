@@ -1,4 +1,4 @@
-# Portfolio
+# LifeOS Portfolio
 
 一个极简的多券商、多币种个人投资组合生成器。
 
