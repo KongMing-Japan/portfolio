@@ -3077,22 +3077,33 @@ body {
 
 .si-card-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+@media (max-width: 1200px) {
+  .si-card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .si-card-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .si-card {
   min-width: 0;
-  min-height: 300px;
   border: 1px solid #dfe3e8;
-  border-radius: 18px;
+  border-radius: 14px;
   background: #fff;
-  padding: 28px;
+  padding: 16px;
   position: relative;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 205px;
-  align-items: center;
-  gap: 18px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 12px;
   text-align: left;
   transition:
     border-color 160ms ease,
