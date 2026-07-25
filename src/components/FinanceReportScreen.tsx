@@ -468,6 +468,48 @@ export function FinanceReportScreen({
     .slice(0, 5)
     .reduce((sum, holding) => sum + holding.weight, 0);
 
+  const rebalancingSignals = useMemo(() => {
+    const list: Array<{ type: 'warning' | 'info' | 'success'; title: string; detail: string }> = [];
+    if (!aggregated.length) return list;
+
+    const topHolding = aggregated[0];
+    if (topHolding && topHolding.weight > 0.20) {
+      list.push({
+        type: 'warning',
+        title: locale === 'zh' ? `持仓过重: ${topHolding.ticker || topHolding.name} (${(topHolding.weight * 100).toFixed(1)}%)` : `High Concentration: ${topHolding.ticker || topHolding.name} (${(topHolding.weight * 100).toFixed(1)}%)`,
+        detail: locale === 'zh' ? '单一标的打破机构风控上限 (20%)，建议分批减仓锁定阶段收益。' : 'Single position exceeds institutional risk limit (20%). Consider rebalancing.',
+      });
+    }
+
+    const coreLayer = layerRows.find((r) => r.layer === 'Core');
+    const coreWeight = coreLayer?.weight ?? 0;
+    if (coreWeight < 0.40) {
+      list.push({
+        type: 'warning',
+        title: locale === 'zh' ? `大盘基石偏低: Core 核心仓 (${(coreWeight * 100).toFixed(1)}%)` : `Core Foundation Low: ${(coreWeight * 100).toFixed(1)}%`,
+        detail: locale === 'zh' ? '机构标准宽基指数（如 S&P 500/VTI）建议占 50%-60%。抗波动能力偏弱。' : 'Institutional baseline recommends 50-60% in broad index ETFs for lower volatility.',
+      });
+    } else {
+      list.push({
+        type: 'success',
+        title: locale === 'zh' ? `核心资产结构稳健 (Core ${(coreWeight * 100).toFixed(1)}%)` : `Robust Core Allocation (${(coreWeight * 100).toFixed(1)}%)`,
+        detail: locale === 'zh' ? '符合长期机构大盘配比基准，基石仓位充足。' : 'Meets long-term institutional allocation benchmarks.',
+      });
+    }
+
+    const themeRows = groupExposure(holdings, 'theme', total);
+    const topTheme = themeRows[0];
+    if (topTheme && topTheme.label !== '未分类' && topTheme.label !== 'Uncategorized' && topTheme.weight > 0.40) {
+      list.push({
+        type: 'info',
+        title: locale === 'zh' ? `赛道敞口预警: ${topTheme.label} (${(topTheme.weight * 100).toFixed(1)}%)` : `Theme Exposure: ${topTheme.label} (${(topTheme.weight * 100).toFixed(1)}%)`,
+        detail: locale === 'zh' ? '单一赛道暴露过高，建议适度做跨行业分散调仓。' : 'High thematic concentration. Consider diversifying across uncorrelated sectors.',
+      });
+    }
+
+    return list;
+  }, [aggregated, holdings, layerRows, locale, total]);
+
   const submitManualHolding = async (event: FormEvent) => {
     event.preventDefault();
     if (!draft.ticker.trim() || draft.quantity <= 0 || draft.averagePrice <= 0) {
@@ -750,40 +792,52 @@ export function FinanceReportScreen({
             </section>
           </div>
 
-          <section className="gf-section" id="exposure">
+          <section className="gf-section" id="rebalancing" style={{ marginTop: '2rem' }}>
             <div className="gf-section-header">
-              <h2>{t.exposure}</h2>
-              <div className="gf-tabs" role="tablist" aria-label={t.exposureDimension}>
-                {[
-                  ['currency', t.currency],
-                  ['theme', locale === 'ja' ? 'テーマ' : locale === 'zh' ? '主题' : 'Theme'],
-                  ['broker', t.broker],
-                ].map(([value, label]) => (
-                  <button
-                    key={value}
-                    className={exposureMode === value ? 'is-active' : ''}
-                    role="tab"
-                    aria-selected={exposureMode === value}
-                    onClick={() => setExposureMode(value as ExposureMode)}
-                  >
-                    {label}
-                  </button>
-                ))}
+              <div>
+                <h2>{locale === 'zh' ? '机构调仓基准与偏离诊断' : locale === 'en' ? 'Institutional Rebalancing & Action Guide' : '機関リバランス診断'}</h2>
+                <p style={{ margin: '0.2rem 0 0', fontSize: '0.78rem', color: '#64748b' }}>
+                  {locale === 'zh' ? '对比长期机构风控模型（Core 50-60% / 标的集中度 <20%），输出明确的调仓动作提示。' : 'Compare against long-term institutional risk models and generate actionable rebalancing signals.'}
+                </p>
               </div>
             </div>
-            <div className="gf-exposure-list">
-              {exposureRows.slice(0, 8).map((row) => (
-                <div className="gf-exposure-row" key={row.label}>
-                  <span title={row.label}>{row.label}</span>
-                  <div className="gf-bar-track">
-                    <div
-                      className="gf-bar-fill"
-                      style={{ width: `${row.weight * 100}%` }}
-                    />
-                  </div>
-                  <strong>{formatPercent(row.weight)}</strong>
+            <div className="gf-rebalancing-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem', marginTop: '1rem' }}>
+              <div className="gf-card" style={{ background: '#fafcff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '1.25rem' }}>
+                <h3 style={{ margin: '0 0 1rem', fontSize: '0.95rem', color: '#0f172a', fontWeight: 700 }}>
+                  {locale === 'zh' ? '目标模型 vs 实际配置' : 'Target vs Actual Model'}
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  {layerRows.map((row) => {
+                    const targetText = row.layer === 'Core' ? '50-60%' : row.layer === 'Satellite' ? '20-30%' : row.layer === 'Defensive' ? '10-15%' : '5-10%';
+                    return (
+                      <div key={row.layer} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.82rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: LAYER_META[row.layer].color }} />
+                          <span style={{ fontWeight: 600, color: '#334155' }}>{LAYER_META[row.layer].label}</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                          <span style={{ color: '#94a3b8', fontSize: '0.75rem' }}>目标: {targetText}</span>
+                          <strong style={{ color: '#0f172a', width: '50px', textAlign: 'right' }}>{formatPercent(row.weight)}</strong>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-              ))}
+              </div>
+
+              <div className="gf-card" style={{ background: '#fafcff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '1.25rem' }}>
+                <h3 style={{ margin: '0 0 1rem', fontSize: '0.95rem', color: '#0f172a', fontWeight: 700 }}>
+                  {locale === 'zh' ? '智能调仓建议动作' : 'Rebalancing Action Signals'}
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  {rebalancingSignals.map((signal, idx) => (
+                    <div key={idx} style={{ padding: '0.65rem 0.75rem', borderRadius: '8px', borderLeft: `3px solid ${signal.type === 'warning' ? '#ef4444' : signal.type === 'info' ? '#3b82f6' : '#22c55e'}`, background: '#fff' }}>
+                      <strong style={{ display: 'block', fontSize: '0.82rem', color: '#0f172a', marginBottom: '0.15rem' }}>{signal.title}</strong>
+                      <span style={{ display: 'block', fontSize: '0.76rem', color: '#64748b', lineHeight: 1.4 }}>{signal.detail}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </section>
         </section>
