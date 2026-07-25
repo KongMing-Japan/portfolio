@@ -2142,9 +2142,9 @@ body {
 .gf-shell {
   width: min(1440px, calc(100% - 48px));
   margin: 0 auto;
-  padding: 28px 0 48px;
+  padding: 24px 0 36px;
   display: grid;
-  grid-template-columns: 260px minmax(0, 1fr) 320px;
+  grid-template-columns: minmax(0, 1fr) 300px;
   gap: 24px;
 }
 

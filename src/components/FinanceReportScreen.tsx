@@ -615,37 +615,6 @@ export function FinanceReportScreen({
       </header>
 
       <div className="gf-shell" id="portfolio">
-        <aside className="gf-left-rail" aria-label="Portfolio lists">
-          <div className="gf-left-heading">
-            <h2>{t.lists}</h2>
-            <button onClick={() => setAddOpen(true)} aria-label={t.addStock}>
-              <Plus size={16} />
-            </button>
-          </div>
-          <div className="gf-left-group">
-            <h3>{t.portfolio}</h3>
-            <button className="is-selected">
-              <span>{t.allHoldings}</span>
-              <strong>{formatMoney(total, baseCurrency)}</strong>
-            </button>
-            {layerRows.map((row) => (
-              <button key={row.layer}>
-                <span>{LAYER_META[row.layer].label}</span>
-                <strong>{formatPercent(row.weight)}</strong>
-              </button>
-            ))}
-          </div>
-          <div className="gf-left-group">
-            <h3>{t.topSymbols}</h3>
-            {aggregated.slice(0, 8).map((holding) => (
-              <button key={holding.ticker}>
-                <span>{holding.ticker}</span>
-                <strong>{formatPercent(holding.weight)}</strong>
-              </button>
-            ))}
-          </div>
-        </aside>
-
         <section className="gf-main">
           <section className="gf-overview">
             <div className="gf-overview-top">
@@ -742,33 +711,7 @@ export function FinanceReportScreen({
           </section>
 
           <div className="gf-two-column" id="allocation">
-            <section className="gf-section">
-              <div className="gf-section-header">
-                <h2>{t.topHoldings}</h2>
-              </div>
-              <div className="gf-ranked-list">
-                {topRows.map((holding, index) => (
-                  <div className="gf-ranked-row" key={holding.ticker}>
-                    <span className="gf-rank">{index + 1}</span>
-                    <span className="gf-ranked-name" title={holding.name}>
-                      {holding.name}
-                    </span>
-                    <span className="gf-bar-track">
-                      <span
-                        className="gf-bar-fill"
-                        style={{
-                          width: `${Math.max(
-                            Math.min((holding.weight / topBarMax) * 100, 100),
-                            2,
-                          )}%`,
-                        }}
-                      />
-                    </span>
-                    <strong>{formatPercent(holding.weight)}</strong>
-                  </div>
-                ))}
-              </div>
-            </section>
+
 
             <section className="gf-section">
               <div className="gf-section-header">
