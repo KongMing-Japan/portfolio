@@ -825,9 +825,13 @@ export function FinanceReportScreen({
         </aside>
       </div>
 
-      <section className="gf-bottom-section" style={{ width: 'min(1440px, calc(100% - 48px))', margin: '2.5rem auto 0', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-        <LifeOsNextSteps locale={locale} total={total} baseCurrency={baseCurrency} />
+      <section className="gf-full-superinvestors" id="superinvestors" style={{ width: 'min(1440px, calc(100% - 48px))', margin: '2.5rem auto 0', paddingTop: '2rem', borderTop: '1px solid #e4e9f0' }}>
+        <Suspense fallback={<div className="si-state"><p>Loading quarterly filings...</p></div>}>
+          <SuperinvestorsScreen />
+        </Suspense>
+      </section>
 
+      <section className="gf-seo-faq-section" style={{ width: 'min(1440px, calc(100% - 48px))', margin: '2.5rem auto 0' }}>
         <div className="gf-seo-faq-card" style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '1.8rem 2rem' }}>
           <h2 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#0f172a', margin: '0 0 1rem' }}>
             {locale === 'zh' ? '持仓分析方法论与常见问题 (FAQ)' : locale === 'en' ? 'Portfolio Rebalancing Methodology & FAQ' : 'ポートフォリオ調整方法論・FAQ'}
@@ -877,13 +881,11 @@ export function FinanceReportScreen({
         </div>
       </section>
 
-      <section className="gf-full-superinvestors" id="superinvestors" style={{ width: '100%', marginTop: '3rem', paddingTop: '2rem', borderTop: '1px solid #e4e9f0' }}>
-        <Suspense fallback={<div className="si-state"><p>Loading quarterly filings...</p></div>}>
-          <SuperinvestorsScreen />
-        </Suspense>
+      <section className="gf-cta-section" style={{ width: 'min(1440px, calc(100% - 48px))', margin: '2.5rem auto 0' }}>
+        <LifeOsNextSteps locale={locale} total={total} baseCurrency={baseCurrency} />
       </section>
 
-      <footer className="gf-footer" style={{ width: '100%', marginTop: '3.5rem', paddingTop: '1.8rem', paddingBottom: '2.5rem', borderTop: '1px solid #e4e9f0', textAlign: 'center', fontSize: '0.75rem', color: '#7a8798', opacity: 0.78 }}>
+      <footer className="gf-footer" style={{ width: 'min(1440px, calc(100% - 48px))', margin: '3.5rem auto 0', paddingTop: '1.8rem', paddingBottom: '2.5rem', borderTop: '1px solid #e4e9f0', textAlign: 'center', fontSize: '0.75rem', color: '#7a8798', opacity: 0.78 }}>
         <div style={{ marginBottom: '0.5rem' }}>
           <span>KongMing Network: </span>
           <a href="https://kongmingjapan.com/" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>Studio</a> ·{' '}
