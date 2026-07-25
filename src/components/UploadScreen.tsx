@@ -51,6 +51,10 @@ export function UploadScreen({
   return (
     <main className="upload-page">
       <section className="upload-intro">
+        <a className="lifeos-eyebrow" href="https://kongmingjapan.com/" target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.32rem', marginBottom: '0.5rem', color: '#1a73e8', fontSize: '0.72rem', fontWeight: 700, textDecoration: 'none', opacity: 0.8 }}>
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/></svg>
+          <span>LifeOS</span>
+        </a>
         <div className="intro-mark">Portfolio Studio</div>
         <h1>把分散的持仓，变成一张清楚的组合报告。</h1>
         <p>

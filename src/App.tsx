@@ -493,7 +493,6 @@ function App() {
 
   return (
     <div className="app-shell">
-      <LifeOsNav locale={locale} />
       {error && step !== 'processing' ? (
         <div className="global-error" role="alert">
           <AlertCircle size={17} />
