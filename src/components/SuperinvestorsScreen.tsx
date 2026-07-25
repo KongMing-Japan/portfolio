@@ -451,20 +451,12 @@ export function SuperinvestorsScreen() {
 
   return (
     <section className="si-index">
-      <header className="si-index-header">
+      <header className="si-index-header" style={{ marginBottom: '1.2rem' }}>
         <div>
-          <span className="si-eyebrow">SEC 13F · Quarterly</span>
-          <h1>Superinvestors</h1>
-          <p>
-            Explore the latest reported U.S. equity portfolios of widely followed investors.
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#111827', margin: 0 }}>投资大师持仓标杆</h2>
+          <p style={{ margin: '0.25rem 0 0', fontSize: '0.82rem', color: '#6b7280' }}>
+            参考巴菲特（Berkshire Hathaway）等经典机构的季度公开持仓与比例配比。
           </p>
-        </div>
-        <div className="si-source-status">
-          <CalendarDays size={17} />
-          <span>
-            Latest source update
-            <b>{formatDate(data.sourceUpdatedAt)}</b>
-          </span>
         </div>
       </header>
       <div className="si-card-grid">

@@ -786,20 +786,6 @@ export function FinanceReportScreen({
               ))}
             </div>
           </section>
-
-          <section className="gf-card gf-superinvestors-section" id="superinvestors" style={{ marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px solid #e4e9f0' }}>
-            <div className="gf-card-heading" style={{ marginBottom: '1.25rem' }}>
-              <div>
-                <h2>{t.superinvestors}</h2>
-                <p style={{ margin: '0.25rem 0 0', fontSize: '0.8rem', color: '#64748b' }}>
-                  {locale === 'zh' ? '参考巴菲特（Berkshire）等机构投资大师的公开持仓与配置。' : locale === 'en' ? 'Benchmark against institutional 13F portfolios like Berkshire Hathaway.' : 'バフェット等の機関投資家ポートフォリオを参考。'}
-                </p>
-              </div>
-            </div>
-            <Suspense fallback={<div className="si-state"><p>Loading quarterly filings...</p></div>}>
-              <SuperinvestorsScreen />
-            </Suspense>
-          </section>
         </section>
 
         <aside className="gf-sidebar">
@@ -867,6 +853,26 @@ export function FinanceReportScreen({
           </section>
         </aside>
       </div>
+
+      <section className="gf-full-superinvestors" id="superinvestors" style={{ width: '100%', marginTop: '3rem', paddingTop: '2rem', borderTop: '1px solid #e4e9f0' }}>
+        <Suspense fallback={<div className="si-state"><p>Loading quarterly filings...</p></div>}>
+          <SuperinvestorsScreen />
+        </Suspense>
+      </section>
+
+      <footer className="gf-footer" style={{ width: '100%', marginTop: '3.5rem', paddingTop: '1.8rem', paddingBottom: '2.5rem', borderTop: '1px solid #e4e9f0', textAlign: 'center', fontSize: '0.75rem', color: '#7a8798', opacity: 0.78 }}>
+        <div style={{ marginBottom: '0.5rem' }}>
+          <span>KongMing Network: </span>
+          <a href="https://kongmingjapan.com/" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>Studio</a> ·{' '}
+          <a href="https://radar.kongmingjapan.com/" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>Radar</a> ·{' '}
+          <a href="https://lab.kongmingjapan.com/" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>Lab</a> ·{' '}
+          <a href="https://kids.kongmingjapan.com/" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>Kids</a> ·{' '}
+          <a href="https://tax.kongmingjapan.com/" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>Tax</a> ·{' '}
+          <a href="https://planner.kongmingjapan.com/" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>Planner</a> ·{' '}
+          <a href="https://portfolio.kongmingjapan.com/" style={{ color: 'inherit', fontWeight: 600 }}>Portfolio</a>
+        </div>
+        <p style={{ margin: 0 }}>© 2026 KongMing LLC. All rights reserved.</p>
+      </footer>
 
       {importOpen ? (
         <div className="gf-modal-backdrop" role="presentation">
