@@ -734,61 +734,80 @@ export function FinanceReportScreen({
               </div>
             </section>
           </div>
-
-          <section className="gf-section" id="rebalancing" style={{ marginTop: '2rem' }}>
-            <div className="gf-section-header">
-              <div>
-                <h2>{locale === 'zh' ? '机构调仓基准与偏离诊断' : locale === 'en' ? 'Institutional Rebalancing & Action Guide' : '機関リバランス診断'}</h2>
-                <p style={{ margin: '0.2rem 0 0', fontSize: '0.78rem', color: '#64748b' }}>
-                  {locale === 'zh' ? '对比长期机构风控模型（Core 50-60% / 标的集中度 <20%），输出明确的调仓动作提示。' : 'Compare against long-term institutional risk models and generate actionable rebalancing signals.'}
-                </p>
-              </div>
-            </div>
-            <div className="gf-rebalancing-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem', marginTop: '1rem' }}>
-              <div className="gf-card" style={{ background: '#fafcff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '1.25rem' }}>
-                <h3 style={{ margin: '0 0 1rem', fontSize: '0.95rem', color: '#0f172a', fontWeight: 700 }}>
-                  {locale === 'zh' ? '目标模型 vs 实际配置' : 'Target vs Actual Model'}
-                </h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  {layerRows.map((row) => {
-                    const targetText = row.layer === 'Core' ? '50-60%' : row.layer === 'Satellite' ? '20-30%' : row.layer === 'Defensive' ? '10-15%' : '5-10%';
-                    return (
-                      <div key={row.layer} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.82rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: LAYER_META[row.layer].color }} />
-                          <span style={{ fontWeight: 600, color: '#334155' }}>{LAYER_META[row.layer].label}</span>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                          <span style={{ color: '#94a3b8', fontSize: '0.75rem' }}>目标: {targetText}</span>
-                          <strong style={{ color: '#0f172a', width: '50px', textAlign: 'right' }}>{formatPercent(row.weight)}</strong>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="gf-card" style={{ background: '#fafcff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '1.25rem' }}>
-                <h3 style={{ margin: '0 0 1rem', fontSize: '0.95rem', color: '#0f172a', fontWeight: 700 }}>
-                  {locale === 'zh' ? '智能调仓建议动作' : 'Rebalancing Action Signals'}
-                </h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  {rebalancingSignals.map((signal, idx) => (
-                    <div key={idx} style={{ padding: '0.65rem 0.75rem', borderRadius: '8px', borderLeft: `3px solid ${signal.type === 'warning' ? '#ef4444' : signal.type === 'info' ? '#3b82f6' : '#22c55e'}`, background: '#fff' }}>
-                      <strong style={{ display: 'block', fontSize: '0.82rem', color: '#0f172a', marginBottom: '0.15rem' }}>{signal.title}</strong>
-                      <span style={{ display: 'block', fontSize: '0.76rem', color: '#64748b', lineHeight: 1.4 }}>{signal.detail}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </section>
         </section>
 
         <aside className="gf-sidebar">
           <section className="gf-side-card">
             <div className="gf-side-title">
               <Layers3 size={18} />
+              <h2>{locale === 'zh' ? '四层资产配比与目标偏离' : locale === 'en' ? 'Layer Allocation & Target Status' : '層別配分と目標偏離'}</h2>
+            </div>
+            <p style={{ margin: '0.2rem 0 0.8rem', fontSize: '0.78rem', color: '#64748b' }}>
+              {locale === 'zh' ? '机构风控基准偏离度 (红/黄/绿状态标注)' : 'Institutional benchmark deviation status'}
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+              {layerRows.map((row) => {
+                let status: 'ok' | 'under' | 'over' = 'ok';
+                let minTarget = 0.50;
+                let maxTarget = 0.60;
+                let targetText = '50-60%';
+
+                if (row.layer === 'Satellite') {
+                  minTarget = 0.20;
+                  maxTarget = 0.30;
+                  targetText = '20-30%';
+                } else if (row.layer === 'Defensive') {
+                  minTarget = 0.10;
+                  maxTarget = 0.15;
+                  targetText = '10-15%';
+                } else if (row.layer === 'Cash') {
+                  minTarget = 0.05;
+                  maxTarget = 0.10;
+                  targetText = '5-10%';
+                }
+
+                if (row.weight > maxTarget) status = 'over';
+                else if (row.weight < minTarget) status = 'under';
+
+                return (
+                  <div key={row.layer} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.82rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                        <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: LAYER_META[row.layer].color }} />
+                        <strong style={{ color: '#1e293b' }}>{LAYER_META[row.layer].label}</strong>
+                        <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>({targetText})</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                        <strong style={{ color: '#0f172a' }}>{formatPercent(row.weight)}</strong>
+                        {status === 'over' ? (
+                          <span className="gf-target-badge is-over">超标</span>
+                        ) : status === 'under' ? (
+                          <span className="gf-target-badge is-under">偏低</span>
+                        ) : (
+                          <span className="gf-target-badge is-ok">合规</span>
+                        )}
+                      </div>
+                    </div>
+                    <div style={{ height: '6px', width: '100%', background: '#e2e8f0', borderRadius: '99px', overflow: 'hidden' }}>
+                      <div
+                        style={{
+                          height: '100%',
+                          width: `${Math.min(row.weight * 100, 100)}%`,
+                          background: status === 'over' ? '#ef4444' : status === 'under' ? '#f59e0b' : LAYER_META[row.layer].color,
+                          borderRadius: '99px',
+                          transition: 'width 0.3s ease',
+                        }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+
+          <section className="gf-side-card">
+            <div className="gf-side-title">
+              <Plus size={18} />
               <h2>{t.managePortfolio}</h2>
             </div>
             <button className="gf-side-action" onClick={() => setAddOpen(true)}>
@@ -1185,7 +1204,14 @@ function FinanceHoldingRow({
             {expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
             <span className="gf-symbol-logo">{holding.ticker.slice(0, 1)}</span>
             <span>
-              <strong>{holding.ticker}</strong>
+              <strong>
+                {holding.ticker}
+                {holding.weight > 0.20 ? (
+                  <span className="gf-risk-tag" title="单一标的过重 (高于 20% 机构风控线)">
+                    ⚠️ 过重
+                  </span>
+                ) : null}
+              </strong>
               <small>{holding.name}</small>
             </span>
           </button>
