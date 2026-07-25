@@ -205,6 +205,20 @@ export function UploadScreen({
           }}
         />
       </div>
+
+      <footer className="upload-footer" style={{ marginTop: '3rem', paddingTop: '1.5rem', borderTop: '1px solid rgba(0,0,0,0.08)', width: '100%', textAlign: 'center', fontSize: '0.78rem', color: '#64748b' }}>
+        <div style={{ marginBottom: '0.5rem' }}>
+          <span>KongMing Network: </span>
+          <a href="https://kongmingjapan.com/" target="_blank" rel="noreferrer" style={{ color: '#0f172a', textDecoration: 'none' }}>KongMing</a> ·{' '}
+          <a href="https://radar.kongmingjapan.com/" target="_blank" rel="noreferrer" style={{ color: '#0f172a', textDecoration: 'none' }}>Radar</a> ·{' '}
+          <a href="https://lab.kongmingjapan.com/" target="_blank" rel="noreferrer" style={{ color: '#0f172a', textDecoration: 'none' }}>Lab</a> ·{' '}
+          <a href="https://kids.kongmingjapan.com/" target="_blank" rel="noreferrer" style={{ color: '#0f172a', textDecoration: 'none' }}>Kids</a> ·{' '}
+          <a href="https://tax.kongmingjapan.com/" target="_blank" rel="noreferrer" style={{ color: '#0f172a', textDecoration: 'none' }}>Tax</a> ·{' '}
+          <a href="https://planner.kongmingjapan.com/" target="_blank" rel="noreferrer" style={{ color: '#0f172a', textDecoration: 'none' }}>Planner</a> ·{' '}
+          <a href="https://portfolio.kongmingjapan.com/" style={{ color: '#0f172a', fontWeight: 600 }}>Portfolio</a>
+        </div>
+        <p style={{ margin: 0 }}>© 2026 KongMing LLC. All rights reserved.</p>
+      </footer>
     </main>
   );
 }
