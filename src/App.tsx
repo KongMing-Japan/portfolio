@@ -55,24 +55,6 @@ function App() {
   const [hasSavedPortfolio, setHasSavedPortfolio] = useState(false);
 
   useEffect(() => {
-    let active = true;
-    loadSnapshot()
-      .then((snapshot) => {
-        if (!active || !snapshot?.holdings.length) return;
-        setHasSavedPortfolio(true);
-        setHoldings(snapshot.holdings);
-        setBaseCurrency(snapshot.baseCurrency);
-        setFx(snapshot.fx);
-        setQuoteUpdatedAt(snapshot.quoteUpdatedAt);
-        setStep('report');
-      })
-      .catch(() => undefined);
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'auto' });
     sessionStorage.setItem('portfolio-current-step', step);
   }, [step]);
@@ -225,6 +207,30 @@ function App() {
       });
     }
   }, [finishImport]);
+
+  useEffect(() => {
+    let active = true;
+    loadSnapshot()
+      .then((snapshot) => {
+        if (!active) return;
+        if (snapshot?.holdings.length) {
+          setHasSavedPortfolio(true);
+          setHoldings(snapshot.holdings);
+          setBaseCurrency(snapshot.baseCurrency);
+          setFx(snapshot.fx);
+          setQuoteUpdatedAt(snapshot.quoteUpdatedAt);
+          setStep('report');
+        } else {
+          handleSample();
+        }
+      })
+      .catch(() => {
+        if (active) handleSample();
+      });
+    return () => {
+      active = false;
+    };
+  }, [handleSample]);
 
   const handleManualImport = useCallback(
     async (text: string) => {
