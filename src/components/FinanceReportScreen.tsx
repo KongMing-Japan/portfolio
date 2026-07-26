@@ -822,58 +822,120 @@ export function FinanceReportScreen({
         <SuperinvestorsScreen />
       </section>
 
-      <section className="gf-seo-faq-section" style={{ width: 'min(1100px, calc(100% - 48px))', margin: '2.5rem auto 0' }}>
-        <div className="gf-seo-faq-card" style={{ background: '#fff', border: '1px solid #dadce0', borderRadius: '8px', padding: '1.8rem 2rem' }}>
-          <h2 style={{ fontSize: '1.1rem', fontWeight: 500, color: '#202124', margin: '0 0 1rem' }}>
-            {locale === 'zh' ? '持仓分析方法论与常见问题 (FAQ)' : locale === 'en' ? 'Portfolio Rebalancing Methodology & FAQ' : 'ポートフォリオ調整方法論・FAQ'}
-          </h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
-            <div>
-              <h3 style={{ fontSize: '0.88rem', fontWeight: 500, color: '#202124', margin: '0 0 0.4rem' }}>
-                📌 什么是持仓四层金字塔（Core / Satellite）？
-              </h3>
-              <p style={{ fontSize: '0.8rem', color: '#5f6368', lineHeight: 1.5, margin: 0 }}>
-                机构投资标准通常将资产划分为核心基石（Core: S&P 500/宽基 ETF，50-60%）、卫星进攻（Satellite: 高成长的个股/赛道，20-30%）、防守缓冲（Defensive: 债券/固收，10-15%）与现金（Cash: 5-10%），以规避单一点位的黑天鹅冲击。
-              </p>
-            </div>
-            <div>
-              <h3 style={{ fontSize: '0.88rem', fontWeight: 500, color: '#202124', margin: '0 0 0.4rem' }}>
-                ⚖️ 为什么要限制单一标的权重不超过 20%？
-              </h3>
-              <p style={{ fontSize: '0.8rem', color: '#5f6368', lineHeight: 1.5, margin: 0 }}>
-                在机构风控体系中，当单一持仓超过总资产 20% 时，其个别回调风险将大幅挤占组合阿尔法收益。系统通过黄色/红色勋章提示触发阶段分批调仓减仓。
-              </p>
+      {/* ── Methodology & FAQ ── */}
+      <section style={{ width: 'min(1100px, calc(100% - 48px))', margin: '2.5rem auto 0' }}>
+        <div style={{ border: '1px solid #dadce0', borderRadius: '8px', background: '#fff', overflow: 'hidden' }}>
+          <div style={{ padding: '1.5rem 2rem 0.2rem' }}>
+            <h2 style={{ fontSize: '0.95rem', fontWeight: 500, color: '#202124', margin: '0 0 1.2rem' }}>
+              {locale === 'zh' ? '持仓分析方法论与常见问题' : locale === 'en' ? 'Portfolio Methodology & FAQ' : 'ポートフォリオ方法論・FAQ'}
+            </h2>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem 2rem' }}>
+              <div>
+                <h3 style={{ fontSize: '0.82rem', fontWeight: 500, color: '#202124', margin: '0 0 0.35rem', lineHeight: 1.4 }}>
+                  {locale === 'zh' ? '什么是四层金字塔配比？' : locale === 'en' ? 'What is the 4-layer pyramid?' : '4層ピラミッド配分とは？'}
+                </h3>
+                <p style={{ fontSize: '0.78rem', color: '#5f6368', lineHeight: 1.55, margin: 0 }}>
+                  {locale === 'zh'
+                    ? '机构标准将资产划分为核心基石（Core 50-60%）、卫星进攻（Satellite 20-30%）、防守缓冲（Defensive 10-15%）与现金（Cash 5-10%），分散黑天鹅冲击。'
+                    : locale === 'en'
+                    ? 'Institutional standards split assets into Core (50-60%), Satellite (20-30%), Defensive (10-15%) and Cash (5-10%) to spread tail-risk.'
+                    : '機関投資家基準ではCore(50-60%)、Satellite(20-30%)、Defensive(10-15%)、Cash(5-10%)に分散し、テールリスクを軽減します。'}
+                </p>
+              </div>
+              <div>
+                <h3 style={{ fontSize: '0.82rem', fontWeight: 500, color: '#202124', margin: '0 0 0.35rem', lineHeight: 1.4 }}>
+                  {locale === 'zh' ? '单一标的权重为何限制 20%？' : locale === 'en' ? 'Why cap a single holding at 20%?' : '個別銘柄の上限が20%の理由は？'}
+                </h3>
+                <p style={{ fontSize: '0.78rem', color: '#5f6368', lineHeight: 1.55, margin: 0 }}>
+                  {locale === 'zh'
+                    ? '当单一持仓超过 20% 时，个股回调将大幅挤占组合整体收益。系统以 ⚠️ 标记过重标的，提示分批减仓锁利。'
+                    : locale === 'en'
+                    ? 'When one position exceeds 20%, its drawdown disproportionately erodes returns. The system flags it with ⚠️ for staged rebalancing.'
+                    : '1銘柄が20%を超えると、その下落がポートフォリオ全体のリターンを大きく圧迫します。⚠️マークで段階的リバランスを促します。'}
+                </p>
+              </div>
+              <div>
+                <h3 style={{ fontSize: '0.82rem', fontWeight: 500, color: '#202124', margin: '0 0 0.35rem', lineHeight: 1.4 }}>
+                  {locale === 'zh' ? 'HHI 集中度指数说明' : locale === 'en' ? 'What does the HHI score mean?' : 'HHI集中度スコアとは？'}
+                </h3>
+                <p style={{ fontSize: '0.78rem', color: '#5f6368', lineHeight: 1.55, margin: 0 }}>
+                  {locale === 'zh'
+                    ? 'HHI 衡量持仓分散程度。分数越低越分散（< 15 优秀），越高越集中（> 25 高风险），帮助量化组合健康度。'
+                    : locale === 'en'
+                    ? 'The HHI measures diversification. Lower is better (< 15 excellent); higher signals concentration risk (> 25).'
+                    : 'HHIは分散度を計測します。低いほど分散(15未満=優秀)、高いほど集中リスク(25超=要注意)です。'}
+                </p>
+              </div>
             </div>
           </div>
-          <div style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid #dadce0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', fontSize: '0.8rem', color: '#5f6368' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div style={{ margin: '1.2rem 2rem 0', padding: '0.85rem 0', borderTop: '1px solid #e8eaed', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', fontSize: '0.78rem', color: '#5f6368' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1.2rem', flexWrap: 'wrap' }}>
               <a
-                href={
-                  locale === 'en'
-                    ? 'https://github.com/KongMing-Japan/portfolio/blob/main/docs/methodology.en.md'
-                    : 'https://github.com/KongMing-Japan/portfolio/blob/main/docs/methodology.zh.md'
-                }
+                href={locale === 'en' ? 'https://github.com/KongMing-Japan/portfolio/blob/main/docs/methodology.en.md' : 'https://github.com/KongMing-Japan/portfolio/blob/main/docs/methodology.zh.md'}
                 target="_blank"
                 rel="noreferrer"
-                style={{ color: '#2563eb', fontWeight: 600, textDecoration: 'none' }}
+                style={{ color: '#1a73e8', fontWeight: 500, textDecoration: 'none' }}
               >
-                📖 查阅详细计算方法论 (Methodology) →
+                {locale === 'zh' ? '详细方法论' : locale === 'en' ? 'Full methodology' : '詳細な方法論'}
               </a>
+              <span style={{ color: '#dadce0' }}>|</span>
+              <span>{locale === 'zh' ? '数据来源: Yahoo Finance · SEC EDGAR' : locale === 'en' ? 'Sources: Yahoo Finance · SEC EDGAR' : 'データソース: Yahoo Finance · SEC EDGAR'}</span>
             </div>
             <button
-              className="gf-danger-action"
               onClick={onClear}
-              style={{ fontSize: '0.75rem', padding: '0.35rem 0.75rem', border: '1px solid #dadce0', background: '#fff', color: '#d93025', borderRadius: '6px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+              style={{ flexShrink: 0, fontSize: '0.72rem', padding: '0.3rem 0.65rem', border: '1px solid #dadce0', background: '#fff', color: '#5f6368', borderRadius: '4px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
             >
-              <Trash2 size={13} />
+              <Trash2 size={12} />
               {t.clear}
             </button>
           </div>
         </div>
       </section>
 
-      <section className="gf-cta-section" style={{ width: 'min(1100px, calc(100% - 48px))', margin: '2.5rem auto 0' }}>
-        <LifeOsNextSteps locale={locale} total={total} baseCurrency={baseCurrency} />
+      {/* ── LifeOS CTA ── */}
+      <section style={{ width: 'min(1100px, calc(100% - 48px))', margin: '2rem auto 0' }}>
+        <div style={{ border: '1px solid #dadce0', borderRadius: '8px', background: '#fff', display: 'grid', gridTemplateColumns: '1fr 1fr', overflow: 'hidden' }}>
+          <div style={{ padding: '1.5rem 2rem', borderRight: '1px solid #e8eaed', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '0.5rem' }}>
+            <span style={{ fontSize: '0.68rem', fontWeight: 600, color: '#1a73e8', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+              {locale === 'zh' ? 'LifeOS 协同' : locale === 'en' ? 'LifeOS Integration' : 'LifeOS 連携'}
+            </span>
+            <h2 style={{ fontSize: '0.95rem', fontWeight: 500, color: '#202124', margin: 0, lineHeight: 1.35 }}>
+              {locale === 'zh' ? '让这份持仓服务于人生目标' : locale === 'en' ? 'Connect this portfolio to your life goals' : '保有資産を人生目標につなぐ'}
+            </h2>
+            <div style={{ marginTop: '0.4rem', display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
+              <span style={{ fontSize: '0.72rem', color: '#5f6368' }}>
+                {locale === 'zh' ? '当前组合' : locale === 'en' ? 'Current portfolio' : '現在のポートフォリオ'}
+              </span>
+              <strong style={{ fontSize: '1.1rem', color: '#202124', fontVariantNumeric: 'tabular-nums' }}>
+                {formatMoney(total, baseCurrency)}
+              </strong>
+            </div>
+          </div>
+          <div style={{ padding: '1rem 1.5rem', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '0.6rem' }}>
+            <a
+              href={`https://planner.kongmingjapan.com/?${new URLSearchParams({ source: 'portfolio', assets: String(Math.round(total)) })}`}
+              style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.6rem 0.8rem', borderRadius: '6px', border: '1px solid #e8eaed', color: '#202124', textDecoration: 'none' }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1a73e8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              <span style={{ flex: 1 }}>
+                <strong style={{ display: 'block', fontSize: '0.82rem' }}>{locale === 'zh' ? '放入 LifeOS Planner' : locale === 'en' ? 'Use in LifeOS Planner' : 'LifeOS Plannerに反映'}</strong>
+                <small style={{ display: 'block', fontSize: '0.7rem', color: '#5f6368', marginTop: '2px' }}>{locale === 'zh' ? '测算住房、教育与退休目标' : locale === 'en' ? 'Test housing, education & retirement plans' : '住宅・教育・退職計画をシミュレーション'}</small>
+              </span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#80868b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </a>
+            <a
+              href={`https://tax.kongmingjapan.com/${locale === 'zh' ? 'zh-CN' : locale}/?${new URLSearchParams({ source: 'portfolio', incomes: 'securities' })}`}
+              style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.6rem 0.8rem', borderRadius: '6px', border: '1px solid #e8eaed', color: '#202124', textDecoration: 'none' }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1a73e8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M7 15h0M2 9.5h20"/></svg>
+              <span style={{ flex: 1 }}>
+                <strong style={{ display: 'block', fontSize: '0.82rem' }}>{locale === 'zh' ? '检查 LifeOS Tax 影响' : locale === 'en' ? 'Check LifeOS Tax impact' : 'LifeOS Taxへの影響を確認'}</strong>
+                <small style={{ display: 'block', fontSize: '0.7rem', color: '#5f6368', marginTop: '2px' }}>{locale === 'zh' ? '估算卖出与分红的税后影响' : locale === 'en' ? 'Estimate after-tax outcomes for sales or dividends' : '売却・配当の税引後影響を試算'}</small>
+              </span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#80868b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </a>
+          </div>
+        </div>
       </section>
 
       <footer className="gf-footer" style={{ width: 'min(1100px, calc(100% - 48px))', margin: '3.5rem auto 0', paddingTop: '1.8rem', paddingBottom: '2.5rem', borderTop: '1px solid #dadce0', textAlign: 'center', fontSize: '0.75rem', color: '#5f6368', opacity: 0.78 }}>
