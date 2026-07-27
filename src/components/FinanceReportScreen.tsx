@@ -10,6 +10,7 @@ import {
   ChevronRight,
   ClipboardList,
   Download,
+  FileSpreadsheet,
   Layers3,
   PieChart,
   Plus,
@@ -99,10 +100,10 @@ const COPY: Record<Locale, Record<string, string>> = {
     managePortfolio: '管理组合',
     importPositions: '上传 CSV / 截图 / 粘贴',
     editCost: '修改数量和平均成本',
-    structureHealth: '结构体检',
+    structureHealth: '持仓集中度与结构健康',
     largest: '最大持仓',
     top5: 'Top 5',
-    concentration: '集中度分数',
+    concentration: '集中度分数 (HHI)',
     healthNote: '仅用于组合结构体检，不提供买卖建议。',
     shortcuts: '快捷入口',
     methodology: '查看组合方法论',
@@ -124,7 +125,7 @@ const COPY: Record<Locale, Record<string, string>> = {
     emptyTitle: '还没有持仓',
     emptyBody: '从右侧导入 CSV、截图或粘贴数据，dashboard 会直接在这里生成。',
     other: '其他',
-    exportJson: '导出 JSON',
+    exportJson: '导出 Excel',
     exposureDimension: '风险暴露维度',
     delete: '删除',
     name: '名称',
@@ -167,10 +168,10 @@ const COPY: Record<Locale, Record<string, string>> = {
     managePortfolio: 'ポートフォリオ管理',
     importPositions: 'CSV / 画像 / 貼り付け',
     editCost: '数量と平均単価を編集',
-    structureHealth: '構造チェック',
+    structureHealth: '集中度・ポートフォリオ診断',
     largest: '最大保有',
     top5: '上位5銘柄',
-    concentration: '集中度',
+    concentration: '集中度スコア (HHI)',
     healthNote: '構造確認のみで、売買助言ではありません。',
     shortcuts: 'ショートカット',
     methodology: '方法論を見る',
@@ -192,7 +193,7 @@ const COPY: Record<Locale, Record<string, string>> = {
     emptyTitle: '保有データがありません',
     emptyBody: '右側からCSV、画像、貼り付けで取り込むと、ここにdashboardが生成されます。',
     other: 'その他',
-    exportJson: 'JSONを書き出す',
+    exportJson: 'Excel出力',
     exposureDimension: 'エクスポージャー分類',
     delete: '削除',
     name: '名称',
@@ -235,11 +236,11 @@ const COPY: Record<Locale, Record<string, string>> = {
     managePortfolio: 'Manage portfolio',
     importPositions: 'Import positions',
     editCost: 'Edit shares and cost basis',
-    structureHealth: 'Structure health',
+    structureHealth: 'Portfolio Health & Concentration',
     largest: 'Largest holding',
     top5: 'Top 5',
-    concentration: 'Concentration score',
-    healthNote: 'For portfolio structure only. Not investment advice.',
+    concentration: 'Concentration (HHI)',
+    healthNote: 'For portfolio structure analysis only. Not investment advice.',
     shortcuts: 'Shortcuts',
     methodology: 'View methodology',
     clear: 'Clear all local data',
@@ -260,7 +261,7 @@ const COPY: Record<Locale, Record<string, string>> = {
     emptyTitle: 'No holdings yet',
     emptyBody: 'Import a CSV, screenshot, or pasted list to build your portfolio dashboard.',
     other: 'Other',
-    exportJson: 'Export JSON',
+    exportJson: 'Export to Excel',
     exposureDimension: 'Exposure dimension',
     delete: 'Delete',
     name: 'Name',
@@ -287,27 +288,44 @@ const EMPTY_DRAFT: ManualHoldingInput = {
   theme: '',
 };
 
-function downloadJson(
+function exportExcel(
   holdings: Holding[],
   baseCurrency: BaseCurrency,
-  fx: Record<string, number>,
-  quoteUpdatedAt: string | null,
+  locale: Locale,
 ) {
-  const snapshot: PortfolioSnapshot = {
-    version: 1,
-    holdings,
-    baseCurrency,
-    fx,
-    quoteUpdatedAt,
-    savedAt: new Date().toISOString(),
-  };
-  const blob = new Blob([JSON.stringify(snapshot, null, 2)], {
-    type: 'application/json',
+  const total = holdings.reduce((acc, h) => acc + (h.valueInBase ?? 0), 0);
+
+  const headers =
+    locale === 'zh'
+      ? ['代码 (Ticker)', '名称', '券商/账户', '资产分层', '主题板块', '持仓数量', '成本均价', '当前价格', '原币种', `评估价值 (${baseCurrency})`, '持仓占比 (%)']
+      : locale === 'ja'
+      ? ['ティッカー', '銘柄名', '証券会社', 'レイヤー', 'テーマ', '保有数量', '取得単価', '現在株価', '通貨', `評価額 (${baseCurrency})`, '構成比 (%)']
+      : ['Ticker', 'Name', 'Broker', 'Layer', 'Theme', 'Shares', 'Avg Cost', 'Current Price', 'Currency', `Market Value (${baseCurrency})`, 'Weight (%)'];
+
+  const rows = holdings.map((item) => {
+    const val = item.valueInBase ?? 0;
+    const weightPct = total > 0 ? ((val / total) * 100).toFixed(2) : '0.00';
+    return [
+      `"${(item.ticker || '').replace(/"/g, '""')}"`,
+      `"${(item.name || '').replace(/"/g, '""')}"`,
+      `"${(item.broker || '').replace(/"/g, '""')}"`,
+      `"${item.layer}"`,
+      `"${(item.theme || '').replace(/"/g, '""')}"`,
+      item.quantity,
+      item.costPerUnit ?? '',
+      item.marketPrice ?? '',
+      item.currency,
+      val.toFixed(2),
+      weightPct,
+    ].join(',');
   });
+
+  const csvContent = '\uFEFF' + [headers.join(','), ...rows].join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = `portfolio-${new Date().toISOString().slice(0, 10)}.json`;
+  link.download = `portfolio-export-${new Date().toISOString().slice(0, 10)}.csv`;
   link.click();
   URL.revokeObjectURL(url);
 }
@@ -593,11 +611,12 @@ export function FinanceReportScreen({
           <button
             className="gf-icon-button"
             aria-label={t.exportJson}
+            title={t.exportJson}
             onClick={() =>
-              downloadJson(holdings, baseCurrency, fx, quoteUpdatedAt)
+              exportExcel(holdings, baseCurrency, locale)
             }
           >
-            <Download size={18} />
+            <FileSpreadsheet size={18} />
           </button>
           <button
             className="gf-icon-button"
@@ -711,10 +730,10 @@ export function FinanceReportScreen({
           <section className="gf-side-card">
             <div className="gf-side-title">
               <Layers3 size={18} />
-              <h2>{locale === 'zh' ? '四层资产配比与目标偏离' : locale === 'en' ? 'Layer Allocation & Target Status' : '層別配分と目標偏離'}</h2>
+              <h2>{locale === 'zh' ? '四层资产配置与目标偏离' : locale === 'en' ? 'Asset Allocation & Target Drift' : 'アセット配分と目標偏離'}</h2>
             </div>
             <p style={{ margin: '0.2rem 0 0.8rem', fontSize: '0.78rem', color: '#5f6368' }}>
-              {locale === 'zh' ? '机构风控基准偏离度 (红/黄/绿状态标注)' : 'Institutional benchmark deviation status'}
+              {locale === 'zh' ? '机构风控基准偏离度 (红/黄/绿状态标注)' : locale === 'ja' ? '機関投資家基準の目標配分乖離ステータス' : 'Institutional target drift & risk status'}
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
               {layerRows.map((row) => {
@@ -751,11 +770,11 @@ export function FinanceReportScreen({
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                         <strong style={{ color: '#202124' }}>{formatPercent(row.weight)}</strong>
                         {status === 'over' ? (
-                          <span className="gf-target-badge is-over">超标</span>
+                          <span className="gf-target-badge is-over">{locale === 'zh' ? '超标' : locale === 'ja' ? '超過' : 'Over'}</span>
                         ) : status === 'under' ? (
-                          <span className="gf-target-badge is-under">偏低</span>
+                          <span className="gf-target-badge is-under">{locale === 'zh' ? '偏低' : locale === 'ja' ? '不足' : 'Under'}</span>
                         ) : (
-                          <span className="gf-target-badge is-ok">合规</span>
+                          <span className="gf-target-badge is-ok">{locale === 'zh' ? '合规' : locale === 'ja' ? '適正' : 'Target'}</span>
                         )}
                       </div>
                     </div>
@@ -779,7 +798,7 @@ export function FinanceReportScreen({
           <section className="gf-side-card">
             <div className="gf-side-title">
               <PieChart size={18} />
-              <h2>{locale === 'zh' ? '赛道与主题暴露分布' : locale === 'en' ? 'Theme & Sector Exposure' : 'セクター・テーマ露出'}</h2>
+              <h2>{locale === 'zh' ? '赛道与主题分布' : locale === 'en' ? 'Sector & Theme Breakdown' : 'セクター・テーマ別構成比'}</h2>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.5rem' }}>
               {themeRows.slice(0, 5).map((row) => (
