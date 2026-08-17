@@ -4,31 +4,31 @@
       "ticker": "NASDAQ:NVDA",
       "currency": "USD",
       "price": 225.16,
-      "fetchedAt": "2026-08-16T12:16:42.422Z"
+      "fetchedAt": "2026-08-17T00:36:19.399Z"
     },
     {
       "ticker": "HKG:0700",
       "currency": "HKD",
       "price": 440,
-      "fetchedAt": "2026-08-16T12:16:42.422Z"
+      "fetchedAt": "2026-08-17T00:36:19.399Z"
     },
     {
       "ticker": "TYO:2845",
       "currency": "JPY",
-      "price": 3617,
-      "fetchedAt": "2026-08-16T12:16:42.422Z"
+      "price": 3623,
+      "fetchedAt": "2026-08-17T00:36:19.399Z"
     },
     {
       "ticker": "Cash_USD",
       "currency": "USD",
       "price": 1,
-      "fetchedAt": "2026-08-16T12:16:42.422Z"
+      "fetchedAt": "2026-08-17T00:36:19.399Z"
     }
   ],
   "fx": {
-    "USD": 159.305,
-    "HKD": 20.3064,
-    "CNY": 23.595,
+    "USD": 159.04,
+    "HKD": 20.2689,
+    "CNY": 23.552,
     "JPY": 1
   }
 }
