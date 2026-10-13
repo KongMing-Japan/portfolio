@@ -1,6 +1,6 @@
-# LifeOS Portfolio
+# MoneyOS Portfolio
 
-一个极简的多券商、多币种个人投资组合生成器。
+一个极简、独立的多券商、多币种个人投资组合与再平衡系统。
 
 主流程只有四步：
 
@@ -41,7 +41,7 @@ npx wrangler pages secret put GROQ_API_KEY --project-name=portfolio
 模型名称已经保存在 `wrangler.jsonc`：
 
 ```text
-meta-llama/llama-4-scout-17b-16e-instruct
+qwen/qwen3.8-27b
 ```
 
 未配置 Groq 密钥时，CSV、JSON 导入、行情和报告功能仍可使用。API

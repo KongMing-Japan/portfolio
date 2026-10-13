@@ -72,13 +72,66 @@ export function normalizeLayer(
   return 'Core';
 }
 
-export function marketFromTicker(ticker: string) {
-  if (/cash/i.test(ticker)) return 'Cash';
-  if (/\.T$|^TYO:/i.test(ticker)) return 'Japan';
-  if (/^HKG:/i.test(ticker)) return 'Hong Kong';
-  if (/^(SHA|SHE):/i.test(ticker)) return 'China';
+export function marketFromTicker(ticker: string, name = ''): string {
+  const combined = `${ticker} ${name}`.trim();
+  if (CASH_PATTERN.test(combined)) return 'Cash';
+  if (/\.T$|^TYO:/i.test(ticker) || /日本|東証|日経|TOPIX/i.test(name)) return 'Japan';
+  if (/^HKG:|\.HK$/i.test(ticker) || /港股|恒生/i.test(name)) return 'Hong Kong';
+  if (
+    /^(SHA|SHE):|\.(SS|SZ)$/i.test(ticker) ||
+    /^[036]\d{5}$/.test(ticker) ||
+    /A股|沪深/i.test(name)
+  ) {
+    return 'China';
+  }
   if (/^[A-Z]{1,6}$|^(NASDAQ|NYSE|BATS):/i.test(ticker)) return 'US';
-  return 'Other';
+  return 'Global / Other';
+}
+
+export const POPULAR_BROKERS = [
+  'SBI証券',
+  '楽天証券',
+  'Interactive Brokers',
+  'Charles Schwab',
+  '富途牛牛',
+  '老虎证券',
+  '华泰证券',
+  '招商银行',
+  '中信证券',
+  '东方财富',
+  '三菱UFJ / 日本银行',
+  '现金储备 (Cash Reserve)',
+];
+
+export function suggestCurrencyFromTicker(
+  ticker: string,
+  name = '',
+): 'USD' | 'JPY' | 'CNY' | 'HKD' {
+  const m = marketFromTicker(ticker, name);
+  if (m === 'Japan') return 'JPY';
+  if (m === 'China') return 'CNY';
+  if (m === 'Hong Kong') return 'HKD';
+  return 'USD';
+}
+
+export type AssetClassType = 'Equity' | 'ETF' | 'Fund' | 'Cash';
+
+export function assetClassFromHolding(
+  ticker: string,
+  name = '',
+  theme = '',
+): AssetClassType {
+  const combined = `${ticker} ${name} ${theme}`.toLowerCase();
+  if (CASH_PATTERN.test(combined)) return 'Cash';
+  if (
+    /(etf|index|インデックス|指数|510\d{3}|159\d{3}|1306|2558|\bspy\b|\bvoo\b|\bqqq\b|\bvti\b)/i.test(
+      combined,
+    )
+  ) {
+    return 'ETF';
+  }
+  if (/(fund|基金|信託|投信|emaxis|mutual)/i.test(combined)) return 'Fund';
+  return 'Equity';
 }
 
 export function suggestBaseCurrency(holdings: Holding[]): BaseCurrency {

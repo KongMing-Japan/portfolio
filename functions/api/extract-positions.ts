@@ -113,9 +113,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model:
-          context.env.GROQ_VISION_MODEL ||
-          'meta-llama/llama-4-scout-17b-16e-instruct',
+        model: context.env.GROQ_VISION_MODEL || 'qwen/qwen3.8-27b',
         messages: [
           {
             role: 'user',
@@ -169,6 +167,8 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
           upstream.status === 429
             ? 'The free OCR limit has been reached. Try again later or use CSV.'
             : 'The screenshot could not be recognized. Use a clearer image or CSV.',
+        upstreamStatus: upstream.status,
+        details: errorText.slice(0, 500),
       },
       upstream.status === 429 ? 429 : 502,
     );
@@ -197,5 +197,29 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   }
 };
 
-export const onRequest: PagesFunction<Env> = async () =>
-  json({ error: 'Method not allowed' }, 405);
+export const onRequestGet: PagesFunction<Env> = async (context) => {
+  if (!context.env.GROQ_API_KEY) {
+    return json({ configured: false, error: 'GROQ_API_KEY is not set' }, 503);
+  }
+  try {
+    const res = await fetch('https://api.groq.com/openai/v1/models', {
+      headers: {
+        Authorization: `Bearer ${context.env.GROQ_API_KEY}`,
+      },
+    });
+    if (!res.ok) {
+      const err = await res.text();
+      return json({ configured: true, groqStatus: res.status, error: err }, res.status);
+    }
+    const data = await res.json<{ data?: Array<{ id: string }> }>();
+    const models = data.data?.map((m) => m.id) ?? [];
+    return json({
+      configured: true,
+      currentVisionModel:
+        context.env.GROQ_VISION_MODEL || 'qwen/qwen3.8-27b',
+      models,
+    });
+  } catch (err) {
+    return json({ configured: true, error: String(err) }, 500);
+  }
+};

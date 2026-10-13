@@ -64,6 +64,117 @@ export interface PortfolioSnapshot {
   savedAt: string;
 }
 
+export interface LayerTargetConfig {
+  Core: number;
+  Satellite: number;
+  Defensive: number;
+  Cash: number;
+}
+
+export interface RebalanceSettings {
+  targets: LayerTargetConfig;
+  singleSecurityCap: number;
+  singleThemeCap: number;
+  toleranceBandAbsolute: number;
+  toleranceBandRelative: number;
+}
+
+export type DriftStatus = 'ok' | 'under' | 'over';
+
+export interface LayerDriftInfo {
+  layer: Layer;
+  currentValue: number;
+  currentWeight: number;
+  targetWeight: number;
+  driftAbsolute: number;
+  driftRelative: number;
+  status: DriftStatus;
+  valueDelta: number;
+}
+
+export interface RebalanceTradeItem {
+  ticker: string;
+  name: string;
+  layer: Layer;
+  broker: string;
+  action: 'BUY' | 'SELL' | 'HOLD';
+  currentShares: number;
+  suggestedShares: number;
+  currentWeight: number;
+  projectedWeight: number;
+  priceInBase: number;
+  amountInBase: number;
+  currency: string;
+  priceInCurrency: number | null;
+  urgency: 'high' | 'medium' | 'low';
+  reason: string;
+}
+
+export interface InflowRebalanceResult {
+  inflowAmount: number;
+  projectedTotal: number;
+  trades: RebalanceTradeItem[];
+  projectedLayerWeights: Record<Layer, number>;
+  unallocatedCash: number;
+}
+
+export interface FullRebalanceResult {
+  currentTotal: number;
+  trades: RebalanceTradeItem[];
+  totalSellAmount: number;
+  totalBuyAmount: number;
+  turnoverRate: number;
+  projectedLayerWeights: Record<Layer, number>;
+}
+
+export interface ReviewJournalNote {
+  summary?: string;
+  disciplineChecks?: {
+    singleHoldingUnderCap: boolean;
+    singleThemeUnderCap: boolean;
+    cashReserveAdequate: boolean;
+  };
+  bestDecision?: string;
+  worstDecision?: string;
+  nextQuarterPlan?: string;
+}
+
+export interface ReviewSnapshot {
+  id: string;
+  label: string;
+  createdAt: string;
+  baseCurrency: BaseCurrency;
+  totalValueBase: number;
+  holdings: Holding[];
+  layerWeights: Record<Layer, number>;
+  hhiScore: number;
+  notes?: ReviewJournalNote;
+}
+
+export interface SnapshotDiffItem {
+  ticker: string;
+  name: string;
+  layer: Layer;
+  sharesBefore: number;
+  sharesAfter: number;
+  sharesDelta: number;
+  valueBefore: number;
+  valueAfter: number;
+  valueDelta: number;
+  weightBefore: number;
+  weightAfter: number;
+  weightDelta: number;
+}
+
+export interface SnapshotDiffResult {
+  totalBefore: number;
+  totalAfter: number;
+  totalDelta: number;
+  totalDeltaPercent: number;
+  layerDiffs: Record<Layer, { before: number; after: number; delta: number }>;
+  items: SnapshotDiffItem[];
+}
+
 export interface AggregatedHolding {
   ticker: string;
   name: string;

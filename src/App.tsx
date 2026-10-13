@@ -19,7 +19,6 @@ import { clearSnapshot, loadSnapshot, saveSnapshot } from './lib/storage';
 import { ProcessingScreen } from './components/ProcessingScreen';
 import { FinanceReportScreen } from './components/FinanceReportScreen';
 import { ReviewScreen } from './components/ReviewScreen';
-import { LifeOsNav } from './components/LifeOsNav';
 import { SuperinvestorDetailPage } from './components/SuperinvestorsScreen';
 import type {
   AppStep,
@@ -30,6 +29,7 @@ import type {
   PortfolioSnapshot,
   ProcessingStatus,
   QuoteResponse,
+  ReviewSnapshot,
 } from './types';
 
 const INITIAL_STATUS: ProcessingStatus = {
@@ -79,7 +79,7 @@ function App() {
     localStorage.setItem(LOCALE_STORAGE_KEY, locale);
     document.documentElement.lang =
       locale === 'zh' ? 'zh-CN' : locale === 'ja' ? 'ja' : 'en';
-    document.title = 'LifeOS Portfolio | Kong Ming';
+    document.title = 'MoneyOS Portfolio';
   }, [locale]);
 
   const persist = useCallback(
@@ -447,6 +447,18 @@ function App() {
     setStep('report');
   }, []);
 
+  const handleRestoreSnapshot = useCallback(
+    async (snapshot: ReviewSnapshot) => {
+      setHoldings(snapshot.holdings);
+      setBaseCurrency(snapshot.baseCurrency);
+      await persist(
+        snapshot.holdings,
+        snapshot.baseCurrency,
+      );
+    },
+    [persist],
+  );
+
   const appContent = useMemo(() => {
     if (step === 'processing') {
       return (
@@ -486,6 +498,7 @@ function App() {
         onManualImport={handleManualImport}
         onSample={handleSample}
         onResume={resumeSaved}
+        onRestoreSnapshot={handleRestoreSnapshot}
       />
     );
   }, [
@@ -497,6 +510,7 @@ function App() {
     handleFiles,
     handleJsonImport,
     handleManualImport,
+    handleRestoreSnapshot,
     handleSample,
     hasSavedPortfolio,
     holdings,

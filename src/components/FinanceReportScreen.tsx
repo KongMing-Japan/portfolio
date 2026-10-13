@@ -11,10 +11,12 @@ import {
   ClipboardList,
   Download,
   FileSpreadsheet,
+  History,
   Layers3,
   PieChart,
   Plus,
   RefreshCcw,
+  Scale,
   Search,
   ShieldCheck,
   Trash2,
@@ -28,9 +30,13 @@ import {
   formatMoney,
   formatPercent,
   LAYER_META,
+  POPULAR_BROKERS,
+  suggestCurrencyFromTicker,
 } from '../lib/portfolio';
-import { LifeOsNextSteps } from './LifeOsNextSteps';
 import { SuperinvestorsScreen } from './SuperinvestorsScreen';
+import { PortfolioPanorama } from './PortfolioPanorama';
+import { RebalanceCockpitModal } from './RebalanceCockpitModal';
+import { ReviewTimelineModal } from './ReviewTimelineModal';
 import type {
   AggregatedHolding,
   BaseCurrency,
@@ -39,6 +45,7 @@ import type {
   Locale,
   ManualHoldingInput,
   PortfolioSnapshot,
+  ReviewSnapshot,
 } from '../types';
 
 interface FinanceReportScreenProps {
@@ -58,6 +65,7 @@ interface FinanceReportScreenProps {
   onManualImport: (text: string) => Promise<void>;
   onSample: () => void;
   onResume: () => void;
+  onRestoreSnapshot?: (snapshot: ReviewSnapshot) => void;
 }
 
 type ExposureMode = 'currency' | 'theme' | 'broker';
@@ -401,11 +409,14 @@ export function FinanceReportScreen({
   onManualImport,
   onSample,
   onResume,
+  onRestoreSnapshot,
 }: FinanceReportScreenProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const jsonInputRef = useRef<HTMLInputElement>(null);
   const [exposureMode, setExposureMode] = useState<ExposureMode>('currency');
   const [expandedTicker, setExpandedTicker] = useState<string | null>(null);
+  const [rebalanceOpen, setRebalanceOpen] = useState(false);
+  const [timelineOpen, setTimelineOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
@@ -590,7 +601,7 @@ export function FinanceReportScreen({
             openWorkspace('portfolio');
           }}
         >
-          LifeOS Portfolio
+          MoneyOS Portfolio
         </button>
         <button className="gf-search" onClick={() => setAddOpen(true)}>
           <Search size={18} />
@@ -636,10 +647,55 @@ export function FinanceReportScreen({
                 <h1>{t.portfolio}</h1>
                 <p>{t.updated} {quoteUpdatedAt ? formatDateTime(quoteUpdatedAt) : t.noUpdate}</p>
               </div>
-              <button className="gf-primary-action" onClick={() => setAddOpen(true)}>
-                <Plus size={17} />
-                {t.addStock}
-              </button>
+              <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
+                <button
+                  className="gf-primary-action"
+                  style={{
+                    background: '#1a73e8',
+                    borderColor: '#1a73e8',
+                    color: '#ffffff',
+                  }}
+                  onClick={() => setTimelineOpen(true)}
+                  title={
+                    locale === 'zh'
+                      ? '低频季度/月度审视快照与历史对照'
+                      : locale === 'ja'
+                      ? '定期レビューとスナップショット履歴'
+                      : 'Review Timeline & Snapshots'
+                  }
+                >
+                  <History size={16} />
+                  <span>
+                    {locale === 'zh'
+                      ? '周期审视时间轴'
+                      : locale === 'ja'
+                      ? 'レビュー記録'
+                      : 'Review Timeline'}
+                  </span>
+                </button>
+                <button
+                  className="gf-primary-action"
+                  style={{
+                    background: '#137333',
+                    borderColor: '#137333',
+                    color: '#ffffff',
+                  }}
+                  onClick={() => setRebalanceOpen(true)}
+                >
+                  <Scale size={16} />
+                  <span>
+                    {locale === 'zh'
+                      ? '再平衡驾驶舱'
+                      : locale === 'ja'
+                      ? 'リバランス'
+                      : 'Rebalance Cockpit'}
+                  </span>
+                </button>
+                <button className="gf-primary-action" onClick={() => setAddOpen(true)}>
+                  <Plus size={17} />
+                  <span>{t.addStock}</span>
+                </button>
+              </div>
             </div>
             <div className="gf-total-value">{formatMoney(total, baseCurrency)}</div>
             <div className="gf-stat-row">
@@ -670,6 +726,16 @@ export function FinanceReportScreen({
               )}
             </div>
           </section>
+
+          {aggregated.length > 0 && (
+            <PortfolioPanorama
+              holdings={holdings}
+              aggregated={aggregated}
+              totalValue={total}
+              baseCurrency={baseCurrency}
+              locale={locale}
+            />
+          )}
 
           <section className="gf-section" id="holdings">
             <div className="gf-section-header">
@@ -792,6 +858,34 @@ export function FinanceReportScreen({
                   </div>
                 );
               })}
+              <button
+                onClick={() => setRebalanceOpen(true)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  width: '100%',
+                  padding: '7px 12px',
+                  borderRadius: '6px',
+                  border: '1px solid #1a73e8',
+                  background: '#e8f0fe',
+                  color: '#1a73e8',
+                  fontSize: '0.78rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  marginTop: '0.4rem',
+                }}
+              >
+                <Scale size={14} />
+                <span>
+                  {locale === 'zh'
+                    ? '开启季度再平衡试算'
+                    : locale === 'ja'
+                    ? 'リバランスを試算'
+                    : 'Launch Rebalance Cockpit'}
+                </span>
+              </button>
             </div>
           </section>
 
@@ -911,64 +1005,9 @@ export function FinanceReportScreen({
         </div>
       </section>
 
-      {/* ── LifeOS CTA ── */}
-      <section style={{ width: 'min(1100px, calc(100% - 48px))', margin: '2rem auto 0' }}>
-        <div style={{ border: '1px solid #dadce0', borderRadius: '8px', background: '#fff', display: 'grid', gridTemplateColumns: '1fr 1fr', overflow: 'hidden' }}>
-          <div style={{ padding: '1.5rem 2rem', borderRight: '1px solid #e8eaed', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '0.5rem' }}>
-            <span style={{ fontSize: '0.68rem', fontWeight: 600, color: '#1a73e8', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-              {locale === 'zh' ? 'LifeOS 协同' : locale === 'en' ? 'LifeOS Integration' : 'LifeOS 連携'}
-            </span>
-            <h2 style={{ fontSize: '0.95rem', fontWeight: 500, color: '#202124', margin: 0, lineHeight: 1.35 }}>
-              {locale === 'zh' ? '让这份持仓服务于人生目标' : locale === 'en' ? 'Connect this portfolio to your life goals' : '保有資産を人生目標につなぐ'}
-            </h2>
-            <div style={{ marginTop: '0.4rem', display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
-              <span style={{ fontSize: '0.72rem', color: '#5f6368' }}>
-                {locale === 'zh' ? '当前组合' : locale === 'en' ? 'Current portfolio' : '現在のポートフォリオ'}
-              </span>
-              <strong style={{ fontSize: '1.1rem', color: '#202124', fontVariantNumeric: 'tabular-nums' }}>
-                {formatMoney(total, baseCurrency)}
-              </strong>
-            </div>
-          </div>
-          <div style={{ padding: '1rem 1.5rem', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '0.6rem' }}>
-            <a
-              href={`https://planner.kongmingjapan.com/?${new URLSearchParams({ source: 'portfolio', assets: String(Math.round(total)) })}`}
-              style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.6rem 0.8rem', borderRadius: '6px', border: '1px solid #e8eaed', color: '#202124', textDecoration: 'none' }}
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1a73e8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-              <span style={{ flex: 1 }}>
-                <strong style={{ display: 'block', fontSize: '0.82rem' }}>{locale === 'zh' ? '放入 LifeOS Planner' : locale === 'en' ? 'Use in LifeOS Planner' : 'LifeOS Plannerに反映'}</strong>
-                <small style={{ display: 'block', fontSize: '0.7rem', color: '#5f6368', marginTop: '2px' }}>{locale === 'zh' ? '测算住房、教育与退休目标' : locale === 'en' ? 'Test housing, education & retirement plans' : '住宅・教育・退職計画をシミュレーション'}</small>
-              </span>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#80868b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-            </a>
-            <a
-              href={`https://tax.kongmingjapan.com/${locale === 'zh' ? 'zh-CN' : locale}/?${new URLSearchParams({ source: 'portfolio', incomes: 'securities' })}`}
-              style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.6rem 0.8rem', borderRadius: '6px', border: '1px solid #e8eaed', color: '#202124', textDecoration: 'none' }}
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1a73e8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M7 15h0M2 9.5h20"/></svg>
-              <span style={{ flex: 1 }}>
-                <strong style={{ display: 'block', fontSize: '0.82rem' }}>{locale === 'zh' ? '检查 LifeOS Tax 影响' : locale === 'en' ? 'Check LifeOS Tax impact' : 'LifeOS Taxへの影響を確認'}</strong>
-                <small style={{ display: 'block', fontSize: '0.7rem', color: '#5f6368', marginTop: '2px' }}>{locale === 'zh' ? '估算卖出与分红的税后影响' : locale === 'en' ? 'Estimate after-tax outcomes for sales or dividends' : '売却・配当の税引後影響を試算'}</small>
-              </span>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#80868b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-            </a>
-          </div>
-        </div>
-      </section>
-
       <footer className="gf-footer" style={{ width: 'min(1100px, calc(100% - 48px))', margin: '3.5rem auto 0', paddingTop: '1.8rem', paddingBottom: '2.5rem', borderTop: '1px solid #dadce0', textAlign: 'center', fontSize: '0.75rem', color: '#5f6368', opacity: 0.78 }}>
-        <div style={{ marginBottom: '0.5rem' }}>
-          <span>KongMing Network: </span>
-          <a href="https://kongmingjapan.com/" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>Studio</a> ·{' '}
-          <a href="https://radar.kongmingjapan.com/" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>Radar</a> ·{' '}
-          <a href="https://lab.kongmingjapan.com/" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>Lab</a> ·{' '}
-          <a href="https://kids.kongmingjapan.com/" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>Kids</a> ·{' '}
-          <a href="https://tax.kongmingjapan.com/" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>Tax</a> ·{' '}
-          <a href="https://planner.kongmingjapan.com/" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>Planner</a> ·{' '}
-          <a href="https://portfolio.kongmingjapan.com/" style={{ color: 'inherit', fontWeight: 600 }}>Portfolio</a>
-        </div>
-        <p style={{ margin: 0 }}>© 2026 KongMing LLC. All rights reserved.</p>
+        <p style={{ margin: '0 0 0.35rem', fontWeight: 500, color: '#3c4043' }}>MoneyOS Portfolio · 独立多券商资产配置与再平衡系统</p>
+        <p style={{ margin: 0 }}>© 2026 MoneyOS. All holdings stored locally and securely in your browser.</p>
       </footer>
 
       {importOpen ? (
@@ -1084,13 +1123,16 @@ export function FinanceReportScreen({
                 <span>Ticker</span>
                 <input
                   value={draft.ticker}
-                  onChange={(event) =>
+                  onChange={(event) => {
+                    const val = event.target.value;
+                    const autoCurr = suggestCurrencyFromTicker(val, draft.name);
                     setDraft((current) => ({
                       ...current,
-                      ticker: event.target.value,
-                    }))
-                  }
-                  placeholder="AAPL / 7203.T"
+                      ticker: val,
+                      currency: autoCurr,
+                    }));
+                  }}
+                  placeholder="AAPL / 7203.T / 510300"
                   required
                 />
               </label>
@@ -1104,7 +1146,7 @@ export function FinanceReportScreen({
                       name: event.target.value,
                     }))
                   }
-                  placeholder="Apple"
+                  placeholder="Apple / Toyota / 沪深300"
                 />
               </label>
               <label>
@@ -1197,9 +1239,10 @@ export function FinanceReportScreen({
                   ))}
                 </select>
               </label>
-              <label>
+              <label style={{ gridColumn: '1 / -1' }}>
                 <span>{t.broker}</span>
                 <input
+                  list="popular-brokers-list"
                   value={draft.broker}
                   onChange={(event) =>
                     setDraft((current) => ({
@@ -1209,6 +1252,29 @@ export function FinanceReportScreen({
                   }
                   placeholder={t.manual}
                 />
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', marginTop: '6px' }}>
+                  {POPULAR_BROKERS.map((brokerName) => (
+                    <button
+                      key={brokerName}
+                      type="button"
+                      onClick={() =>
+                        setDraft((current) => ({ ...current, broker: brokerName }))
+                      }
+                      style={{
+                        padding: '3px 8px',
+                        fontSize: '11px',
+                        borderRadius: '12px',
+                        border: '1px solid #dadce0',
+                        background: draft.broker === brokerName ? '#e8f0fe' : '#ffffff',
+                        color: draft.broker === brokerName ? '#1a73e8' : '#3c4043',
+                        cursor: 'pointer',
+                        fontWeight: draft.broker === brokerName ? 600 : 400,
+                      }}
+                    >
+                      {brokerName}
+                    </button>
+                  ))}
+                </div>
               </label>
             </div>
             <button className="gf-submit" type="submit">
@@ -1261,6 +1327,32 @@ export function FinanceReportScreen({
           </section>
         </div>
       ) : null}
+
+      <RebalanceCockpitModal
+        isOpen={rebalanceOpen}
+        onClose={() => setRebalanceOpen(false)}
+        holdings={aggregated}
+        totalValue={total}
+        baseCurrency={baseCurrency}
+        locale={locale}
+      />
+
+      <ReviewTimelineModal
+        isOpen={timelineOpen}
+        onClose={() => setTimelineOpen(false)}
+        currentHoldings={holdings}
+        aggregatedHoldings={aggregated}
+        totalValue={total}
+        baseCurrency={baseCurrency}
+        locale={locale}
+        onRestoreSnapshot={onRestoreSnapshot}
+      />
+
+      <datalist id="popular-brokers-list">
+        {POPULAR_BROKERS.map((brokerName) => (
+          <option key={brokerName} value={brokerName} />
+        ))}
+      </datalist>
     </main>
   );
 }
@@ -1360,7 +1452,23 @@ function EditableHoldingRow({
       </td>
       <td>
         <div className="gf-editor-security">
-          <strong>{holding.broker || 'Unknown broker'}</strong>
+          <input
+            list="popular-brokers-list"
+            value={holding.broker || ''}
+            onChange={(event) =>
+              void onUpdate(holding.id, { broker: event.target.value })
+            }
+            placeholder="券商/机构"
+            style={{
+              fontSize: '12px',
+              padding: '4px 6px',
+              borderRadius: '6px',
+              border: '1px solid #dadce0',
+              width: '100%',
+              maxWidth: '130px',
+              background: '#fff',
+            }}
+          />
           <span>{holding.account || holding.sourceType}</span>
         </div>
       </td>

@@ -1,0 +1,483 @@
+import type {
+  AggregatedHolding,
+  DriftStatus,
+  FullRebalanceResult,
+  InflowRebalanceResult,
+  Layer,
+  LayerDriftInfo,
+  LayerTargetConfig,
+  RebalanceSettings,
+  RebalanceTradeItem,
+} from '../types';
+
+export const DEFAULT_TARGET_CONFIG: LayerTargetConfig = {
+  Core: 0.60,
+  Satellite: 0.20,
+  Defensive: 0.15,
+  Cash: 0.05,
+};
+
+export const TARGET_PRESETS: Record<
+  string,
+  {
+    name: string;
+    description: string;
+    targets: LayerTargetConfig;
+  }
+> = {
+  institutional: {
+    name: '机构基准 (60/20/15/5)',
+    description: '标准机构资产配置：60% 核心基石、20% 战术卫星、15% 防守缓冲、5% 流动现金',
+    targets: {
+      Core: 0.6,
+      Satellite: 0.2,
+      Defensive: 0.15,
+      Cash: 0.05,
+    },
+  },
+  dualGrowth: {
+    name: '长期双主线成长 (65/15/15/5)',
+    description: '中美双主线长期配置：更高核心信仰仓位（AI+电动车），适度收紧卫星仓',
+    targets: {
+      Core: 0.65,
+      Satellite: 0.15,
+      Defensive: 0.15,
+      Cash: 0.05,
+    },
+  },
+  conservative: {
+    name: '稳健防守型 (50/15/25/10)',
+    description: '高防守与现金流配置：增加东京地铁、分红指数与防御资产缓冲，保留 10% 现金',
+    targets: {
+      Core: 0.5,
+      Satellite: 0.15,
+      Defensive: 0.25,
+      Cash: 0.1,
+    },
+  },
+};
+
+export const DEFAULT_REBALANCE_SETTINGS: RebalanceSettings = {
+  targets: DEFAULT_TARGET_CONFIG,
+  singleSecurityCap: 0.15, // 15% cap per holding
+  singleThemeCap: 0.35, // 35% cap per theme
+  toleranceBandAbsolute: 0.05, // ±5% absolute drift
+  toleranceBandRelative: 0.2, // ±20% relative drift
+};
+
+const ALL_LAYERS: Layer[] = ['Core', 'Satellite', 'Defensive', 'Cash'];
+
+/**
+ * Calculates drift status and metrics for each layer against target configuration.
+ */
+export function calculateLayerDrift(
+  aggregated: AggregatedHolding[],
+  totalValue: number,
+  targets: LayerTargetConfig = DEFAULT_TARGET_CONFIG,
+  toleranceAbsolute = 0.05,
+  toleranceRelative = 0.2,
+): LayerDriftInfo[] {
+  const layerValues: Record<Layer, number> = {
+    Core: 0,
+    Satellite: 0,
+    Defensive: 0,
+    Cash: 0,
+  };
+
+  for (const item of aggregated) {
+    layerValues[item.layer] = (layerValues[item.layer] ?? 0) + item.marketValueBase;
+  }
+
+  return ALL_LAYERS.map((layer) => {
+    const currentValue = layerValues[layer] ?? 0;
+    const currentWeight = totalValue > 0 ? currentValue / totalValue : 0;
+    const targetWeight = targets[layer] ?? 0;
+    const driftAbsolute = currentWeight - targetWeight;
+    const driftRelative =
+      targetWeight > 0 ? (currentWeight - targetWeight) / targetWeight : 0;
+
+    let status: DriftStatus = 'ok';
+    if (driftAbsolute > toleranceAbsolute || driftRelative > toleranceRelative) {
+      status = 'over';
+    } else if (
+      driftAbsolute < -toleranceAbsolute ||
+      driftRelative < -toleranceRelative
+    ) {
+      status = 'under';
+    }
+
+    const valueDelta = targetWeight * totalValue - currentValue;
+
+    return {
+      layer,
+      currentValue,
+      currentWeight,
+      targetWeight,
+      driftAbsolute,
+      driftRelative,
+      status,
+      valueDelta,
+    };
+  });
+}
+
+/**
+ * Mode A: Inflow Rebalancing (新增注资补仓模式)
+ * Allocates `inflowAmount` strictly via BUYS into underweight layers and assets,
+ * without selling any existing positions. Minimizes portfolio drift with zero tax/sell fees.
+ */
+export function calculateInflowRebalance(
+  aggregated: AggregatedHolding[],
+  inflowAmount: number,
+  targets: LayerTargetConfig = DEFAULT_TARGET_CONFIG,
+  currentTotal: number,
+  singleSecurityCap = 0.15,
+): InflowRebalanceResult {
+  if (inflowAmount <= 0) {
+    const projectedWeights: Record<Layer, number> = {
+      Core: 0,
+      Satellite: 0,
+      Defensive: 0,
+      Cash: 0,
+    };
+    for (const item of aggregated) {
+      projectedWeights[item.layer] =
+        (projectedWeights[item.layer] ?? 0) +
+        (currentTotal > 0 ? item.marketValueBase / currentTotal : 0);
+    }
+    return {
+      inflowAmount: 0,
+      projectedTotal: currentTotal,
+      trades: [],
+      projectedLayerWeights: projectedWeights,
+      unallocatedCash: 0,
+    };
+  }
+
+  const projectedTotal = currentTotal + inflowAmount;
+  const layerDrifts = calculateLayerDrift(aggregated, currentTotal, targets);
+
+  // 1. Calculate how much each layer is underweight relative to the new target total
+  const layerDeficits: Record<Layer, number> = {
+    Core: 0,
+    Satellite: 0,
+    Defensive: 0,
+    Cash: 0,
+  };
+
+  let totalDeficit = 0;
+  for (const layer of ALL_LAYERS) {
+    const targetValue = targets[layer] * projectedTotal;
+    const currentLayerVal =
+      layerDrifts.find((d) => d.layer === layer)?.currentValue ?? 0;
+    const deficit = Math.max(0, targetValue - currentLayerVal);
+    layerDeficits[layer] = deficit;
+    totalDeficit += deficit;
+  }
+
+  // 2. Allocate the inflow across underweight layers
+  const layerAllocations: Record<Layer, number> = {
+    Core: 0,
+    Satellite: 0,
+    Defensive: 0,
+    Cash: 0,
+  };
+
+  let remainingInflow = inflowAmount;
+  if (totalDeficit > 0) {
+    for (const layer of ALL_LAYERS) {
+      const share =
+        totalDeficit >= inflowAmount
+          ? (layerDeficits[layer] / totalDeficit) * inflowAmount
+          : layerDeficits[layer];
+      layerAllocations[layer] = share;
+      remainingInflow -= share;
+    }
+  }
+
+  // If there's surplus inflow left, allocate it to Core first, or Cash
+  if (remainingInflow > 0.01) {
+    layerAllocations.Core += remainingInflow;
+    remainingInflow = 0;
+  }
+
+  // 3. For each layer that receives allocation, distribute to individual holdings
+  const trades: RebalanceTradeItem[] = [];
+  const allocatedHoldingsValue: Record<string, number> = {};
+
+  for (const layer of ALL_LAYERS) {
+    const layerFund = layerAllocations[layer];
+    if (layerFund <= 0) continue;
+
+    const layerItems = aggregated.filter((item) => item.layer === layer);
+    if (!layerItems.length) {
+      // If no holdings in this layer yet (e.g. Cash layer is empty), create cash holding recommendation
+      trades.push({
+        ticker: `Cash_${layer}`,
+        name: `${layer} 预留现金`,
+        layer,
+        broker: 'Default Account',
+        action: 'BUY',
+        currentShares: 0,
+        suggestedShares: 1,
+        currentWeight: 0,
+        projectedWeight: layerFund / projectedTotal,
+        priceInBase: layerFund,
+        amountInBase: layerFund,
+        currency: 'USD',
+        priceInCurrency: layerFund,
+        urgency: 'medium',
+        reason: `${layer} 层资金缺口，建议配置现金或基础资产`,
+      });
+      continue;
+    }
+
+    // Distribute layerFund among existing layer holdings, prioritizing lower weights
+    // and respecting singleSecurityCap
+    const eligibleItems = layerItems.filter((item) => {
+      const currentWeight =
+        projectedTotal > 0 ? item.marketValueBase / projectedTotal : 0;
+      return currentWeight < singleSecurityCap;
+    });
+
+    const targetList = eligibleItems.length > 0 ? eligibleItems : layerItems;
+    const totalCurrentLayerBase = targetList.reduce(
+      (sum, item) => sum + item.marketValueBase,
+      0,
+    );
+
+    for (const item of targetList) {
+      // If equal distribution or proportional to weight inverse
+      const proportion =
+        totalCurrentLayerBase > 0
+          ? (totalCurrentLayerBase - item.marketValueBase + 1) /
+            (targetList.length * totalCurrentLayerBase + 1)
+          : 1 / targetList.length;
+
+      const itemAllocation = layerFund * proportion;
+      const unitPriceInBase =
+        item.quantity > 0 ? item.marketValueBase / item.quantity : itemAllocation;
+
+      let suggestedShares =
+        unitPriceInBase > 0 ? itemAllocation / unitPriceInBase : 0;
+
+      // Round shares intelligently (integer for JP/CN stocks or large unit prices, 2 decimals for US)
+      if (item.currency === 'JPY' || item.ticker.includes('.T')) {
+        suggestedShares = Math.max(1, Math.round(suggestedShares));
+      } else {
+        suggestedShares = Number(suggestedShares.toFixed(2));
+      }
+
+      const actualAmountInBase = suggestedShares * unitPriceInBase;
+      const currentWeight =
+        currentTotal > 0 ? item.marketValueBase / currentTotal : 0;
+      const projectedWeight =
+        (item.marketValueBase + actualAmountInBase) / projectedTotal;
+
+      allocatedHoldingsValue[item.ticker] = actualAmountInBase;
+
+      trades.push({
+        ticker: item.ticker,
+        name: item.name,
+        layer: item.layer,
+        broker: item.accounts[0]?.broker || 'Default',
+        action: 'BUY',
+        currentShares: item.quantity,
+        suggestedShares,
+        currentWeight,
+        projectedWeight,
+        priceInBase: unitPriceInBase,
+        amountInBase: actualAmountInBase,
+        currency: item.currency,
+        priceInCurrency: item.accounts[0]?.marketPrice ?? null,
+        urgency:
+          layerDrifts.find((d) => d.layer === item.layer)?.status === 'under'
+            ? 'high'
+            : 'medium',
+        reason: `${item.layer} 处于低配区间，补仓后将有效拉平偏离走廊`,
+      });
+    }
+  }
+
+  // 4. Calculate projected layer weights
+  const projectedLayerWeights: Record<Layer, number> = {
+    Core: 0,
+    Satellite: 0,
+    Defensive: 0,
+    Cash: 0,
+  };
+
+  for (const layer of ALL_LAYERS) {
+    const curVal = layerDrifts.find((d) => d.layer === layer)?.currentValue ?? 0;
+    const added = layerAllocations[layer] ?? 0;
+    projectedLayerWeights[layer] = (curVal + added) / projectedTotal;
+  }
+
+  return {
+    inflowAmount,
+    projectedTotal,
+    trades: trades.sort((a, b) => b.amountInBase - a.amountInBase),
+    projectedLayerWeights,
+    unallocatedCash: Math.max(0, remainingInflow),
+  };
+}
+
+/**
+ * Mode B: Full Rebalancing (完全再平衡模式)
+ * Computes buys and sells across all holdings to bring the portfolio exactly to target allocation.
+ */
+export function calculateFullRebalance(
+  aggregated: AggregatedHolding[],
+  targets: LayerTargetConfig = DEFAULT_TARGET_CONFIG,
+  currentTotal: number,
+  singleSecurityCap = 0.15,
+): FullRebalanceResult {
+  if (currentTotal <= 0 || !aggregated.length) {
+    return {
+      currentTotal,
+      trades: [],
+      totalSellAmount: 0,
+      totalBuyAmount: 0,
+      turnoverRate: 0,
+      projectedLayerWeights: targets,
+    };
+  }
+
+  const layerDrifts = calculateLayerDrift(aggregated, currentTotal, targets);
+  const trades: RebalanceTradeItem[] = [];
+  let totalSellAmount = 0;
+  let totalBuyAmount = 0;
+
+  // Track layer totals
+  const layerTargetValues: Record<Layer, number> = {
+    Core: targets.Core * currentTotal,
+    Satellite: targets.Satellite * currentTotal,
+    Defensive: targets.Defensive * currentTotal,
+    Cash: targets.Cash * currentTotal,
+  };
+
+  for (const layer of ALL_LAYERS) {
+    const layerItems = aggregated.filter((item) => item.layer === layer);
+    const layerDrift = layerDrifts.find((d) => d.layer === layer);
+    const layerTotalVal = layerDrift?.currentValue ?? 0;
+    const targetLayerVal = layerTargetValues[layer];
+
+    if (!layerItems.length) continue;
+
+    for (const item of layerItems) {
+      const currentWeight = item.marketValueBase / currentTotal;
+      const unitPriceInBase =
+        item.quantity > 0 ? item.marketValueBase / item.quantity : 1;
+
+      // 1. Check if single holding exceeds hard risk cap (e.g. 15%)
+      let targetItemVal =
+        layerTotalVal > 0
+          ? (item.marketValueBase / layerTotalVal) * targetLayerVal
+          : targetLayerVal / layerItems.length;
+
+      // Enforce single security cap
+      const maxAllowedVal = currentTotal * singleSecurityCap;
+      if (targetItemVal > maxAllowedVal) {
+        targetItemVal = maxAllowedVal;
+      }
+
+      const diffVal = targetItemVal - item.marketValueBase;
+      const projectedWeight = targetItemVal / currentTotal;
+
+      if (Math.abs(diffVal) < 10) {
+        // Negligible difference
+        continue;
+      }
+
+      if (diffVal < 0) {
+        // Need to SELL
+        const sellAmount = Math.abs(diffVal);
+        let sharesToSell =
+          unitPriceInBase > 0 ? sellAmount / unitPriceInBase : 0;
+        if (item.currency === 'JPY' || item.ticker.includes('.T')) {
+          sharesToSell = Math.min(item.quantity, Math.round(sharesToSell));
+        } else {
+          sharesToSell = Math.min(item.quantity, Number(sharesToSell.toFixed(2)));
+        }
+
+        if (sharesToSell > 0) {
+          const actualSellAmount = sharesToSell * unitPriceInBase;
+          totalSellAmount += actualSellAmount;
+          trades.push({
+            ticker: item.ticker,
+            name: item.name,
+            layer: item.layer,
+            broker: item.accounts[0]?.broker || 'Default',
+            action: 'SELL',
+            currentShares: item.quantity,
+            suggestedShares: sharesToSell,
+            currentWeight,
+            projectedWeight,
+            priceInBase: unitPriceInBase,
+            amountInBase: actualSellAmount,
+            currency: item.currency,
+            priceInCurrency: item.accounts[0]?.marketPrice ?? null,
+            urgency:
+              currentWeight > singleSecurityCap || layerDrift?.status === 'over'
+                ? 'high'
+                : 'medium',
+            reason:
+              currentWeight > singleSecurityCap
+                ? `单一持仓突破机构风控上限 (${(singleSecurityCap * 100).toFixed(0)}%)，需强制锁利减配`
+                : `${item.layer} 整体处于超配状态，按规则止盈收缩`,
+          });
+        }
+      } else {
+        // Need to BUY
+        const buyAmount = diffVal;
+        let sharesToBuy =
+          unitPriceInBase > 0 ? buyAmount / unitPriceInBase : 0;
+        if (item.currency === 'JPY' || item.ticker.includes('.T')) {
+          sharesToBuy = Math.max(1, Math.round(sharesToBuy));
+        } else {
+          sharesToBuy = Number(sharesToBuy.toFixed(2));
+        }
+
+        if (sharesToBuy > 0) {
+          const actualBuyAmount = sharesToBuy * unitPriceInBase;
+          totalBuyAmount += actualBuyAmount;
+          trades.push({
+            ticker: item.ticker,
+            name: item.name,
+            layer: item.layer,
+            broker: item.accounts[0]?.broker || 'Default',
+            action: 'BUY',
+            currentShares: item.quantity,
+            suggestedShares: sharesToBuy,
+            currentWeight,
+            projectedWeight,
+            priceInBase: unitPriceInBase,
+            amountInBase: actualBuyAmount,
+            currency: item.currency,
+            priceInCurrency: item.accounts[0]?.marketPrice ?? null,
+            urgency: layerDrift?.status === 'under' ? 'high' : 'medium',
+            reason: `${item.layer} 低于目标配置走廊，加仓至基准权重`,
+          });
+        }
+      }
+    }
+  }
+
+  const turnoverRate =
+    currentTotal > 0
+      ? (totalSellAmount + totalBuyAmount) / 2 / currentTotal
+      : 0;
+
+  return {
+    currentTotal,
+    trades: trades.sort((a, b) => {
+      // Prioritize sells before buys for execution clarity
+      if (a.action !== b.action) return a.action === 'SELL' ? -1 : 1;
+      return b.amountInBase - a.amountInBase;
+    }),
+    totalSellAmount,
+    totalBuyAmount,
+    turnoverRate,
+    projectedLayerWeights: targets,
+  };
+}

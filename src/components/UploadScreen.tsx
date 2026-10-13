@@ -51,10 +51,10 @@ export function UploadScreen({
   return (
     <main className="upload-page">
       <section className="upload-intro">
-        <a className="lifeos-eyebrow" href="https://kongmingjapan.com/" target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.32rem', marginBottom: '0.5rem', color: '#1a73e8', fontSize: '0.72rem', fontWeight: 700, textDecoration: 'none', opacity: 0.8 }}>
+        <div className="lifeos-eyebrow" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.32rem', marginBottom: '0.5rem', color: '#1a73e8', fontSize: '0.72rem', fontWeight: 700, textDecoration: 'none', opacity: 0.8 }}>
           <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/></svg>
-          <span>LifeOS</span>
-        </a>
+          <span>MoneyOS</span>
+        </div>
         <div className="intro-mark">Portfolio Studio</div>
         <h1>把分散的持仓，变成一张清楚的组合报告。</h1>
         <p>
@@ -211,17 +211,8 @@ export function UploadScreen({
       </div>
 
       <footer className="upload-footer" style={{ marginTop: '3rem', paddingTop: '1.5rem', borderTop: '1px solid rgba(0,0,0,0.08)', width: '100%', textAlign: 'center', fontSize: '0.78rem', color: '#64748b' }}>
-        <div style={{ marginBottom: '0.5rem' }}>
-          <span>KongMing Network: </span>
-          <a href="https://kongmingjapan.com/" target="_blank" rel="noreferrer" style={{ color: '#0f172a', textDecoration: 'none' }}>KongMing</a> ·{' '}
-          <a href="https://radar.kongmingjapan.com/" target="_blank" rel="noreferrer" style={{ color: '#0f172a', textDecoration: 'none' }}>Radar</a> ·{' '}
-          <a href="https://lab.kongmingjapan.com/" target="_blank" rel="noreferrer" style={{ color: '#0f172a', textDecoration: 'none' }}>Lab</a> ·{' '}
-          <a href="https://kids.kongmingjapan.com/" target="_blank" rel="noreferrer" style={{ color: '#0f172a', textDecoration: 'none' }}>Kids</a> ·{' '}
-          <a href="https://tax.kongmingjapan.com/" target="_blank" rel="noreferrer" style={{ color: '#0f172a', textDecoration: 'none' }}>Tax</a> ·{' '}
-          <a href="https://planner.kongmingjapan.com/" target="_blank" rel="noreferrer" style={{ color: '#0f172a', textDecoration: 'none' }}>Planner</a> ·{' '}
-          <a href="https://portfolio.kongmingjapan.com/" style={{ color: '#0f172a', fontWeight: 600 }}>Portfolio</a>
-        </div>
-        <p style={{ margin: 0 }}>© 2026 KongMing LLC. All rights reserved.</p>
+        <p style={{ margin: '0 0 0.35rem', fontWeight: 500, color: '#334155' }}>MoneyOS Portfolio · 独立多券商资产配置与再平衡系统</p>
+        <p style={{ margin: 0 }}>© 2026 MoneyOS. All holdings stored locally in your browser.</p>
       </footer>
     </main>
   );

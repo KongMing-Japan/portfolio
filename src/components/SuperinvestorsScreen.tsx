@@ -531,17 +531,8 @@ export function SuperinvestorDetailPage({ investorId }: { investorId: string }) 
     <main className="gf-page">
       <InvestorDetail investor={investor} caveat={data.caveat} onBack={goBack} />
       <footer className="gf-footer" style={{ width: 'min(1100px, calc(100% - 48px))', margin: '3.5rem auto 0', paddingTop: '1.8rem', paddingBottom: '2.5rem', borderTop: '1px solid #dadce0', textAlign: 'center', fontSize: '0.75rem', color: '#5f6368', opacity: 0.78 }}>
-        <div style={{ marginBottom: '0.5rem' }}>
-          <span>KongMing Network: </span>
-          <a href="https://kongmingjapan.com/" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>Studio</a> ·{' '}
-          <a href="https://radar.kongmingjapan.com/" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>Radar</a> ·{' '}
-          <a href="https://lab.kongmingjapan.com/" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>Lab</a> ·{' '}
-          <a href="https://kids.kongmingjapan.com/" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>Kids</a> ·{' '}
-          <a href="https://tax.kongmingjapan.com/" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>Tax</a> ·{' '}
-          <a href="https://planner.kongmingjapan.com/" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>Planner</a> ·{' '}
-          <a href="https://portfolio.kongmingjapan.com/" style={{ color: 'inherit', fontWeight: 600 }}>Portfolio</a>
-        </div>
-        <p style={{ margin: 0 }}>© 2026 KongMing LLC. All rights reserved.</p>
+        <p style={{ margin: '0 0 0.35rem', fontWeight: 500, color: '#3c4043' }}>MoneyOS Portfolio · 独立多券商资产配置与再平衡系统</p>
+        <p style={{ margin: 0 }}>© 2026 MoneyOS. All rights reserved.</p>
       </footer>
     </main>
   );

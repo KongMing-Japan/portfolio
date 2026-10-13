@@ -492,15 +492,8 @@ export function ReportScreen({
               清除全部本地数据
             </button>
           </div>
-          <div className="portfolio-network-links" style={{ fontSize: '0.72rem', opacity: 0.6 }}>
-            <span>KongMing Network: </span>
-            <a href="https://kongmingjapan.com/" target="_blank" rel="noreferrer">KongMing</a> ·{' '}
-            <a href="https://radar.kongmingjapan.com/" target="_blank" rel="noreferrer">Radar</a> ·{' '}
-            <a href="https://lab.kongmingjapan.com/" target="_blank" rel="noreferrer">Lab</a> ·{' '}
-            <a href="https://kids.kongmingjapan.com/" target="_blank" rel="noreferrer">Kids</a> ·{' '}
-            <a href="https://tax.kongmingjapan.com/" target="_blank" rel="noreferrer">Tax</a> ·{' '}
-            <a href="https://planner.kongmingjapan.com/" target="_blank" rel="noreferrer">Planner</a> ·{' '}
-            <a href="https://portfolio.kongmingjapan.com/">Portfolio</a>
+          <div className="portfolio-network-links" style={{ fontSize: '0.72rem', opacity: 0.7 }}>
+            <span>MoneyOS Portfolio · 独立资产配置与再平衡系统</span>
           </div>
         </footer>
       </div>
