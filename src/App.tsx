@@ -24,7 +24,6 @@ import type {
   AppStep,
   BaseCurrency,
   Holding,
-  Locale,
   ManualHoldingInput,
   PortfolioSnapshot,
   ProcessingStatus,
@@ -36,18 +35,13 @@ const INITIAL_STATUS: ProcessingStatus = {
   parsing: 'pending',
   matching: 'pending',
   quotes: 'pending',
-  message: 'Ready to process your files',
+  message: '准备解析持仓数据',
 };
-
-const LOCALE_STORAGE_KEY = 'portfolio-locale-v2';
 
 function App() {
   const [step, setStep] = useState<AppStep>('report');
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [baseCurrency, setBaseCurrency] = useState<BaseCurrency>('JPY');
-  const [locale, setLocale] = useState<Locale>(
-    () => (localStorage.getItem(LOCALE_STORAGE_KEY) as Locale | null) ?? 'en',
-  );
   const [fx, setFx] = useState<Record<string, number>>({ JPY: 1 });
   const [quoteUpdatedAt, setQuoteUpdatedAt] = useState<string | null>(null);
   const [processing, setProcessing] =
@@ -76,11 +70,9 @@ function App() {
   }, [step]);
 
   useEffect(() => {
-    localStorage.setItem(LOCALE_STORAGE_KEY, locale);
-    document.documentElement.lang =
-      locale === 'zh' ? 'zh-CN' : locale === 'ja' ? 'ja' : 'en';
-    document.title = 'MoneyOS Portfolio';
-  }, [locale]);
+    document.documentElement.lang = 'zh-CN';
+    document.title = 'MoneyOS 投资组合';
+  }, []);
 
   const persist = useCallback(
     async (
@@ -113,7 +105,7 @@ function App() {
         parsing: 'done',
         matching: 'done',
         quotes: 'active',
-        message: 'Fetching market prices and exchange rates',
+        message: '正在获取最新行情价格与汇率',
       });
 
       let quoteResponse: QuoteResponse;
@@ -136,7 +128,7 @@ function App() {
         parsing: 'done',
         matching: 'done',
         quotes: 'done',
-        message: 'Your portfolio is ready',
+        message: '投资组合已就绪',
       });
       await persist(
         enriched,
@@ -157,7 +149,7 @@ function App() {
         parsing: 'active',
         matching: 'pending',
         quotes: 'pending',
-        message: 'Reading uploaded files',
+        message: '正在读取上传文件与截图',
       });
       try {
         const csvFiles = files.filter((file) => /\.csv$/i.test(file.name));
@@ -172,12 +164,12 @@ function App() {
           parsing: 'done',
           matching: 'active',
           quotes: 'pending',
-          message: 'Matching symbols, currencies, and portfolio layers',
+          message: '正在规范化代码格式、币种与资产分层',
         });
         await finishImport([...csvGroups.flat(), ...imageGroups.flat()]);
       } catch (caught) {
         const message =
-          caught instanceof Error ? caught.message : 'File processing failed.';
+          caught instanceof Error ? caught.message : '文件解析处理失败。';
         setError(message);
         setProcessing((current) => ({
           ...current,
@@ -198,22 +190,22 @@ function App() {
       parsing: 'active',
       matching: 'pending',
       quotes: 'pending',
-      message: 'Loading the sample portfolio',
+      message: '正在加载伯克希尔示例投资组合',
     });
     try {
       const response = await fetch('/sample-positions.csv');
-      if (!response.ok) throw new Error('The sample portfolio is unavailable.');
+      if (!response.ok) throw new Error('示例投资组合文件加载失败。');
       const parsed = parseHoldingsCsv(await response.text(), 'Sample portfolio');
       setProcessing({
         parsing: 'done',
         matching: 'active',
         quotes: 'pending',
-        message: 'Matching symbols, currencies, and portfolio layers',
+        message: '正在规范化示例代码、币种与资产分层',
       });
       await finishImport(parsed);
     } catch (caught) {
       const message =
-        caught instanceof Error ? caught.message : 'The sample portfolio could not be loaded.';
+        caught instanceof Error ? caught.message : '示例投资组合加载失败。';
       setError(message);
       setProcessing({
         parsing: 'error',
@@ -486,9 +478,7 @@ function App() {
         baseCurrency={baseCurrency}
         fx={fx}
         quoteUpdatedAt={quoteUpdatedAt}
-        locale={locale}
         hasSavedPortfolio={hasSavedPortfolio}
-        onLocaleChange={setLocale}
         onClear={clearAll}
         onAddHolding={addManualHolding}
         onUpdateHolding={updateReportHolding}
@@ -515,7 +505,6 @@ function App() {
     hasSavedPortfolio,
     holdings,
     addManualHolding,
-    locale,
     processing,
     quoteUpdatedAt,
     removeHolding,

@@ -42,7 +42,6 @@ import type {
   BaseCurrency,
   Holding,
   Layer,
-  Locale,
   ManualHoldingInput,
   PortfolioSnapshot,
   ReviewSnapshot,
@@ -53,9 +52,7 @@ interface FinanceReportScreenProps {
   baseCurrency: BaseCurrency;
   fx: Record<string, number>;
   quoteUpdatedAt: string | null;
-  locale: Locale;
   hasSavedPortfolio: boolean;
-  onLocaleChange: (locale: Locale) => void;
   onClear: () => void;
   onAddHolding: (input: ManualHoldingInput) => Promise<void>;
   onUpdateHolding: (id: string, patch: Partial<Holding>) => Promise<void>;
@@ -76,211 +73,73 @@ const LAYERS = Object.keys(LAYER_META) as Layer[];
 const CURRENCIES = ['USD', 'JPY', 'CNY', 'HKD'] as const;
 const ACCEPTED = '.csv,.png,.jpg,.jpeg,.webp';
 
-const COPY: Record<Locale, Record<string, string>> = {
-  zh: {
-    search: '搜索或添加股票',
-    lists: '列表',
-    portfolio: 'Portfolio',
-    superinvestors: '投资大师',
-    holdings: '持仓',
-    allocation: '结构',
-    exposure: '暴露',
-    allHoldings: '全部持仓',
-    layers: '分层',
-    topSymbols: '主要证券',
-    updated: '行情更新',
-    noUpdate: '未更新',
-    addStock: '添加股票',
-    securities: '只证券',
-    securitySingular: '只证券',
-    brokers: '个券商',
-    brokerSingular: '个券商',
-    base: '基准',
-    yourPortfolio: '我的持仓',
-    manageAccounts: '管理账户明细',
-    symbol: 'Symbol',
-    value: 'Value',
-    weight: 'Weight',
-    layer: 'Layer',
-    qty: 'Qty',
-    price: 'Price',
-    topHoldings: '主要持仓',
-    managePortfolio: '管理组合',
-    importPositions: '上传 CSV / 截图 / 粘贴',
-    editCost: '修改数量和平均成本',
-    structureHealth: '持仓集中度与结构健康',
-    largest: '最大持仓',
-    top5: 'Top 5',
-    concentration: '集中度分数 (HHI)',
-    healthNote: '仅用于组合结构体检，不提供买卖建议。',
-    shortcuts: '快捷入口',
-    methodology: '查看组合方法论',
-    clear: '清除全部本地数据',
-    importTitle: '导入持仓',
-    uploadFile: '上传文件',
-    paste: '手写 / 粘贴',
-    drop: '拖入 CSV 或截图',
-    choose: '选择文件',
-    sample: '使用 Berkshire 示例',
-    json: '导入 Portfolio JSON',
-    resume: '打开已保存组合',
-    pasteHint: '支持 CSV 表头，也支持一行一个简写：Ticker, 名称, 币种, 数量, 价格, 券商, 分层, 主题',
-    generate: '生成 dashboard',
-    cancel: '取消',
-    done: '完成',
-    accountDetails: '账户明细',
-    editDetails: '修改账户级数量、平均成本和当前价。',
-    emptyTitle: '还没有持仓',
-    emptyBody: '从右侧导入 CSV、截图或粘贴数据，dashboard 会直接在这里生成。',
-    other: '其他',
-    exportJson: '导出 Excel',
-    exposureDimension: '风险暴露维度',
-    delete: '删除',
-    name: '名称',
-    quantity: '数量',
-    averageCost: '平均成本',
-    currentPrice: '当前价',
-    currency: '币种',
-    broker: '券商',
-    manual: '手动添加',
-    defaultAverageCost: '默认同平均成本',
-  },
-  ja: {
-    search: '銘柄を検索または追加',
-    lists: 'リスト',
-    portfolio: 'ポートフォリオ',
-    superinvestors: '著名投資家',
-    holdings: '保有銘柄',
-    allocation: '配分',
-    exposure: 'エクスポージャー',
-    allHoldings: 'すべての保有',
-    layers: 'レイヤー',
-    topSymbols: '主要銘柄',
-    updated: '更新',
-    noUpdate: '未更新',
-    addStock: '銘柄を追加',
-    securities: '銘柄',
-    securitySingular: '銘柄',
-    brokers: '証券会社',
-    brokerSingular: '証券会社',
-    base: '基準',
-    yourPortfolio: 'ポートフォリオ',
-    manageAccounts: '口座明細を編集',
-    symbol: '銘柄',
-    value: '評価額',
-    weight: '比率',
-    layer: '分類',
-    qty: '数量',
-    price: '価格',
-    topHoldings: '上位保有',
-    managePortfolio: 'ポートフォリオ管理',
-    importPositions: 'CSV / 画像 / 貼り付け',
-    editCost: '数量と平均単価を編集',
-    structureHealth: '集中度・ポートフォリオ診断',
-    largest: '最大保有',
-    top5: '上位5銘柄',
-    concentration: '集中度スコア (HHI)',
-    healthNote: '構造確認のみで、売買助言ではありません。',
-    shortcuts: 'ショートカット',
-    methodology: '方法論を見る',
-    clear: 'ローカルデータを削除',
-    importTitle: '保有データを取り込む',
-    uploadFile: 'ファイル',
-    paste: '入力 / 貼り付け',
-    drop: 'CSVまたは画像をドロップ',
-    choose: 'ファイルを選択',
-    sample: 'Berkshireサンプル',
-    json: 'Portfolio JSONを取り込む',
-    resume: '保存済みを開く',
-    pasteHint: 'CSVヘッダー、または1行形式：Ticker, 名前, 通貨, 数量, 価格, 証券会社, 分類, テーマ',
-    generate: 'Dashboardを生成',
-    cancel: 'キャンセル',
-    done: '完了',
-    accountDetails: '口座明細',
-    editDetails: '口座ごとの数量、平均単価、現在価格を編集します。',
-    emptyTitle: '保有データがありません',
-    emptyBody: '右側からCSV、画像、貼り付けで取り込むと、ここにdashboardが生成されます。',
-    other: 'その他',
-    exportJson: 'Excel出力',
-    exposureDimension: 'エクスポージャー分類',
-    delete: '削除',
-    name: '名称',
-    quantity: '数量',
-    averageCost: '平均単価',
-    currentPrice: '現在価格',
-    currency: '通貨',
-    broker: '証券会社',
-    manual: '手動追加',
-    defaultAverageCost: '平均単価と同じ',
-  },
-  en: {
-    search: 'Search or add a security',
-    lists: 'Lists',
-    portfolio: 'Portfolio',
-    superinvestors: 'Superinvestors',
-    holdings: 'Holdings',
-    allocation: 'Allocation',
-    exposure: 'Exposure',
-    allHoldings: 'All holdings',
-    layers: 'Layers',
-    topSymbols: 'Top symbols',
-    updated: 'Market data',
-    noUpdate: 'Not updated',
-    addStock: 'Add stock',
-    securities: 'securities',
-    securitySingular: 'security',
-    brokers: 'brokers',
-    brokerSingular: 'broker',
-    base: 'Base',
-    yourPortfolio: 'Your portfolio',
-    manageAccounts: 'Edit positions',
-    symbol: 'Symbol',
-    value: 'Value',
-    weight: 'Weight',
-    layer: 'Layer',
-    qty: 'Qty',
-    price: 'Price',
-    topHoldings: 'Top holdings',
-    managePortfolio: 'Manage portfolio',
-    importPositions: 'Import positions',
-    editCost: 'Edit shares and cost basis',
-    structureHealth: 'Portfolio Health & Concentration',
-    largest: 'Largest holding',
-    top5: 'Top 5',
-    concentration: 'Concentration (HHI)',
-    healthNote: 'For portfolio structure analysis only. Not investment advice.',
-    shortcuts: 'Shortcuts',
-    methodology: 'View methodology',
-    clear: 'Clear all local data',
-    importTitle: 'Import positions',
-    uploadFile: 'Upload files',
-    paste: 'Type / paste',
-    drop: 'Drop CSV files or screenshots here',
-    choose: 'Choose files',
-    sample: 'Use Berkshire sample',
-    json: 'Import Portfolio JSON',
-    resume: 'Open saved portfolio',
-    pasteHint: 'CSV headers supported, or one line each: Ticker, Name, Currency, Quantity, Price, Broker, Layer, Theme',
-    generate: 'Generate dashboard',
-    cancel: 'Cancel',
-    done: 'Done',
-    accountDetails: 'Account details',
-    editDetails: 'Edit account-level quantity, average cost, and current price.',
-    emptyTitle: 'No holdings yet',
-    emptyBody: 'Import a CSV, screenshot, or pasted list to build your portfolio dashboard.',
-    other: 'Other',
-    exportJson: 'Export to Excel',
-    exposureDimension: 'Exposure dimension',
-    delete: 'Delete',
-    name: 'Name',
-    quantity: 'Quantity',
-    averageCost: 'Average cost',
-    currentPrice: 'Current price',
-    currency: 'Currency',
-    broker: 'Broker',
-    manual: 'Manual',
-    defaultAverageCost: 'Defaults to average cost',
-  },
+const COPY = {
+  search: '搜索或添加标的',
+  lists: '列表',
+  portfolio: '投资组合',
+  superinvestors: '投资大师',
+  holdings: '持仓列表',
+  allocation: '资产分层',
+  exposure: '风险暴露',
+  allHoldings: '全部持仓',
+  layers: '四层结构',
+  topSymbols: '主要重仓',
+  updated: '行情更新于',
+  noUpdate: '未更新',
+  addStock: '添加标的',
+  securities: '只标的',
+  securitySingular: '只标的',
+  brokers: '个券商账户',
+  brokerSingular: '个券商账户',
+  base: '基准币种',
+  yourPortfolio: '我的投资组合',
+  manageAccounts: '管理账户明细',
+  symbol: '代码 / 标的',
+  value: '评估市值',
+  weight: '权重占比',
+  layer: '资产分层',
+  qty: '持仓数量',
+  price: '当前单价',
+  topHoldings: '主要持仓',
+  managePortfolio: '管理投资组合',
+  importPositions: '上传 CSV / 截图 / 粘贴',
+  editCost: '修改数量与平均成本',
+  structureHealth: '组合健康度与集中度',
+  largest: '第一大重仓',
+  top5: '前五大重仓',
+  concentration: '集中度指数 (HHI)',
+  healthNote: '仅用于资产结构偏离度与风险敞口分析，不构成投资买卖建议。',
+  shortcuts: '快捷入口',
+  methodology: '查看组合方法论',
+  clear: '清除全部本地数据',
+  importTitle: '导入持仓数据',
+  uploadFile: '上传文件',
+  paste: '手动输入 / 粘贴',
+  drop: '拖拽 CSV 或券商截图至此处',
+  choose: '选择文件',
+  sample: '加载伯克希尔示例',
+  json: '导入 JSON 备份',
+  resume: '打开上次保存的组合',
+  pasteHint: '支持标准 CSV 表头，或每行格式：代码, 名称, 币种, 数量, 成本价, 券商, 分层, 主题',
+  generate: '生成投资组合看板',
+  cancel: '取消',
+  done: '完成',
+  accountDetails: '账户持仓明细',
+  editDetails: '直接编辑各账户的持仓数量、成本均价与当前单价。',
+  emptyTitle: '暂无持仓数据',
+  emptyBody: '导入 CSV、券商截图或粘贴持仓列表，即可建立你的专属资产管理看板。',
+  other: '其他标的',
+  exportJson: '导出 Excel (CSV)',
+  exposureDimension: '暴露透视维度',
+  delete: '删除',
+  name: '标的名称',
+  quantity: '持仓数量',
+  averageCost: '平均成本',
+  currentPrice: '当前价格',
+  currency: '币种',
+  broker: '券商 / 机构',
+  manual: '手动添加',
+  defaultAverageCost: '默认与成本价一致',
 };
 
 const EMPTY_DRAFT: ManualHoldingInput = {
@@ -299,16 +158,22 @@ const EMPTY_DRAFT: ManualHoldingInput = {
 function exportExcel(
   holdings: Holding[],
   baseCurrency: BaseCurrency,
-  locale: Locale,
 ) {
   const total = holdings.reduce((acc, h) => acc + (h.valueInBase ?? 0), 0);
 
-  const headers =
-    locale === 'zh'
-      ? ['代码 (Ticker)', '名称', '券商/账户', '资产分层', '主题板块', '持仓数量', '成本均价', '当前价格', '原币种', `评估价值 (${baseCurrency})`, '持仓占比 (%)']
-      : locale === 'ja'
-      ? ['ティッカー', '銘柄名', '証券会社', 'レイヤー', 'テーマ', '保有数量', '取得単価', '現在株価', '通貨', `評価額 (${baseCurrency})`, '構成比 (%)']
-      : ['Ticker', 'Name', 'Broker', 'Layer', 'Theme', 'Shares', 'Avg Cost', 'Current Price', 'Currency', `Market Value (${baseCurrency})`, 'Weight (%)'];
+  const headers = [
+    '代码 (Ticker)',
+    '标的名称',
+    '券商/账户',
+    '资产分层',
+    '主题板块',
+    '持仓数量',
+    '成本均价',
+    '当前单价',
+    '原币种',
+    `评估市值 (${baseCurrency})`,
+    '持仓占比 (%)',
+  ];
 
   const rows = holdings.map((item) => {
     const val = item.valueInBase ?? 0;
@@ -331,10 +196,12 @@ function exportExcel(
   const csvContent = '\uFEFF' + [headers.join(','), ...rows].join('\n');
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `portfolio-export-${new Date().toISOString().slice(0, 10)}.csv`;
-  link.click();
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `moneyos-portfolio-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
 
@@ -397,9 +264,7 @@ export function FinanceReportScreen({
   baseCurrency,
   fx,
   quoteUpdatedAt,
-  locale,
   hasSavedPortfolio,
-  onLocaleChange,
   onClear,
   onAddHolding,
   onUpdateHolding,
@@ -433,7 +298,7 @@ export function FinanceReportScreen({
     ...EMPTY_DRAFT,
     currency: baseCurrency === 'CNY' ? 'CNY' : 'USD',
   });
-  const t = COPY[locale];
+  const t = COPY;
 
   useEffect(() => {
     const syncHash = () => {
@@ -500,8 +365,8 @@ export function FinanceReportScreen({
     if (topHolding && topHolding.weight > 0.20) {
       list.push({
         type: 'warning',
-        title: locale === 'zh' ? `持仓过重: ${topHolding.ticker || topHolding.name} (${(topHolding.weight * 100).toFixed(1)}%)` : `High Concentration: ${topHolding.ticker || topHolding.name} (${(topHolding.weight * 100).toFixed(1)}%)`,
-        detail: locale === 'zh' ? '单一标的打破机构风控上限 (20%)，建议分批减仓锁定阶段收益。' : 'Single position exceeds institutional risk limit (20%). Consider rebalancing.',
+        title: `持仓过重: ${topHolding.ticker || topHolding.name} (${(topHolding.weight * 100).toFixed(1)}%)`,
+        detail: '单一标的打破机构风控上限 (20%)，建议分批减仓锁定阶段收益。',
       });
     }
 
@@ -510,14 +375,14 @@ export function FinanceReportScreen({
     if (coreWeight < 0.40) {
       list.push({
         type: 'warning',
-        title: locale === 'zh' ? `大盘基石偏低: Core 核心仓 (${(coreWeight * 100).toFixed(1)}%)` : `Core Foundation Low: ${(coreWeight * 100).toFixed(1)}%`,
-        detail: locale === 'zh' ? '机构标准宽基指数（如 S&P 500/VTI）建议占 50%-60%。抗波动能力偏弱。' : 'Institutional baseline recommends 50-60% in broad index ETFs for lower volatility.',
+        title: `大盘基石偏低: Core 核心仓 (${(coreWeight * 100).toFixed(1)}%)`,
+        detail: '机构标准宽基指数（如 S&P 500/VTI）建议占 50%-60%。抗波动能力偏弱。',
       });
     } else {
       list.push({
         type: 'success',
-        title: locale === 'zh' ? `核心资产结构稳健 (Core ${(coreWeight * 100).toFixed(1)}%)` : `Robust Core Allocation (${(coreWeight * 100).toFixed(1)}%)`,
-        detail: locale === 'zh' ? '符合长期机构大盘配比基准，基石仓位充足。' : 'Meets long-term institutional allocation benchmarks.',
+        title: `核心资产结构稳健 (Core ${(coreWeight * 100).toFixed(1)}%)`,
+        detail: '符合长期机构大盘配比基准，基石仓位充足。',
       });
     }
 
@@ -526,13 +391,13 @@ export function FinanceReportScreen({
     if (topTheme && topTheme.label !== '未分类' && topTheme.label !== 'Uncategorized' && topTheme.weight > 0.40) {
       list.push({
         type: 'info',
-        title: locale === 'zh' ? `赛道敞口预警: ${topTheme.label} (${(topTheme.weight * 100).toFixed(1)}%)` : `Theme Exposure: ${topTheme.label} (${(topTheme.weight * 100).toFixed(1)}%)`,
-        detail: locale === 'zh' ? '单一赛道暴露过高，建议适度做跨行业分散调仓。' : 'High thematic concentration. Consider diversifying across uncorrelated sectors.',
+        title: `赛道敞口预警: ${topTheme.label} (${(topTheme.weight * 100).toFixed(1)}%)`,
+        detail: '单一赛道暴露过高，建议适度做跨行业分散调仓。',
       });
     }
 
     return list;
-  }, [aggregated, holdings, layerRows, locale, total]);
+  }, [aggregated, holdings, layerRows, total]);
 
   const submitManualHolding = async (event: FormEvent) => {
     event.preventDefault();
@@ -551,7 +416,7 @@ export function FinanceReportScreen({
       /\.(csv|png|jpe?g|webp)$/i.test(file.name),
     );
     if (valid.length !== files.length) {
-      setLocalError('Only CSV, PNG, JPG and WebP files are supported.');
+      setLocalError('只支持 CSV、PNG、JPG 和 WebP 格式文件。');
       return;
     }
     setLocalError(null);
@@ -563,7 +428,7 @@ export function FinanceReportScreen({
       setLocalError(null);
       await onManualImport(manualText);
     } catch (error) {
-      setLocalError(error instanceof Error ? error.message : 'Import failed');
+      setLocalError(error instanceof Error ? error.message : '导入失败');
     }
   };
 
@@ -573,7 +438,7 @@ export function FinanceReportScreen({
       setLocalError(null);
       await onJsonImport(file);
     } catch (error) {
-      setLocalError(error instanceof Error ? error.message : 'JSON import failed');
+      setLocalError(error instanceof Error ? error.message : 'JSON 导入失败');
     }
   };
 
@@ -604,37 +469,25 @@ export function FinanceReportScreen({
           MoneyOS Portfolio
         </button>
         <button className="gf-search" onClick={() => setAddOpen(true)}>
-          <Search size={18} />
+          <Search size={16} />
           <span>{t.search}</span>
         </button>
         <div className="gf-top-actions">
-          <label className="gf-language">
-            <span className="visually-hidden">Language</span>
-            <select
-              value={locale}
-              onChange={(event) => onLocaleChange(event.target.value as Locale)}
-            >
-              <option value="en">English</option>
-              <option value="zh">中文</option>
-              <option value="ja">日本語</option>
-            </select>
-          </label>
           <button
             className="gf-icon-button"
             aria-label={t.exportJson}
             title={t.exportJson}
-            onClick={() =>
-              exportExcel(holdings, baseCurrency, locale)
-            }
+            onClick={() => exportExcel(holdings, baseCurrency)}
           >
-            <FileSpreadsheet size={18} />
+            <FileSpreadsheet size={16} />
           </button>
           <button
             className="gf-icon-button"
             aria-label={t.importPositions}
+            title={t.importPositions}
             onClick={() => setImportOpen(true)}
           >
-            <RefreshCcw size={18} />
+            <RefreshCcw size={16} />
           </button>
         </div>
       </header>
@@ -649,50 +502,22 @@ export function FinanceReportScreen({
               </div>
               <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
                 <button
-                  className="gf-primary-action"
-                  style={{
-                    background: '#1a73e8',
-                    borderColor: '#1a73e8',
-                    color: '#ffffff',
-                  }}
+                  className="gf-text-action"
                   onClick={() => setTimelineOpen(true)}
-                  title={
-                    locale === 'zh'
-                      ? '低频季度/月度审视快照与历史对照'
-                      : locale === 'ja'
-                      ? '定期レビューとスナップショット履歴'
-                      : 'Review Timeline & Snapshots'
-                  }
+                  title="低频季度/月度审视快照与历史对照"
                 >
-                  <History size={16} />
-                  <span>
-                    {locale === 'zh'
-                      ? '周期审视时间轴'
-                      : locale === 'ja'
-                      ? 'レビュー記録'
-                      : 'Review Timeline'}
-                  </span>
+                  <History size={15} />
+                  <span>周期审视时间轴</span>
                 </button>
                 <button
                   className="gf-primary-action"
-                  style={{
-                    background: '#137333',
-                    borderColor: '#137333',
-                    color: '#ffffff',
-                  }}
                   onClick={() => setRebalanceOpen(true)}
                 >
-                  <Scale size={16} />
-                  <span>
-                    {locale === 'zh'
-                      ? '再平衡驾驶舱'
-                      : locale === 'ja'
-                      ? 'リバランス'
-                      : 'Rebalance Cockpit'}
-                  </span>
+                  <Scale size={15} color="#4ade80" />
+                  <span>再平衡驾驶舱</span>
                 </button>
                 <button className="gf-primary-action" onClick={() => setAddOpen(true)}>
-                  <Plus size={17} />
+                  <Plus size={15} />
                   <span>{t.addStock}</span>
                 </button>
               </div>
@@ -733,7 +558,6 @@ export function FinanceReportScreen({
               aggregated={aggregated}
               totalValue={total}
               baseCurrency={baseCurrency}
-              locale={locale}
             />
           )}
 
@@ -796,10 +620,10 @@ export function FinanceReportScreen({
           <section className="gf-side-card">
             <div className="gf-side-title">
               <Layers3 size={18} />
-              <h2>{locale === 'zh' ? '四层资产配置与目标偏离' : locale === 'en' ? 'Asset Allocation & Target Drift' : 'アセット配分と目標偏離'}</h2>
+              <h2>四层资产配置与目标偏离</h2>
             </div>
-            <p style={{ margin: '0.2rem 0 0.8rem', fontSize: '0.78rem', color: '#5f6368' }}>
-              {locale === 'zh' ? '机构风控基准偏离度 (红/黄/绿状态标注)' : locale === 'ja' ? '機関投資家基準の目標配分乖離ステータス' : 'Institutional target drift & risk status'}
+            <p style={{ margin: '0.2rem 0 0.8rem', fontSize: '0.78rem', color: '#64748b' }}>
+              机构风控基准偏离度 (红/黄/绿状态标注)
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
               {layerRows.map((row) => {
@@ -830,17 +654,17 @@ export function FinanceReportScreen({
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.82rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                         <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: LAYER_META[row.layer].color }} />
-                        <strong style={{ color: '#202124' }}>{LAYER_META[row.layer].label}</strong>
-                        <span style={{ fontSize: '0.72rem', color: '#80868b' }}>({targetText})</span>
+                        <strong style={{ color: '#020817' }}>{LAYER_META[row.layer].label}</strong>
+                        <span style={{ fontSize: '0.72rem', color: '#64748b' }}>({targetText})</span>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                        <strong style={{ color: '#202124' }}>{formatPercent(row.weight)}</strong>
+                        <strong style={{ color: '#020817' }}>{formatPercent(row.weight)}</strong>
                         {status === 'over' ? (
-                          <span className="gf-target-badge is-over">{locale === 'zh' ? '超标' : locale === 'ja' ? '超過' : 'Over'}</span>
+                          <span className="gf-target-badge is-over">超标</span>
                         ) : status === 'under' ? (
-                          <span className="gf-target-badge is-under">{locale === 'zh' ? '偏低' : locale === 'ja' ? '不足' : 'Under'}</span>
+                          <span className="gf-target-badge is-under">偏低</span>
                         ) : (
-                          <span className="gf-target-badge is-ok">{locale === 'zh' ? '合规' : locale === 'ja' ? '適正' : 'Target'}</span>
+                          <span className="gf-target-badge is-ok">合规</span>
                         )}
                       </div>
                     </div>
@@ -849,7 +673,7 @@ export function FinanceReportScreen({
                         style={{
                           height: '100%',
                           width: `${Math.min(row.weight * 100, 100)}%`,
-                          background: status === 'over' ? '#d93025' : status === 'under' ? '#f9ab00' : LAYER_META[row.layer].color,
+                          background: status === 'over' ? '#ef4444' : status === 'under' ? '#f59e0b' : LAYER_META[row.layer].color,
                           borderRadius: '99px',
                           transition: 'width 0.3s ease',
                         }}
@@ -866,25 +690,20 @@ export function FinanceReportScreen({
                   justifyContent: 'center',
                   gap: '6px',
                   width: '100%',
-                  padding: '7px 12px',
+                  padding: '8px 12px',
                   borderRadius: '6px',
-                  border: '1px solid #1a73e8',
-                  background: '#e8f0fe',
-                  color: '#1a73e8',
+                  border: '1px solid #0f172a',
+                  background: '#0f172a',
+                  color: '#ffffff',
                   fontSize: '0.78rem',
-                  fontWeight: 600,
+                  fontWeight: 500,
                   cursor: 'pointer',
                   marginTop: '0.4rem',
+                  boxShadow: '0 1px 2px 0 rgb(0 0 0 / 0.05)',
                 }}
               >
-                <Scale size={14} />
-                <span>
-                  {locale === 'zh'
-                    ? '开启季度再平衡试算'
-                    : locale === 'ja'
-                    ? 'リバランスを試算'
-                    : 'Launch Rebalance Cockpit'}
-                </span>
+                <Scale size={14} color="#4ade80" />
+                <span>开启季度再平衡试算</span>
               </button>
             </div>
           </section>
@@ -892,7 +711,7 @@ export function FinanceReportScreen({
           <section className="gf-side-card">
             <div className="gf-side-title">
               <PieChart size={18} />
-              <h2>{locale === 'zh' ? '赛道与主题分布' : locale === 'en' ? 'Sector & Theme Breakdown' : 'セクター・テーマ別構成比'}</h2>
+              <h2>赛道与主题分布</h2>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.5rem' }}>
               {themeRows.slice(0, 5).map((row) => (
@@ -937,66 +756,54 @@ export function FinanceReportScreen({
 
       {/* ── Methodology & FAQ ── */}
       <section style={{ width: 'min(1100px, calc(100% - 48px))', margin: '2.5rem auto 0' }}>
-        <div style={{ border: '1px solid #dadce0', borderRadius: '8px', background: '#fff', overflow: 'hidden' }}>
+        <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', background: '#fff', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
           <div style={{ padding: '1.5rem 2rem 0.2rem' }}>
-            <h2 style={{ fontSize: '0.95rem', fontWeight: 500, color: '#202124', margin: '0 0 1.2rem' }}>
-              {locale === 'zh' ? '持仓分析方法论与常见问题' : locale === 'en' ? 'Portfolio Methodology & FAQ' : 'ポートフォリオ方法論・FAQ'}
+            <h2 style={{ fontSize: '0.95rem', fontWeight: 600, color: '#0f172a', margin: '0 0 1.2rem' }}>
+              持仓分析方法论与常见问题
             </h2>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem 2rem' }}>
               <div>
-                <h3 style={{ fontSize: '0.82rem', fontWeight: 500, color: '#202124', margin: '0 0 0.35rem', lineHeight: 1.4 }}>
-                  {locale === 'zh' ? '什么是四层金字塔配比？' : locale === 'en' ? 'What is the 4-layer pyramid?' : '4層ピラミッド配分とは？'}
+                <h3 style={{ fontSize: '0.82rem', fontWeight: 600, color: '#0f172a', margin: '0 0 0.35rem', lineHeight: 1.4 }}>
+                  什么是四层金字塔配比？
                 </h3>
-                <p style={{ fontSize: '0.78rem', color: '#5f6368', lineHeight: 1.55, margin: 0 }}>
-                  {locale === 'zh'
-                    ? '机构标准将资产划分为核心基石（Core 50-60%）、卫星进攻（Satellite 20-30%）、防守缓冲（Defensive 10-15%）与现金（Cash 5-10%），分散黑天鹅冲击。'
-                    : locale === 'en'
-                    ? 'Institutional standards split assets into Core (50-60%), Satellite (20-30%), Defensive (10-15%) and Cash (5-10%) to spread tail-risk.'
-                    : '機関投資家基準ではCore(50-60%)、Satellite(20-30%)、Defensive(10-15%)、Cash(5-10%)に分散し、テールリスクを軽減します。'}
+                <p style={{ fontSize: '0.78rem', color: '#64748b', lineHeight: 1.55, margin: 0 }}>
+                  机构标准将资产划分为核心基石（Core 50-60%）、卫星进攻（Satellite 20-30%）、防守缓冲（Defensive 10-15%）与现金（Cash 5-10%），分散黑天鹅冲击。
                 </p>
               </div>
               <div>
-                <h3 style={{ fontSize: '0.82rem', fontWeight: 500, color: '#202124', margin: '0 0 0.35rem', lineHeight: 1.4 }}>
-                  {locale === 'zh' ? '单一标的权重为何限制 20%？' : locale === 'en' ? 'Why cap a single holding at 20%?' : '個別銘柄の上限が20%の理由は？'}
+                <h3 style={{ fontSize: '0.82rem', fontWeight: 600, color: '#0f172a', margin: '0 0 0.35rem', lineHeight: 1.4 }}>
+                  单一标的权重为何限制 20%？
                 </h3>
-                <p style={{ fontSize: '0.78rem', color: '#5f6368', lineHeight: 1.55, margin: 0 }}>
-                  {locale === 'zh'
-                    ? '当单一持仓超过 20% 时，个股回调将大幅挤占组合整体收益。系统以 ⚠️ 标记过重标的，提示分批减仓锁利。'
-                    : locale === 'en'
-                    ? 'When one position exceeds 20%, its drawdown disproportionately erodes returns. The system flags it with ⚠️ for staged rebalancing.'
-                    : '1銘柄が20%を超えると、その下落がポートフォリオ全体のリターンを大きく圧迫します。⚠️マークで段階的リバランスを促します。'}
+                <p style={{ fontSize: '0.78rem', color: '#64748b', lineHeight: 1.55, margin: 0 }}>
+                  当单一持仓超过 20% 时，个股回调将大幅挤占组合整体收益。系统以 ⚠️ 标记过重标的，提示分批减仓锁利。
                 </p>
               </div>
               <div>
-                <h3 style={{ fontSize: '0.82rem', fontWeight: 500, color: '#202124', margin: '0 0 0.35rem', lineHeight: 1.4 }}>
-                  {locale === 'zh' ? 'HHI 集中度指数说明' : locale === 'en' ? 'What does the HHI score mean?' : 'HHI集中度スコアとは？'}
+                <h3 style={{ fontSize: '0.82rem', fontWeight: 600, color: '#0f172a', margin: '0 0 0.35rem', lineHeight: 1.4 }}>
+                  HHI 集中度指数说明
                 </h3>
-                <p style={{ fontSize: '0.78rem', color: '#5f6368', lineHeight: 1.55, margin: 0 }}>
-                  {locale === 'zh'
-                    ? 'HHI 衡量持仓分散程度。分数越低越分散（< 15 优秀），越高越集中（> 25 高风险），帮助量化组合健康度。'
-                    : locale === 'en'
-                    ? 'The HHI measures diversification. Lower is better (< 15 excellent); higher signals concentration risk (> 25).'
-                    : 'HHIは分散度を計測します。低いほど分散(15未満=優秀)、高いほど集中リスク(25超=要注意)です。'}
+                <p style={{ fontSize: '0.78rem', color: '#64748b', lineHeight: 1.55, margin: 0 }}>
+                  HHI 衡量持仓分散程度。分数越低越分散（&lt; 15 优秀），越高越集中（&gt; 25 高风险），帮助量化组合健康度。
                 </p>
               </div>
             </div>
           </div>
-          <div style={{ margin: '1.2rem 2rem 0', padding: '0.85rem 0', borderTop: '1px solid #e8eaed', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', fontSize: '0.78rem', color: '#5f6368' }}>
+          <div style={{ margin: '1.2rem 2rem 0', padding: '0.85rem 0', borderTop: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', fontSize: '0.78rem', color: '#64748b' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '1.2rem', flexWrap: 'wrap' }}>
               <a
-                href={locale === 'en' ? 'https://github.com/KongMing-Japan/portfolio/blob/main/docs/methodology.en.md' : 'https://github.com/KongMing-Japan/portfolio/blob/main/docs/methodology.zh.md'}
+                href="https://github.com/KongMing-Japan/portfolio/blob/main/docs/methodology.zh.md"
                 target="_blank"
                 rel="noreferrer"
-                style={{ color: '#1a73e8', fontWeight: 500, textDecoration: 'none' }}
+                style={{ color: '#2563eb', fontWeight: 500, textDecoration: 'none' }}
               >
-                {locale === 'zh' ? '详细方法论' : locale === 'en' ? 'Full methodology' : '詳細な方法論'}
+                详细方法论
               </a>
-              <span style={{ color: '#dadce0' }}>|</span>
-              <span>{locale === 'zh' ? '数据来源: Yahoo Finance · SEC EDGAR' : locale === 'en' ? 'Sources: Yahoo Finance · SEC EDGAR' : 'データソース: Yahoo Finance · SEC EDGAR'}</span>
+              <span style={{ color: '#e2e8f0' }}>|</span>
+              <span>数据来源: Yahoo Finance · SEC EDGAR</span>
             </div>
             <button
               onClick={onClear}
-              style={{ flexShrink: 0, fontSize: '0.72rem', padding: '0.3rem 0.65rem', border: '1px solid #dadce0', background: '#fff', color: '#5f6368', borderRadius: '4px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+              style={{ flexShrink: 0, fontSize: '0.75rem', padding: '0.35rem 0.75rem', border: '1px solid #e2e8f0', background: '#fff', color: '#64748b', borderRadius: '6px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '5px', fontWeight: 500 }}
             >
               <Trash2 size={12} />
               {t.clear}
@@ -1005,8 +812,8 @@ export function FinanceReportScreen({
         </div>
       </section>
 
-      <footer className="gf-footer" style={{ width: 'min(1100px, calc(100% - 48px))', margin: '3.5rem auto 0', paddingTop: '1.8rem', paddingBottom: '2.5rem', borderTop: '1px solid #dadce0', textAlign: 'center', fontSize: '0.75rem', color: '#5f6368', opacity: 0.78 }}>
-        <p style={{ margin: '0 0 0.35rem', fontWeight: 500, color: '#3c4043' }}>MoneyOS Portfolio · 独立多券商资产配置与再平衡系统</p>
+      <footer className="gf-footer" style={{ width: 'min(1100px, calc(100% - 48px))', margin: '3.5rem auto 0', paddingTop: '1.8rem', paddingBottom: '2.5rem', borderTop: '1px solid #e2e8f0', textAlign: 'center', fontSize: '0.75rem', color: '#64748b' }}>
+        <p style={{ margin: '0 0 0.35rem', fontWeight: 500, color: '#0f172a' }}>MoneyOS Portfolio · 独立多券商资产配置与再平衡系统</p>
         <p style={{ margin: 0 }}>© 2026 MoneyOS. All holdings stored locally and securely in your browser.</p>
       </footer>
 
@@ -1334,7 +1141,6 @@ export function FinanceReportScreen({
         holdings={aggregated}
         totalValue={total}
         baseCurrency={baseCurrency}
-        locale={locale}
       />
 
       <ReviewTimelineModal
@@ -1344,7 +1150,6 @@ export function FinanceReportScreen({
         aggregatedHoldings={aggregated}
         totalValue={total}
         baseCurrency={baseCurrency}
-        locale={locale}
         onRestoreSnapshot={onRestoreSnapshot}
       />
 

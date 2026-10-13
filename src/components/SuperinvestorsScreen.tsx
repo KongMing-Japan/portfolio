@@ -15,13 +15,13 @@ import type {
 } from '../types';
 
 const DONUT_COLORS = [
-  '#2f67d8',
-  '#4c7ee0',
-  '#6994e7',
-  '#86aaed',
-  '#a6c1f2',
-  '#c7d8f6',
-  '#e7edf7',
+  '#2563eb',
+  '#3b82f6',
+  '#60a5fa',
+  '#93c5fd',
+  '#bfdbfe',
+  '#dbeafe',
+  '#f1f5f9',
 ];
 
 function formatUsd(value: number) {
@@ -34,7 +34,7 @@ function formatUsd(value: number) {
 }
 
 function formatNumber(value: number) {
-  return new Intl.NumberFormat('en-US', {
+  return new Intl.NumberFormat('zh-CN', {
     notation: Math.abs(value) >= 1_000_000 ? 'compact' : 'standard',
     maximumFractionDigits: 1,
   }).format(value);
@@ -49,28 +49,28 @@ function formatPercent(value: number, signed = false) {
 function formatWeightChange(value: number) {
   const points = value * 100;
   const prefix = points > 0 ? '+' : '';
-  return `${prefix}${points.toFixed(1)} pp`;
+  return `${prefix}${points.toFixed(1)}%`;
 }
 
 function formatDate(value: string) {
-  return new Intl.DateTimeFormat('en-US', {
-    month: 'short',
-    day: 'numeric',
+  return new Intl.DateTimeFormat('zh-CN', {
     year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
   }).format(new Date(`${value}T00:00:00Z`));
 }
 
 function formatQuarter(value: string) {
   const date = new Date(`${value}T00:00:00Z`);
-  return `Q${Math.floor(date.getUTCMonth() / 3) + 1} ${date.getUTCFullYear()}`;
+  return `${date.getUTCFullYear()} 年 Q${Math.floor(date.getUTCMonth() / 3) + 1}`;
 }
 
 function statusLabel(status: SuperinvestorHoldingStatus) {
-  if (status === 'new') return 'New';
-  if (status === 'increased') return 'Increased';
-  if (status === 'decreased') return 'Reduced';
-  if (status === 'exited') return 'Exited';
-  return 'Unchanged';
+  if (status === 'new') return '新进';
+  if (status === 'increased') return '增持';
+  if (status === 'decreased') return '减持';
+  if (status === 'exited') return '清仓';
+  return '持平';
 }
 
 function statusTone(status: SuperinvestorHoldingStatus) {
@@ -89,7 +89,7 @@ function donutRows(holdings: SuperinvestorHolding[]) {
       name: holding.ticker,
       value: holding.weight,
     })),
-    ...(otherWeight > 0 ? [{ name: 'Other', value: otherWeight }] : []),
+    ...(otherWeight > 0 ? [{ name: '其他标的', value: otherWeight }] : []),
   ];
 }
 
@@ -106,7 +106,7 @@ function InvestorDonut({
     <div
       className={`si-donut ${compact ? 'is-compact' : ''}`}
       role="img"
-      aria-label={`${investor.name} portfolio allocation. Largest reported holding is ${topLabel} at ${formatPercent(investor.holdings[0]?.weight || 0)}.`}
+      aria-label={`${investor.name} 投资组合配置。第一大重仓为 ${topLabel}，占比 ${formatPercent(investor.holdings[0]?.weight || 0)}。`}
     >
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
@@ -133,7 +133,7 @@ function InvestorDonut({
       <img
         className="si-portrait"
         src={investor.portrait}
-        alt={`${investor.name} illustrated portrait`}
+        alt={`${investor.name} 头像`}
       />
     </div>
   );
@@ -157,7 +157,7 @@ function InvestorCard({
           <strong>{formatUsd(investor.totalValue)}</strong>
           {change != null ? (
             <span className={change >= 0 ? 'is-positive' : 'is-negative'}>
-              {formatPercent(change, true)} 13F value
+              {formatPercent(change, true)} 13F 市值
             </span>
           ) : null}
         </div>
@@ -172,7 +172,7 @@ function InvestorCard({
           ))}
         </div>
         <small>
-          Filed {formatDate(investor.filedAt)} · {investor.positionCount} positions
+          申报于 {formatDate(investor.filedAt)} · 共 {investor.positionCount} 只标的
         </small>
       </div>
       <div className="si-card-visual">
@@ -206,29 +206,29 @@ function InvestorDetail({
     <div className="si-detail">
       <button className="si-back" onClick={onBack}>
         <ArrowLeft size={17} />
-        All superinvestors
+        返回投资大师列表
       </button>
 
       <section className="si-detail-hero">
         <div className="si-detail-identity">
-          <img src={investor.portrait} alt={`${investor.name} illustrated portrait`} />
+          <img src={investor.portrait} alt={`${investor.name} 头像`} />
           <div>
-            <span>{formatQuarter(investor.reportDate)} 13F</span>
+            <span>{formatQuarter(investor.reportDate)} 13F 披露</span>
             <h1>{investor.name}</h1>
             <p>{investor.firm}</p>
           </div>
         </div>
         <div className="si-detail-stats">
           <div>
-            <span>Reported value</span>
+            <span>披露总市值</span>
             <strong>{formatUsd(investor.totalValue)}</strong>
           </div>
           <div>
-            <span>Positions</span>
+            <span>持仓标的数</span>
             <strong>{investor.positionCount}</strong>
           </div>
           <div>
-            <span>Quarterly reported value change</span>
+            <span>季度披露市值变动</span>
             <strong
               className={
                 (investor.totalValueChange || 0) >= 0
@@ -248,8 +248,8 @@ function InvestorDetail({
         <section className="si-panel si-composition-panel">
           <div className="si-panel-header">
             <div>
-              <h2>Portfolio composition</h2>
-              <p>Top six reported positions and all remaining holdings.</p>
+              <h2>持仓配置构成</h2>
+              <p>前六大重仓标的与其余持仓组合。</p>
             </div>
           </div>
           <div className="si-composition-body">
@@ -272,8 +272,8 @@ function InvestorDetail({
         <section className="si-panel">
           <div className="si-panel-header">
             <div>
-              <h2>Quarterly moves</h2>
-              <p>Largest changes in reported portfolio weight.</p>
+              <h2>季度调仓动态</h2>
+              <p>报告期内权重变化幅度最大的标的。</p>
             </div>
           </div>
           <div className="si-move-list">
@@ -297,11 +297,11 @@ function InvestorDetail({
       <section className="si-panel si-holdings-panel">
         <div className="si-panel-header">
           <div>
-            <h2>Reported holdings</h2>
-            <p>Sorted by current 13F market value.</p>
+            <h2>披露持仓明细</h2>
+            <p>按当前 13F 申报市值降序排列。</p>
           </div>
           <a href={investor.filingUrl} target="_blank" rel="noreferrer">
-            SEC filing <ExternalLink size={14} />
+            SEC 原始申报 <ExternalLink size={14} />
           </a>
         </div>
         <div className="si-table-wrap">
@@ -309,11 +309,11 @@ function InvestorDetail({
             <thead>
               <tr>
                 <th>#</th>
-                <th>Security</th>
-                <th className="numeric">Value</th>
-                <th>Portfolio weight</th>
-                <th className="numeric">Shares</th>
-                <th>Quarter</th>
+                <th>标的 / 发行公司</th>
+                <th className="numeric">申报市值</th>
+                <th>组合权重</th>
+                <th className="numeric">持股数</th>
+                <th>调仓动态</th>
               </tr>
             </thead>
             <tbody>
@@ -348,7 +348,7 @@ function InvestorDetail({
         </div>
         {investor.holdings.length > 24 ? (
           <button className="si-show-all" onClick={() => setShowAll((value) => !value)}>
-            {showAll ? 'Show top 24' : `Show all ${investor.holdings.length} positions`}
+            {showAll ? '仅展示前 24 只标的' : `展示全部 ${investor.holdings.length} 只标的`}
           </button>
         ) : null}
       </section>
@@ -356,11 +356,11 @@ function InvestorDetail({
       <footer className="si-source-note">
         <CalendarDays size={17} />
         <p>
-          Report period {formatDate(investor.reportDate)}; filed {formatDate(investor.filedAt)}.
+          报告期 {formatDate(investor.reportDate)}；申报日 {formatDate(investor.filedAt)}。
           {' '}{caveat}
         </p>
         <a href={investor.secEntityUrl} target="_blank" rel="noreferrer">
-          View on SEC.gov <ExternalLink size={13} />
+          在 SEC.gov 查看 <ExternalLink size={13} />
         </a>
       </footer>
     </div>
@@ -379,7 +379,7 @@ export function SuperinvestorsScreen() {
     let active = true;
     fetch('/data/superinvestors.json')
       .then((response) => {
-        if (!response.ok) throw new Error('Quarterly filings are unavailable.');
+        if (!response.ok) throw new Error('季度 13F 申报数据暂不可用。');
         return response.json() as Promise<SuperinvestorData>;
       })
       .then((payload) => {
@@ -390,7 +390,7 @@ export function SuperinvestorsScreen() {
           setError(
             caught instanceof Error
               ? caught.message
-              : 'Quarterly filings are unavailable.',
+              : '季度 13F 申报数据暂不可用。',
           );
         }
       });
@@ -407,7 +407,7 @@ export function SuperinvestorsScreen() {
     return (
       <section className="si-state">
         <RefreshCw size={22} />
-        <h1>Superinvestors</h1>
+        <h1>投资大师持仓标杆</h1>
         <p>{error}</p>
       </section>
     );
@@ -417,8 +417,8 @@ export function SuperinvestorsScreen() {
     return (
       <section className="si-state" aria-live="polite">
         <RefreshCw className="spin" size={22} />
-        <h1>Loading quarterly filings</h1>
-        <p>Reading the latest SEC 13F portfolio disclosures.</p>
+        <h1>正在加载 13F 申报数据</h1>
+        <p>正在读取最新的机构公开披露组合...</p>
       </section>
     );
   }
@@ -427,9 +427,9 @@ export function SuperinvestorsScreen() {
     <section className="si-index">
       <header className="si-index-header" style={{ marginBottom: '1.2rem' }}>
         <div>
-          <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#202124', margin: 0 }}>投資大師持倉標桿</h2>
-          <p style={{ margin: '0.25rem 0 0', fontSize: '0.82rem', color: '#5f6368' }}>
-            参考巴菲特（Berkshire Hathaway）等経典機構の季度公開持倉と比例配比。
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>投资大师持仓标杆</h2>
+          <p style={{ margin: '0.25rem 0 0', fontSize: '0.82rem', color: '#64748b' }}>
+            参考巴菲特（Berkshire Hathaway）等知名机构的季度公开持仓与配置比例。
           </p>
         </div>
       </header>
@@ -459,7 +459,7 @@ export function SuperinvestorDetailPage({ investorId }: { investorId: string }) 
     let active = true;
     fetch('/data/superinvestors.json')
       .then((response) => {
-        if (!response.ok) throw new Error('Quarterly filings are unavailable.');
+        if (!response.ok) throw new Error('季度 13F 申报数据暂不可用。');
         return response.json() as Promise<SuperinvestorData>;
       })
       .then((payload) => {
@@ -470,7 +470,7 @@ export function SuperinvestorDetailPage({ investorId }: { investorId: string }) 
           setError(
             caught instanceof Error
               ? caught.message
-              : 'Quarterly filings are unavailable.',
+              : '季度 13F 申报数据暂不可用。',
           );
         }
       });
@@ -493,7 +493,7 @@ export function SuperinvestorDetailPage({ investorId }: { investorId: string }) 
       <main className="gf-page">
         <section className="si-state">
           <RefreshCw size={22} />
-          <h1>Superinvestors</h1>
+          <h1>投资大师持仓标杆</h1>
           <p>{error}</p>
         </section>
       </main>
@@ -505,8 +505,8 @@ export function SuperinvestorDetailPage({ investorId }: { investorId: string }) 
       <main className="gf-page">
         <section className="si-state" aria-live="polite">
           <RefreshCw className="spin" size={22} />
-          <h1>Loading quarterly filings</h1>
-          <p>Reading the latest SEC 13F portfolio disclosures.</p>
+          <h1>正在加载 13F 申报数据</h1>
+          <p>正在读取最新的机构公开披露组合...</p>
         </section>
       </main>
     );
@@ -517,10 +517,10 @@ export function SuperinvestorDetailPage({ investorId }: { investorId: string }) 
     return (
       <main className="gf-page">
         <section className="si-state">
-          <h1>Investor not found</h1>
+          <h1>未找到该投资大师</h1>
           <button className="si-back" onClick={goBack}>
             <ArrowLeft size={17} />
-            Back to portfolio
+            返回投资组合
           </button>
         </section>
       </main>
@@ -530,8 +530,8 @@ export function SuperinvestorDetailPage({ investorId }: { investorId: string }) 
   return (
     <main className="gf-page">
       <InvestorDetail investor={investor} caveat={data.caveat} onBack={goBack} />
-      <footer className="gf-footer" style={{ width: 'min(1100px, calc(100% - 48px))', margin: '3.5rem auto 0', paddingTop: '1.8rem', paddingBottom: '2.5rem', borderTop: '1px solid #dadce0', textAlign: 'center', fontSize: '0.75rem', color: '#5f6368', opacity: 0.78 }}>
-        <p style={{ margin: '0 0 0.35rem', fontWeight: 500, color: '#3c4043' }}>MoneyOS Portfolio · 独立多券商资产配置与再平衡系统</p>
+      <footer className="gf-footer" style={{ width: 'min(1100px, calc(100% - 48px))', margin: '3.5rem auto 0', paddingTop: '1.8rem', paddingBottom: '2.5rem', borderTop: '1px solid #e2e8f0', textAlign: 'center', fontSize: '0.75rem', color: '#64748b', opacity: 0.78 }}>
+        <p style={{ margin: '0 0 0.35rem', fontWeight: 500, color: '#0f172a' }}>MoneyOS Portfolio · 独立多券商资产配置与再平衡系统</p>
         <p style={{ margin: 0 }}>© 2026 MoneyOS. All rights reserved.</p>
       </footer>
     </main>

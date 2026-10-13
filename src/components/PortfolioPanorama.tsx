@@ -3,7 +3,6 @@ import {
   Coins,
   Globe2,
   Landmark,
-  Layers,
   PieChart,
 } from 'lucide-react';
 import {
@@ -11,13 +10,11 @@ import {
   formatMoney,
   formatPercent,
   marketFromTicker,
-  type AssetClassType,
 } from '../lib/portfolio';
 import type {
   AggregatedHolding,
   BaseCurrency,
   Holding,
-  Locale,
 } from '../types';
 
 interface PortfolioPanoramaProps {
@@ -25,28 +22,25 @@ interface PortfolioPanoramaProps {
   aggregated: AggregatedHolding[];
   totalValue: number;
   baseCurrency: BaseCurrency;
-  locale: Locale;
 }
 
 type PanoramaDimension = 'market' | 'broker' | 'assetClass' | 'currency';
 
 const PALETTE = [
-  '#1a73e8', // Google Blue
-  '#137333', // Green
-  '#f9ab00', // Yellow
-  '#d93025', // Red
-  '#9334e6', // Purple
-  '#e37400', // Orange
-  '#007b83', // Teal
-  '#5f6368', // Gray
+  '#2563eb', // Blue
+  '#0d9488', // Teal
+  '#f59e0b', // Amber
+  '#6366f1', // Indigo
+  '#ec4899', // Pink
+  '#10b981', // Emerald
+  '#8b5cf6', // Violet
+  '#64748b', // Slate
 ];
 
 export function PortfolioPanorama({
   holdings,
-  aggregated,
   totalValue,
   baseCurrency,
-  locale,
 }: PortfolioPanoramaProps) {
   const [dimension, setDimension] = useState<PanoramaDimension>('market');
 
@@ -79,7 +73,7 @@ export function PortfolioPanorama({
   const brokerGroups = useMemo(() => {
     const map = new Map<string, { value: number; count: number; items: string[] }>();
     for (const h of holdings) {
-      const broker = h.broker?.trim() || '未标注券商 (Unassigned)';
+      const broker = h.broker?.trim() || '未标注券商';
       const val = h.valueInBase ?? 0;
       const cur = map.get(broker) ?? { value: 0, count: 0, items: [] };
       cur.value += val;
@@ -107,12 +101,12 @@ export function PortfolioPanorama({
       const cls = assetClassFromHolding(h.ticker, h.name, h.theme);
       const label =
         cls === 'Equity'
-          ? (locale === 'zh' ? '股票个股' : locale === 'ja' ? '個別株式' : 'Individual Equities')
+          ? '股票个股'
           : cls === 'ETF'
-          ? (locale === 'zh' ? '交易所 ETF' : locale === 'ja' ? 'ETF' : 'Exchange-Traded Funds')
+          ? '交易所 ETF'
           : cls === 'Fund'
-          ? (locale === 'zh' ? '公募基金 / 投資信託' : locale === 'ja' ? '投資信託' : 'Mutual Funds / Trusts')
-          : (locale === 'zh' ? '货币与现金' : locale === 'ja' ? '現金・MMF' : 'Cash & Reserves');
+          ? '公募基金 / 投资信托'
+          : '货币与现金';
 
       const val = h.valueInBase ?? 0;
       const cur = map.get(label) ?? { value: 0, count: 0, items: [] };
@@ -132,7 +126,7 @@ export function PortfolioPanorama({
         items: d.items,
       }))
       .sort((a, b) => b.value - a.value);
-  }, [holdings, locale, totalValue]);
+  }, [holdings, totalValue]);
 
   // 4. Group by Currency
   const currencyGroups = useMemo(() => {
@@ -170,22 +164,23 @@ export function PortfolioPanorama({
 
   const dimensionTitle =
     dimension === 'market'
-      ? (locale === 'zh' ? '地理与市场分布 (中美日主线)' : 'Market & Geographical Exposure')
+      ? '地理与市场分布 (中美日主线)'
       : dimension === 'broker'
-      ? (locale === 'zh' ? '证券公司与账户沉淀分布' : 'Broker & Custody Distribution')
+      ? '证券公司与账户沉淀分布'
       : dimension === 'assetClass'
-      ? (locale === 'zh' ? '资产类别透视 (股票/ETF/基金/现金)' : 'Asset Class Breakdown')
-      : (locale === 'zh' ? '主权货币与外汇暴露' : 'Currency Exposure');
+      ? '资产类别透视 (股票/ETF/基金/现金)'
+      : '主权货币与外汇暴露';
 
   return (
     <section
       className="gf-panorama-section"
       style={{
         background: '#ffffff',
-        border: '1px solid #dadce0',
+        border: '1px solid #e2e8f0',
         borderRadius: '8px',
         padding: '1.4rem 1.6rem',
         margin: '1.5rem 0',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
       }}
     >
       {/* Top Header & Dimension Tabs */}
@@ -196,39 +191,38 @@ export function PortfolioPanorama({
           justifyContent: 'space-between',
           flexWrap: 'wrap',
           gap: '1rem',
-          marginBottom: '1rem',
+          marginBottom: '1.1rem',
         }}
       >
         <div>
           <h2
             style={{
               margin: 0,
-              fontSize: '1rem',
+              fontSize: '0.95rem',
               fontWeight: 600,
-              color: '#202124',
+              color: '#0f172a',
               display: 'flex',
               alignItems: 'center',
-              gap: '6px',
+              gap: '7px',
             }}
           >
-            <Globe2 size={18} color="#1a73e8" />
+            <Globe2 size={17} color="#2563eb" />
             <span>{dimensionTitle}</span>
           </h2>
-          <p style={{ margin: '3px 0 0', fontSize: '0.78rem', color: '#5f6368' }}>
-            {locale === 'zh'
-              ? '跨券商、跨地域、多品类资产全景透视，洞察整体风险敞口'
-              : 'Multi-broker, multi-market, multi-asset panoramic exposure insights'}
+          <p style={{ margin: '3px 0 0', fontSize: '0.78rem', color: '#64748b' }}>
+            跨券商、跨地域、多品类资产全景透视，洞察整体风险敞口
           </p>
         </div>
 
-        {/* Tab Switcher */}
+        {/* Tab Switcher (Shadcn Tabs style) */}
         <div
           style={{
             display: 'inline-flex',
-            background: '#f1f3f4',
+            background: '#f1f5f9',
             borderRadius: '6px',
-            padding: '2px',
+            padding: '3px',
             gap: '2px',
+            border: '1px solid #e2e8f0',
           }}
         >
           <button
@@ -239,17 +233,18 @@ export function PortfolioPanorama({
               gap: '5px',
               padding: '5px 12px',
               border: 'none',
-              borderRadius: '5px',
+              borderRadius: '4px',
               background: dimension === 'market' ? '#ffffff' : 'transparent',
-              color: dimension === 'market' ? '#1a73e8' : '#5f6368',
-              fontWeight: dimension === 'market' ? 600 : 400,
+              color: dimension === 'market' ? '#0f172a' : '#64748b',
+              fontWeight: dimension === 'market' ? 600 : 500,
               fontSize: '0.78rem',
               cursor: 'pointer',
-              boxShadow: dimension === 'market' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
+              boxShadow: dimension === 'market' ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+              transition: 'all 0.15s ease',
             }}
           >
             <Globe2 size={13} />
-            <span>{locale === 'zh' ? '市场地域' : 'Markets'}</span>
+            <span>市场地域</span>
           </button>
           <button
             onClick={() => setDimension('broker')}
@@ -259,17 +254,18 @@ export function PortfolioPanorama({
               gap: '5px',
               padding: '5px 12px',
               border: 'none',
-              borderRadius: '5px',
+              borderRadius: '4px',
               background: dimension === 'broker' ? '#ffffff' : 'transparent',
-              color: dimension === 'broker' ? '#1a73e8' : '#5f6368',
-              fontWeight: dimension === 'broker' ? 600 : 400,
+              color: dimension === 'broker' ? '#0f172a' : '#64748b',
+              fontWeight: dimension === 'broker' ? 600 : 500,
               fontSize: '0.78rem',
               cursor: 'pointer',
-              boxShadow: dimension === 'broker' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
+              boxShadow: dimension === 'broker' ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+              transition: 'all 0.15s ease',
             }}
           >
             <Landmark size={13} />
-            <span>{locale === 'zh' ? '证券公司' : 'Brokers'}</span>
+            <span>证券公司</span>
           </button>
           <button
             onClick={() => setDimension('assetClass')}
@@ -279,17 +275,18 @@ export function PortfolioPanorama({
               gap: '5px',
               padding: '5px 12px',
               border: 'none',
-              borderRadius: '5px',
+              borderRadius: '4px',
               background: dimension === 'assetClass' ? '#ffffff' : 'transparent',
-              color: dimension === 'assetClass' ? '#1a73e8' : '#5f6368',
-              fontWeight: dimension === 'assetClass' ? 600 : 400,
+              color: dimension === 'assetClass' ? '#0f172a' : '#64748b',
+              fontWeight: dimension === 'assetClass' ? 600 : 500,
               fontSize: '0.78rem',
               cursor: 'pointer',
-              boxShadow: dimension === 'assetClass' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
+              boxShadow: dimension === 'assetClass' ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+              transition: 'all 0.15s ease',
             }}
           >
             <PieChart size={13} />
-            <span>{locale === 'zh' ? '资产类型' : 'Asset Types'}</span>
+            <span>资产类型</span>
           </button>
           <button
             onClick={() => setDimension('currency')}
@@ -299,17 +296,18 @@ export function PortfolioPanorama({
               gap: '5px',
               padding: '5px 12px',
               border: 'none',
-              borderRadius: '5px',
+              borderRadius: '4px',
               background: dimension === 'currency' ? '#ffffff' : 'transparent',
-              color: dimension === 'currency' ? '#1a73e8' : '#5f6368',
-              fontWeight: dimension === 'currency' ? 600 : 400,
+              color: dimension === 'currency' ? '#0f172a' : '#64748b',
+              fontWeight: dimension === 'currency' ? 600 : 500,
               fontSize: '0.78rem',
               cursor: 'pointer',
-              boxShadow: dimension === 'currency' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
+              boxShadow: dimension === 'currency' ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+              transition: 'all 0.15s ease',
             }}
           >
             <Coins size={13} />
-            <span>{locale === 'zh' ? '货币币种' : 'Currencies'}</span>
+            <span>货币币种</span>
           </button>
         </div>
       </div>
@@ -318,11 +316,11 @@ export function PortfolioPanorama({
       <div
         style={{
           display: 'flex',
-          height: '10px',
+          height: '8px',
           width: '100%',
-          borderRadius: '99px',
+          borderRadius: '999px',
           overflow: 'hidden',
-          background: '#e8eaed',
+          background: '#f1f5f9',
           marginBottom: '1.2rem',
         }}
       >
@@ -355,13 +353,14 @@ export function PortfolioPanorama({
             <div
               key={group.label}
               style={{
-                border: '1px solid #e8eaed',
-                borderRadius: '6px',
+                border: '1px solid #e2e8f0',
+                borderRadius: '8px',
                 padding: '0.85rem 1rem',
-                background: '#fafbfc',
+                background: '#ffffff',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '0.35rem',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
               }}
             >
               <div
@@ -383,7 +382,7 @@ export function PortfolioPanorama({
                   <strong
                     style={{
                       fontSize: '0.82rem',
-                      color: '#202124',
+                      color: '#0f172a',
                       whiteSpace: 'nowrap',
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
@@ -396,14 +395,15 @@ export function PortfolioPanorama({
                 <span
                   style={{
                     fontSize: '0.72rem',
-                    color: '#5f6368',
-                    background: '#ffffff',
-                    border: '1px solid #dadce0',
-                    borderRadius: '10px',
-                    padding: '1px 6px',
+                    color: '#64748b',
+                    background: '#f1f5f9',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '999px',
+                    padding: '1px 7px',
+                    fontWeight: 500,
                   }}
                 >
-                  {group.count} {locale === 'zh' ? '项' : 'items'}
+                  {group.count} 项
                 </span>
               </div>
 
@@ -419,7 +419,7 @@ export function PortfolioPanorama({
                   style={{
                     fontSize: '1.1rem',
                     fontWeight: 700,
-                    color: '#202124',
+                    color: '#0f172a',
                     fontVariantNumeric: 'tabular-nums',
                   }}
                 >
@@ -428,7 +428,7 @@ export function PortfolioPanorama({
                 <span
                   style={{
                     fontSize: '0.75rem',
-                    color: '#5f6368',
+                    color: '#64748b',
                     fontVariantNumeric: 'tabular-nums',
                   }}
                 >
@@ -440,7 +440,7 @@ export function PortfolioPanorama({
               <div
                 style={{
                   fontSize: '0.72rem',
-                  color: '#80868b',
+                  color: '#94a3b8',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                   whiteSpace: 'nowrap',

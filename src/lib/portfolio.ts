@@ -11,28 +11,28 @@ export const LAYER_META: Record<
   { label: string; description: string; color: string; pale: string }
 > = {
   Core: {
-    label: 'Core',
-    description: 'Long-term holdings that anchor the portfolio',
-    color: '#124f9b',
-    pale: '#eaf2fb',
+    label: '核心仓',
+    description: '长期压舱的大盘基石与宽基指数资产',
+    color: '#2563eb',
+    pale: '#eff6ff',
   },
   Satellite: {
-    label: 'Satellite',
-    description: 'Thematic and growth opportunities around the core',
-    color: '#b78a22',
-    pale: '#faf3df',
+    label: '卫星仓',
+    description: '高成长科技主题与阿尔法收益机会',
+    color: '#d97706',
+    pale: '#fffbeb',
   },
   Defensive: {
-    label: 'Defensive',
-    description: 'Lower-volatility assets that balance portfolio risk',
-    color: '#66731b',
-    pale: '#f1f3e5',
+    label: '防守仓',
+    description: '低波动国债、高股息与抵御风险资产',
+    color: '#16a34a',
+    pale: '#f0fdf4',
   },
   Cash: {
-    label: 'Cash',
-    description: 'Liquid reserves available for future allocation',
-    color: '#6b7280',
-    pale: '#f1f3f5',
+    label: '现金储备',
+    description: '高流动性资金缓冲池与再平衡弹药',
+    color: '#64748b',
+    pale: '#f1f5f9',
   },
 };
 
@@ -249,9 +249,9 @@ export function concentrationScore(aggregated: AggregatedHolding[]) {
 }
 
 export function concentrationLabel(score: number) {
-  if (score < 0.15) return 'Broadly diversified';
-  if (score <= 0.25) return 'Moderately concentrated';
-  return 'Highly concentrated';
+  if (score < 0.15) return '分散良好 (低集中度)';
+  if (score <= 0.25) return '适度集中 (均衡配置)';
+  return '高度集中 (关注单边波动)';
 }
 
 export function formatMoney(value: number, currency: string) {

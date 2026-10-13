@@ -12,19 +12,6 @@ interface ReviewScreenProps {
 
 const LAYERS = Object.keys(LAYER_META) as Layer[];
 
-const LEGACY_REVIEW_REASONS: Record<string, string> = {
-  '缺少证券代码': 'Missing ticker',
-  '缺少币种': 'Missing currency',
-  '数量异常': 'Invalid quantity',
-  '截图识别置信度较低': 'Low OCR confidence',
-  '未获取到最新行情': 'Latest quote unavailable',
-  '可能重复导入': 'Possible duplicate import',
-};
-
-function displayReason(reason: string) {
-  return LEGACY_REVIEW_REASONS[reason] ?? reason;
-}
-
 export function ReviewScreen({
   holdings,
   onUpdate,
@@ -35,7 +22,7 @@ export function ReviewScreen({
   const issues = holdings.filter((holding) => holding.needsReview);
   const groups = new Map<string, Holding[]>();
   for (const holding of issues) {
-    const key = holding.broker || 'Unknown broker';
+    const key = holding.broker || '未标注券商';
     groups.set(key, [...(groups.get(key) ?? []), holding]);
   }
 
@@ -43,13 +30,13 @@ export function ReviewScreen({
     <main className="review-page">
       <button className="back-button" onClick={onBack}>
         <ArrowLeft size={16} />
-        Back to portfolio
+        返回投资组合
       </button>
       <div className="review-heading">
         <div>
-          <h1>Review imported positions</h1>
+          <h1>核对导入持仓</h1>
           <p>
-            {holdings.length} positions found. Review the {issues.length} items that need attention.
+            共解析到 {holdings.length} 条持仓记录，其中 {issues.length} 项需要人工核对确认。
           </p>
         </div>
         <button
@@ -57,15 +44,15 @@ export function ReviewScreen({
           onClick={onConfirm}
           disabled={holdings.length === 0}
         >
-          Open portfolio
+          确认并进入投资组合
           <ArrowRight size={17} />
         </button>
       </div>
 
       {issues.length === 0 ? (
         <div className="review-empty">
-          <h2>No issues found</h2>
-          <p>Symbols, quantities, currencies, and market prices are ready.</p>
+          <h2>数据无异常</h2>
+          <p>证券代码、持仓数量、币种及行情价格已全部准备就绪。</p>
         </div>
       ) : (
         <div className="review-groups">
@@ -73,20 +60,20 @@ export function ReviewScreen({
             <section className="review-group" key={broker}>
               <div className="review-group-title">
                 <h2>{broker}</h2>
-                <span>{rows.length} to review</span>
+                <span>{rows.length} 项待核对</span>
               </div>
               <div className="review-table-wrap">
                 <table className="review-table">
                   <thead>
                     <tr>
-                      <th>Security</th>
-                      <th>Ticker</th>
-                      <th>Currency</th>
-                      <th className="numeric">Quantity</th>
-                      <th className="numeric">Price</th>
-                      <th>Layer</th>
-                      <th>Issue</th>
-                      <th aria-label="Delete" />
+                      <th>标的名称</th>
+                      <th>代码</th>
+                      <th>币种</th>
+                      <th className="numeric">持仓数量</th>
+                      <th className="numeric">当前单价</th>
+                      <th>资产分层</th>
+                      <th>提示原因</th>
+                      <th aria-label="删除" />
                     </tr>
                   </thead>
                   <tbody>
@@ -95,7 +82,7 @@ export function ReviewScreen({
                         <td>
                           <input
                             value={holding.name}
-                            aria-label="Security name"
+                            aria-label="标的名称"
                             onChange={(event) =>
                               onUpdate(holding.id, { name: event.target.value })
                             }
@@ -104,7 +91,7 @@ export function ReviewScreen({
                         <td>
                           <input
                             value={holding.ticker}
-                            aria-label="Ticker"
+                            aria-label="代码"
                             onChange={(event) =>
                               onUpdate(holding.id, {
                                 ticker: event.target.value.trim(),
@@ -116,7 +103,7 @@ export function ReviewScreen({
                           <input
                             className="short-input"
                             value={holding.currency}
-                            aria-label="Currency"
+                            aria-label="币种"
                             onChange={(event) =>
                               onUpdate(holding.id, {
                                 currency: event.target.value.toUpperCase(),
@@ -129,7 +116,7 @@ export function ReviewScreen({
                             className="number-input"
                             type="number"
                             value={holding.quantity}
-                            aria-label="Quantity"
+                            aria-label="持仓数量"
                             onChange={(event) =>
                               onUpdate(holding.id, {
                                 quantity: Number(event.target.value),
@@ -142,8 +129,8 @@ export function ReviewScreen({
                             className="number-input"
                             type="number"
                             value={holding.marketPrice ?? ''}
-                            placeholder="Confirm price"
-                            aria-label="Current price"
+                            placeholder="确认价格"
+                            aria-label="当前单价"
                             onChange={(event) => {
                               const price = event.target.value
                                 ? Number(event.target.value)
@@ -159,7 +146,7 @@ export function ReviewScreen({
                         <td>
                           <select
                             value={holding.layer}
-                            aria-label="Layer"
+                            aria-label="资产分层"
                             onChange={(event) =>
                               onUpdate(holding.id, {
                                 layer: event.target.value as Layer,
@@ -176,14 +163,14 @@ export function ReviewScreen({
                         <td>
                           <div className="reason-list">
                             {holding.reviewReasons.map((reason) => (
-                              <span key={reason}>{displayReason(reason)}</span>
+                              <span key={reason}>{reason}</span>
                             ))}
                           </div>
                         </td>
                         <td>
                           <button
                             className="row-delete"
-                            aria-label={`Delete ${holding.name}`}
+                            aria-label={`删除 ${holding.name}`}
                             onClick={() => onRemove(holding.id)}
                           >
                             <Trash2 size={16} />
