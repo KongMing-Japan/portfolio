@@ -148,29 +148,18 @@ export function NovaRebalanceAdviceCard({
         </div>
 
         {/* Health Stats Row */}
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(3, 1fr)',
-            gap: '0.5rem',
-            padding: '0.6rem 0.8rem',
-            borderRadius: 'calc(var(--radius) * 0.8)',
-            background: 'var(--muted)',
-            border: '1px solid var(--border)',
-            fontSize: '0.75rem',
-          }}
-        >
-          <div>
-            <span style={{ color: 'var(--muted-foreground)', display: 'block' }}>第一大重仓</span>
-            <strong style={{ color: 'var(--foreground)', fontSize: '0.85rem' }}>{formatPercent(largest)}</strong>
+        <div className="nova-rebalance-stats-box">
+          <div className="nova-stat-col">
+            <span className="nova-stat-label">第一大重仓</span>
+            <strong className="nova-stat-val">{formatPercent(largest)}</strong>
           </div>
-          <div>
-            <span style={{ color: 'var(--muted-foreground)', display: 'block' }}>前五大集中度</span>
-            <strong style={{ color: 'var(--foreground)', fontSize: '0.85rem' }}>{formatPercent(topFive)}</strong>
+          <div className="nova-stat-col">
+            <span className="nova-stat-label">前五大集中度</span>
+            <strong className="nova-stat-val">{formatPercent(topFive)}</strong>
           </div>
-          <div>
-            <span style={{ color: 'var(--muted-foreground)', display: 'block' }}>HHI 分散指数</span>
-            <strong style={{ color: 'var(--foreground)', fontSize: '0.85rem' }}>{Math.round(hhi * 100)}</strong>
+          <div className="nova-stat-col">
+            <span className="nova-stat-label">HHI 分散指数</span>
+            <strong className="nova-stat-val">{Math.round(hhi * 100)}</strong>
           </div>
         </div>
 

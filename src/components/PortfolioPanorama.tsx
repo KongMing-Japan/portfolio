@@ -243,46 +243,15 @@ export function PortfolioPanorama({
       : '主权货币与外汇暴露';
 
   return (
-    <section
-      className="gf-panorama-section"
-      style={{
-        background: '#ffffff',
-        border: '1px solid #e2e8f0',
-        borderRadius: '12px',
-        padding: '1.4rem 1.6rem',
-        margin: '1.5rem 0',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
-      }}
-    >
+    <section className="nova-card gf-panorama-section" id="panorama">
       {/* Top Header & Controls */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: '1rem',
-          marginBottom: '1.2rem',
-        }}
-      >
-        <div>
-          <h2
-            style={{
-              margin: 0,
-              fontSize: '1rem',
-              fontWeight: 600,
-              color: '#0f172a',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-            }}
-          >
-            <Globe2 size={18} color="var(--primary)" />
+      <div className="gf-chart-card-header">
+        <div className="gf-chart-title-group">
+          <h3>
+            <Globe2 size={16} color="var(--primary)" />
             <span>{dimensionTitle}</span>
-          </h2>
-          <p style={{ margin: '3px 0 0', fontSize: '0.78rem', color: 'var(--muted-foreground)' }}>
-            多维度资产暴露穿透 · 市场地域 / 券商机构 / 资产类型 / 货币暴露透视
-          </p>
+          </h3>
+          <p>多维度资产暴露穿透 · 市场地域 / 券商机构 / 资产类型 / 货币暴露透视</p>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
@@ -290,11 +259,11 @@ export function PortfolioPanorama({
           <div
             style={{
               display: 'inline-flex',
-              background: '#f1f5f9',
-              borderRadius: '6px',
+              background: 'var(--muted)',
+              borderRadius: 'calc(var(--radius) * 0.8)',
               padding: '3px',
               gap: '2px',
-              border: '1px solid #e2e8f0',
+              border: '1px solid var(--border)',
             }}
           >
             <button
@@ -303,15 +272,15 @@ export function PortfolioPanorama({
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '5px',
-                padding: '5px 12px',
+                padding: '4px 10px',
                 border: 'none',
-                borderRadius: '4px',
-                background: dimension === 'market' ? '#ffffff' : 'transparent',
-                color: dimension === 'market' ? '#0f172a' : '#64748b',
+                borderRadius: 'calc(var(--radius) * 0.6)',
+                background: dimension === 'market' ? 'var(--background)' : 'transparent',
+                color: dimension === 'market' ? 'var(--foreground)' : 'var(--muted-foreground)',
                 fontWeight: dimension === 'market' ? 600 : 500,
-                fontSize: '0.78rem',
+                fontSize: '0.75rem',
                 cursor: 'pointer',
-                boxShadow: dimension === 'market' ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+                boxShadow: dimension === 'market' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none',
                 transition: 'all 0.15s ease',
               }}
             >
@@ -324,15 +293,15 @@ export function PortfolioPanorama({
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '5px',
-                padding: '5px 12px',
+                padding: '4px 10px',
                 border: 'none',
-                borderRadius: '4px',
-                background: dimension === 'broker' ? '#ffffff' : 'transparent',
-                color: dimension === 'broker' ? '#0f172a' : '#64748b',
+                borderRadius: 'calc(var(--radius) * 0.6)',
+                background: dimension === 'broker' ? 'var(--background)' : 'transparent',
+                color: dimension === 'broker' ? 'var(--foreground)' : 'var(--muted-foreground)',
                 fontWeight: dimension === 'broker' ? 600 : 500,
-                fontSize: '0.78rem',
+                fontSize: '0.75rem',
                 cursor: 'pointer',
-                boxShadow: dimension === 'broker' ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+                boxShadow: dimension === 'broker' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none',
                 transition: 'all 0.15s ease',
               }}
             >
@@ -345,15 +314,15 @@ export function PortfolioPanorama({
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '5px',
-                padding: '5px 12px',
+                padding: '4px 10px',
                 border: 'none',
-                borderRadius: '4px',
-                background: dimension === 'assetClass' ? '#ffffff' : 'transparent',
-                color: dimension === 'assetClass' ? '#0f172a' : '#64748b',
+                borderRadius: 'calc(var(--radius) * 0.6)',
+                background: dimension === 'assetClass' ? 'var(--background)' : 'transparent',
+                color: dimension === 'assetClass' ? 'var(--foreground)' : 'var(--muted-foreground)',
                 fontWeight: dimension === 'assetClass' ? 600 : 500,
-                fontSize: '0.78rem',
+                fontSize: '0.75rem',
                 cursor: 'pointer',
-                boxShadow: dimension === 'assetClass' ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+                boxShadow: dimension === 'assetClass' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none',
                 transition: 'all 0.15s ease',
               }}
             >
@@ -366,15 +335,15 @@ export function PortfolioPanorama({
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '5px',
-                padding: '5px 12px',
+                padding: '4px 10px',
                 border: 'none',
-                borderRadius: '4px',
-                background: dimension === 'currency' ? '#ffffff' : 'transparent',
-                color: dimension === 'currency' ? '#0f172a' : '#64748b',
+                borderRadius: 'calc(var(--radius) * 0.6)',
+                background: dimension === 'currency' ? 'var(--background)' : 'transparent',
+                color: dimension === 'currency' ? 'var(--foreground)' : 'var(--muted-foreground)',
                 fontWeight: dimension === 'currency' ? 600 : 500,
-                fontSize: '0.78rem',
+                fontSize: '0.75rem',
                 cursor: 'pointer',
-                boxShadow: dimension === 'currency' ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+                boxShadow: dimension === 'currency' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none',
                 transition: 'all 0.15s ease',
               }}
             >
@@ -387,11 +356,11 @@ export function PortfolioPanorama({
           <div
             style={{
               display: 'inline-flex',
-              background: '#f1f5f9',
-              borderRadius: '6px',
+              background: 'var(--muted)',
+              borderRadius: 'calc(var(--radius) * 0.8)',
               padding: '3px',
               gap: '2px',
-              border: '1px solid #e2e8f0',
+              border: '1px solid var(--border)',
             }}
           >
             <button
@@ -400,13 +369,13 @@ export function PortfolioPanorama({
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                padding: '5px 9px',
+                padding: '4px 8px',
                 border: 'none',
-                borderRadius: '4px',
-                background: chartType === 'bar' ? '#ffffff' : 'transparent',
-                color: chartType === 'bar' ? '#0f172a' : '#64748b',
+                borderRadius: 'calc(var(--radius) * 0.6)',
+                background: chartType === 'bar' ? 'var(--background)' : 'transparent',
+                color: chartType === 'bar' ? 'var(--foreground)' : 'var(--muted-foreground)',
                 cursor: 'pointer',
-                boxShadow: chartType === 'bar' ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+                boxShadow: chartType === 'bar' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none',
               }}
             >
               <BarChart3 size={14} />
@@ -417,13 +386,13 @@ export function PortfolioPanorama({
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                padding: '5px 9px',
+                padding: '4px 8px',
                 border: 'none',
-                borderRadius: '4px',
-                background: chartType === 'donut' ? '#ffffff' : 'transparent',
-                color: chartType === 'donut' ? '#0f172a' : '#64748b',
+                borderRadius: 'calc(var(--radius) * 0.6)',
+                background: chartType === 'donut' ? 'var(--background)' : 'transparent',
+                color: chartType === 'donut' ? 'var(--foreground)' : 'var(--muted-foreground)',
                 cursor: 'pointer',
-                boxShadow: chartType === 'donut' ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+                boxShadow: chartType === 'donut' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none',
               }}
             >
               <PieChartIcon size={14} />
@@ -435,11 +404,11 @@ export function PortfolioPanorama({
       {/* Main Interactive Recharts Section */}
       <div
         style={{
-          border: '1px solid #f1f5f9',
-          borderRadius: '8px',
-          background: '#fafbfc',
-          padding: '1.2rem',
-          marginBottom: '1.2rem',
+          border: '1px solid var(--border)',
+          borderRadius: 'calc(var(--radius) * 0.8)',
+          background: 'color-mix(in oklch, var(--muted) 35%, transparent)',
+          padding: '1rem',
+          marginBottom: '1rem',
         }}
       >
         {chartType === 'bar' ? (
@@ -541,14 +510,14 @@ export function PortfolioPanorama({
             <div
               key={group.label}
               style={{
-                border: '1px solid #e2e8f0',
-                borderRadius: '8px',
-                padding: '0.85rem 1rem',
-                background: '#ffffff',
+                border: '1px solid var(--border)',
+                borderRadius: 'calc(var(--radius) * 0.8)',
+                padding: '0.875rem 1rem',
+                background: 'var(--card)',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '0.35rem',
-                boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
               }}
             >
               <div
@@ -565,12 +534,14 @@ export function PortfolioPanorama({
                       height: '8px',
                       borderRadius: '50%',
                       background: group.color,
+                      flexShrink: 0,
                     }}
                   />
                   <strong
                     style={{
-                      fontSize: '0.82rem',
-                      color: '#0f172a',
+                      fontSize: '0.8125rem',
+                      fontWeight: 600,
+                      color: 'var(--foreground)',
                       whiteSpace: 'nowrap',
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
@@ -582,12 +553,12 @@ export function PortfolioPanorama({
                 </div>
                 <span
                   style={{
-                    fontSize: '0.72rem',
-                    color: '#64748b',
-                    background: '#f1f5f9',
-                    border: '1px solid #e2e8f0',
-                    borderRadius: '999px',
-                    padding: '1px 7px',
+                    fontSize: '0.6875rem',
+                    color: 'var(--muted-foreground)',
+                    background: 'var(--muted)',
+                    border: '1px solid var(--border)',
+                    borderRadius: '4px',
+                    padding: '1px 6px',
                     fontWeight: 500,
                   }}
                 >
@@ -605,9 +576,10 @@ export function PortfolioPanorama({
               >
                 <span
                   style={{
-                    fontSize: '1.1rem',
+                    fontSize: '1.25rem',
                     fontWeight: 700,
-                    color: '#0f172a',
+                    letterSpacing: '-0.025em',
+                    color: 'var(--foreground)',
                     fontVariantNumeric: 'tabular-nums',
                   }}
                 >
@@ -616,7 +588,7 @@ export function PortfolioPanorama({
                 <span
                   style={{
                     fontSize: '0.75rem',
-                    color: '#64748b',
+                    color: 'var(--muted-foreground)',
                     fontVariantNumeric: 'tabular-nums',
                   }}
                 >
@@ -627,8 +599,8 @@ export function PortfolioPanorama({
               {/* Sample holdings list snippet */}
               <div
                 style={{
-                  fontSize: '0.72rem',
-                  color: '#94a3b8',
+                  fontSize: '0.6875rem',
+                  color: 'var(--muted-foreground)',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                   whiteSpace: 'nowrap',

@@ -202,25 +202,26 @@ export function HoldingsCompositionCard({
                 pointerEvents: 'none',
               }}
             >
-              <span style={{ fontSize: '11px', color: 'var(--muted-foreground)', fontWeight: 500, display: 'block' }}>
+              <span style={{ fontSize: '0.75rem', color: 'var(--muted-foreground)', fontWeight: 500, display: 'block', letterSpacing: '-0.01em' }}>
                 {hoveredTicker ? '聚焦标的' : '第一大重仓'}
               </span>
               <strong
                 style={{
-                  fontSize: '15px',
+                  fontSize: '1rem',
                   color: 'var(--foreground)',
                   fontWeight: 700,
                   display: 'block',
-                  marginTop: '1px',
-                  maxWidth: '100px',
+                  marginTop: '2px',
+                  maxWidth: '110px',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                   whiteSpace: 'nowrap',
+                  letterSpacing: '-0.02em',
                 }}
               >
                 {activeHolding?.ticker || activeHolding?.name}
               </strong>
-              <span style={{ fontSize: '11px', color: 'var(--primary)', fontWeight: 600 }}>
+              <span style={{ fontSize: '0.75rem', color: 'var(--primary)', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
                 {formatPercent(activeHolding?.weight ?? 0)}
               </span>
             </div>
@@ -235,7 +236,7 @@ export function HoldingsCompositionCard({
                   key={row.ticker}
                   className="gf-holdings-legend-row"
                   style={{
-                    background: isHovered ? '#f1f5f9' : 'transparent',
+                    background: isHovered ? 'var(--muted)' : 'transparent',
                   }}
                   onMouseEnter={() => setHoveredTicker(row.ticker)}
                   onMouseLeave={() => setHoveredTicker(null)}
@@ -248,7 +249,7 @@ export function HoldingsCompositionCard({
                     <span>
                       {row.isOther
                         ? row.name
-                        : `${LAYER_META[row.layer]?.label ?? row.layer}${row.broker ? ` · ${row.broker}` : ''}`}
+                        : `${row.name || row.ticker} · ${LAYER_META[row.layer]?.label ?? row.layer}`}
                     </span>
                   </div>
                   <div className="gf-legend-nums">

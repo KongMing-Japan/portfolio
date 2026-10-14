@@ -629,92 +629,145 @@ export function FinanceReportScreen({
       ) : (
         <>
           <div className="nova-shell" id="portfolio">
-            <section className="gf-overview">
-              <div className="gf-overview-top">
-                <div>
-                  <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--muted-foreground)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                    投资组合总资产 (Net Worth)
+            {/* Shadcn Dashboard Header */}
+            <div className="nova-page-header">
+              <div>
+                <h1 className="nova-page-title">资产总览与驾驶舱</h1>
+                <p className="nova-page-desc">
+                  {quoteUpdatedAt ? `行情更新于 ${formatDateTime(quoteUpdatedAt)}` : '行情未更新'} · 基准币种 {baseCurrency}
+                </p>
+              </div>
+              <div className="nova-page-badges">
+                <span className="nova-meta-badge">
+                  <strong>{aggregated.length}</strong> 只标的
+                </span>
+                <span className="nova-meta-badge">
+                  <strong>{brokers}</strong> 个券商账户
+                </span>
+                <span
+                  className={`nova-meta-badge ${
+                    hhi > 0.25 ? 'is-danger' : hhi > 0.15 ? 'is-warning' : 'is-success'
+                  }`}
+                >
+                  {concentrationLabel(hhi)}
+                </span>
+              </div>
+            </div>
+
+            {/* Shadcn 4-Card KPI Grid */}
+            <div className="nova-kpi-grid">
+              {/* Card 1: Total Net Worth */}
+              <div className="nova-kpi-card">
+                <div className="nova-kpi-header">
+                  <span className="nova-kpi-title">
+                    <Landmark size={14} />
+                    组合总资产 (Net Worth)
                   </span>
-                  <div className="gf-total-value">{formatMoney(total, baseCurrency)}</div>
+                  <span className="nova-kpi-chip">估值基准</span>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.4rem' }}>
-                  <span style={{ fontSize: '12px', color: 'var(--muted-foreground)' }}>
-                    {quoteUpdatedAt ? `行情更新于 ${formatDateTime(quoteUpdatedAt)}` : '行情未更新'}
-                  </span>
-                  <div className="gf-stat-row" style={{ margin: 0 }}>
-                    <span>{aggregated.length} 只标的</span>
-                    <span>{brokers} 个券商账户</span>
-                    <span>基准币种 {baseCurrency}</span>
-                    <span style={{ color: hhi > 0.25 ? '#dc2626' : hhi > 0.15 ? '#b45309' : '#059669', borderColor: 'currentColor' }}>
-                      {concentrationLabel(hhi)}
-                    </span>
-                  </div>
+                <div className="nova-kpi-value">{formatMoney(total, baseCurrency)}</div>
+                <div className="nova-kpi-desc">
+                  <span>全量资产汇总</span>
+                  <span>{aggregated.length} 只标的 · {brokers} 个账户</span>
                 </div>
               </div>
 
-              <div className="gf-layer-cards-grid">
-                {layerRows.map((row) => {
-                  let minTarget = 0.50, maxTarget = 0.60;
-                  if (row.layer === 'Satellite') { minTarget = 0.20; maxTarget = 0.30; }
-                  else if (row.layer === 'Defensive') { minTarget = 0.10; maxTarget = 0.15; }
-                  else if (row.layer === 'Cash') { minTarget = 0.05; maxTarget = 0.10; }
-
-                  const isOver = row.weight > maxTarget;
-                  const isUnder = row.weight < minTarget;
-
-                  return (
-                    <div key={row.layer} className="gf-layer-mini-card">
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 600, color: 'var(--foreground)' }}>
-                          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: LAYER_META[row.layer].color }} />
-                          {LAYER_META[row.layer].label}
-                        </span>
-                        <span
-                          style={{
-                            fontSize: '10px',
-                            fontWeight: 600,
-                            padding: '1px 5px',
-                            borderRadius: '3px',
-                            background: isOver ? '#fee2e2' : isUnder ? '#fef3c7' : '#dcfce7',
-                            color: isOver ? '#dc2626' : isUnder ? '#b45309' : '#15803d',
-                          }}
-                        >
-                          {isOver ? '偏高' : isUnder ? '偏低' : '稳健'}
-                        </span>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginTop: '4px' }}>
-                        <span style={{ fontSize: '18px', fontWeight: 800, color: 'var(--foreground)' }}>
-                          {formatPercent(row.weight)}
-                        </span>
-                        <span style={{ fontSize: '11px', color: 'var(--muted-foreground)' }}>
-                          目标 {minTarget * 100}-{maxTarget * 100}%
-                        </span>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '11px', color: 'var(--muted-foreground)', marginTop: '2px' }}>
-                        <span>{formatMoney(row.value, baseCurrency)}</span>
-                        <span>{row.rows.length} 只标的</span>
-                      </div>
+              {/* Card 2: Core Layer */}
+              {(() => {
+                const row = layerRows.find((r) => r.layer === 'Core') || { weight: 0, value: 0, rows: [] };
+                const isOver = row.weight > 0.60;
+                const isUnder = row.weight < 0.50;
+                return (
+                  <div className="nova-kpi-card">
+                    <div className="nova-kpi-header">
+                      <span className="nova-kpi-title">
+                        <span className="nova-dot" style={{ background: LAYER_META.Core.color }} />
+                        核心基石 (Core)
+                      </span>
+                      <span className={`nova-status-badge ${isOver ? 'is-over' : isUnder ? 'is-under' : 'is-ok'}`}>
+                        {isOver ? '偏高' : isUnder ? '偏低' : '稳健'}
+                      </span>
                     </div>
-                  );
-                })}
-              </div>
+                    <div className="nova-kpi-value">{formatPercent(row.weight)}</div>
+                    <div className="nova-kpi-desc">
+                      <span>目标 50-60%</span>
+                      <span>{formatMoney(row.value, baseCurrency)} ({row.rows.length}只)</span>
+                    </div>
+                  </div>
+                );
+              })()}
 
-              <div className="gf-allocation-strip" aria-label="Portfolio allocation" style={{ marginTop: '0.25rem' }}>
-                {layerRows.map((row) =>
-                  row.weight > 0 ? (
-                    <div
-                      key={row.layer}
-                      className="gf-allocation-segment"
-                      style={{
-                        width: `${row.weight * 100}%`,
-                        background: LAYER_META[row.layer].color,
-                      }}
-                      title={`${LAYER_META[row.layer].label} ${formatPercent(row.weight)}`}
-                    />
-                  ) : null,
-                )}
-              </div>
-            </section>
+              {/* Card 3: Satellite Layer */}
+              {(() => {
+                const row = layerRows.find((r) => r.layer === 'Satellite') || { weight: 0, value: 0, rows: [] };
+                const isOver = row.weight > 0.30;
+                const isUnder = row.weight < 0.20;
+                return (
+                  <div className="nova-kpi-card">
+                    <div className="nova-kpi-header">
+                      <span className="nova-kpi-title">
+                        <span className="nova-dot" style={{ background: LAYER_META.Satellite.color }} />
+                        进攻卫星 (Satellite)
+                      </span>
+                      <span className={`nova-status-badge ${isOver ? 'is-over' : isUnder ? 'is-under' : 'is-ok'}`}>
+                        {isOver ? '偏高' : isUnder ? '偏低' : '稳健'}
+                      </span>
+                    </div>
+                    <div className="nova-kpi-value">{formatPercent(row.weight)}</div>
+                    <div className="nova-kpi-desc">
+                      <span>目标 20-30%</span>
+                      <span>{formatMoney(row.value, baseCurrency)} ({row.rows.length}只)</span>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Card 4: Defensive & Cash Layer */}
+              {(() => {
+                const defRow = layerRows.find((r) => r.layer === 'Defensive') || { weight: 0, value: 0, rows: [] };
+                const cashRow = layerRows.find((r) => r.layer === 'Cash') || { weight: 0, value: 0, rows: [] };
+                const combinedWeight = defRow.weight + cashRow.weight;
+                const combinedValue = defRow.value + cashRow.value;
+                const combinedCount = defRow.rows.length + cashRow.rows.length;
+                const isOver = combinedWeight > 0.25;
+                const isUnder = combinedWeight < 0.15;
+                return (
+                  <div className="nova-kpi-card">
+                    <div className="nova-kpi-header">
+                      <span className="nova-kpi-title">
+                        <span className="nova-dot" style={{ background: LAYER_META.Defensive.color }} />
+                        防守与现金 (Defensive)
+                      </span>
+                      <span className={`nova-status-badge ${isOver ? 'is-over' : isUnder ? 'is-under' : 'is-ok'}`}>
+                        {isOver ? '偏高' : isUnder ? '偏低' : '稳健'}
+                      </span>
+                    </div>
+                    <div className="nova-kpi-value">{formatPercent(combinedWeight)}</div>
+                    <div className="nova-kpi-desc">
+                      <span>目标 15-25%</span>
+                      <span>{formatMoney(combinedValue, baseCurrency)} ({combinedCount}只)</span>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* Seamless Allocation Strip */}
+            <div className="gf-allocation-strip" aria-label="Portfolio allocation" style={{ marginTop: '-0.25rem' }}>
+              {layerRows.map((row) =>
+                row.weight > 0 ? (
+                  <div
+                    key={row.layer}
+                    className="gf-allocation-segment"
+                    style={{
+                      width: `${row.weight * 100}%`,
+                      background: LAYER_META[row.layer].color,
+                    }}
+                    title={`${LAYER_META[row.layer].label} ${formatPercent(row.weight)}`}
+                  />
+                ) : null,
+              )}
+            </div>
 
             {aggregated.length > 0 && (
               <div className="nova-grid-2">
@@ -758,13 +811,20 @@ export function FinanceReportScreen({
 
             <section className="gf-section" id="holdings">
               <div className="gf-section-header">
-                <h2>{t.yourPortfolio}</h2>
+                <div>
+                  <h2 className="text-base font-semibold tracking-tight text-foreground" style={{ margin: 0 }}>
+                    {t.yourPortfolio}
+                  </h2>
+                  <p className="text-sm text-muted-foreground" style={{ margin: '4px 0 0' }}>
+                    全量多券商持仓明细与资产分层管理
+                  </p>
+                </div>
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                  <button className="gf-text-action" onClick={() => setEditorOpen(true)}>
+                  <button className="gf-text-action text-xs font-medium" onClick={() => setEditorOpen(true)}>
                     {t.manageAccounts}
                   </button>
-                  <button className="gf-primary-action" onClick={() => setAddOpen(true)}>
-                    <Plus size={14} />
+                  <button className="gf-primary-action text-xs font-medium" onClick={() => setAddOpen(true)}>
+                    <Plus size={13} />
                     <span>{t.addStock}</span>
                   </button>
                 </div>
@@ -777,7 +837,7 @@ export function FinanceReportScreen({
                       <th>{t.symbol}</th>
                       <th className="numeric">{t.value}</th>
                       <th className="numeric">{t.weight}</th>
-                      <th>{t.layer}</th>
+                      <th className="text-center">{t.layer}</th>
                       <th className="numeric">{t.qty}</th>
                       <th className="numeric">{t.price}</th>
                     </tr>
@@ -819,33 +879,33 @@ export function FinanceReportScreen({
             {/* Methodology & FAQ Card */}
             <section className="gf-methodology-card">
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid var(--border)', paddingBottom: '0.75rem' }}>
-                <ShieldCheck size={18} color="var(--primary)" />
-                <h2 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: 'var(--foreground)' }}>
+                <ShieldCheck size={16} color="var(--primary)" />
+                <h2 className="text-sm font-semibold tracking-tight text-foreground" style={{ margin: 0 }}>
                   持仓分析方法论与风控说明
                 </h2>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem', marginTop: '0.5rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem', marginTop: '0.25rem' }}>
                 <div>
-                  <h3 style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--foreground)', margin: '0 0 0.35rem' }}>
+                  <h3 className="text-xs font-semibold text-foreground" style={{ margin: '0 0 4px' }}>
                     四层资产金字塔原则
                   </h3>
-                  <p style={{ fontSize: '0.78rem', color: 'var(--muted-foreground)', lineHeight: 1.6, margin: 0 }}>
+                  <p className="text-xs text-muted-foreground leading-relaxed" style={{ margin: 0 }}>
                     机构标准将资产划分为核心基石（Core 50-60%）、卫星进攻（Satellite 20-30%）、防守缓冲（Defensive 10-15%）与现金（Cash 5-10%），分散黑天鹅冲击。
                   </p>
                 </div>
                 <div>
-                  <h3 style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--foreground)', margin: '0 0 0.35rem' }}>
+                  <h3 className="text-xs font-semibold text-foreground" style={{ margin: '0 0 4px' }}>
                     单一标的权重风控（20% 上限）
                   </h3>
-                  <p style={{ fontSize: '0.78rem', color: 'var(--muted-foreground)', lineHeight: 1.6, margin: 0 }}>
+                  <p className="text-xs text-muted-foreground leading-relaxed" style={{ margin: 0 }}>
                     当单一持仓超过 20% 时，个股回调将大幅挤占组合整体收益。系统以 ⚠️ 标记过重标的，提示分批减仓锁利。
                   </p>
                 </div>
                 <div>
-                  <h3 style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--foreground)', margin: '0 0 0.35rem' }}>
+                  <h3 className="text-xs font-semibold text-foreground" style={{ margin: '0 0 4px' }}>
                     HHI 集中度指数说明
                   </h3>
-                  <p style={{ fontSize: '0.78rem', color: 'var(--muted-foreground)', lineHeight: 1.6, margin: 0 }}>
+                  <p className="text-xs text-muted-foreground leading-relaxed" style={{ margin: 0 }}>
                     HHI 衡量持仓分散程度。分数越低越分散（&lt; 15 优秀），越高越集中（&gt; 25 高风险），帮助量化组合健康度。
                   </p>
                 </div>
@@ -1299,21 +1359,22 @@ function FinanceHoldingRow({
             </div>
           </div>
         </td>
-        <td className="numeric">{formatMoney(holding.marketValueBase, baseCurrency)}</td>
-        <td className="numeric gf-positive">{formatPercent(holding.weight)}</td>
-        <td>
+        <td className="numeric font-semibold">{formatMoney(holding.marketValueBase, baseCurrency)}</td>
+        <td className="numeric font-semibold">{formatPercent(holding.weight)}</td>
+        <td className="text-center">
           <span
             className="gf-layer-chip"
             style={{
               color: LAYER_META[holding.layer].color,
               background: LAYER_META[holding.layer].pale,
+              borderColor: `color-mix(in oklch, ${LAYER_META[holding.layer].color} 25%, transparent)`,
             }}
           >
             {LAYER_META[holding.layer].label}
           </span>
         </td>
-        <td className="numeric">{holding.quantity.toLocaleString('en-US')}</td>
-        <td className="numeric">
+        <td className="numeric secondary-num">{holding.quantity.toLocaleString('en-US')}</td>
+        <td className="numeric secondary-num">
           {firstAccount?.marketPrice == null
             ? '—'
             : formatMoney(firstAccount.marketPrice, holding.currency)}
