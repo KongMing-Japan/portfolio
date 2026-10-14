@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertCircle } from 'lucide-react';
 import { fetchBundledPrices, fetchQuotes, extractImagePositions } from './lib/api';
 import {
@@ -16,10 +16,10 @@ import {
   suggestBaseCurrency,
 } from './lib/portfolio';
 import { clearSnapshot, loadSnapshot, saveSnapshot } from './lib/storage';
+import { INITIAL_SAMPLE_HOLDINGS, INITIAL_FX, INITIAL_UPDATED_AT } from './lib/initialData';
 import { ProcessingScreen } from './components/ProcessingScreen';
 import { FinanceReportScreen } from './components/FinanceReportScreen';
 import { ReviewScreen } from './components/ReviewScreen';
-import { SuperinvestorDetailPage } from './components/SuperinvestorsScreen';
 import type {
   AppStep,
   BaseCurrency,
@@ -31,6 +31,10 @@ import type {
   ReviewSnapshot,
 } from './types';
 
+const SuperinvestorDetailPage = lazy(() =>
+  import('./components/SuperinvestorsScreen').then((m) => ({ default: m.SuperinvestorDetailPage })),
+);
+
 const INITIAL_STATUS: ProcessingStatus = {
   parsing: 'pending',
   matching: 'pending',
@@ -40,10 +44,10 @@ const INITIAL_STATUS: ProcessingStatus = {
 
 function App() {
   const [step, setStep] = useState<AppStep>('report');
-  const [holdings, setHoldings] = useState<Holding[]>([]);
-  const [baseCurrency, setBaseCurrency] = useState<BaseCurrency>('JPY');
-  const [fx, setFx] = useState<Record<string, number>>({ JPY: 1 });
-  const [quoteUpdatedAt, setQuoteUpdatedAt] = useState<string | null>(null);
+  const [holdings, setHoldings] = useState<Holding[]>(() => INITIAL_SAMPLE_HOLDINGS);
+  const [baseCurrency, setBaseCurrency] = useState<BaseCurrency>('USD');
+  const [fx, setFx] = useState<Record<string, number>>(() => INITIAL_FX);
+  const [quoteUpdatedAt, setQuoteUpdatedAt] = useState<string | null>(() => INITIAL_UPDATED_AT);
   const [processing, setProcessing] =
     useState<ProcessingStatus>(INITIAL_STATUS);
   const [error, setError] = useState<string | null>(null);
@@ -185,60 +189,46 @@ function App() {
 
   const handleSample = useCallback(async () => {
     setError(null);
-    setStep('processing');
-    setProcessing({
-      parsing: 'active',
-      matching: 'pending',
-      quotes: 'pending',
-      message: '正在加载伯克希尔示例投资组合',
-    });
-    try {
-      const response = await fetch('/sample-positions.csv');
-      if (!response.ok) throw new Error('示例投资组合文件加载失败。');
-      const parsed = parseHoldingsCsv(await response.text(), 'Sample portfolio');
-      setProcessing({
-        parsing: 'done',
-        matching: 'active',
-        quotes: 'pending',
-        message: '正在规范化示例代码、币种与资产分层',
-      });
-      await finishImport(parsed);
-    } catch (caught) {
-      const message =
-        caught instanceof Error ? caught.message : '示例投资组合加载失败。';
-      setError(message);
-      setProcessing({
-        parsing: 'error',
-        matching: 'pending',
-        quotes: 'pending',
-        message,
-      });
-    }
-  }, [finishImport]);
+    setHoldings(INITIAL_SAMPLE_HOLDINGS);
+    setBaseCurrency('USD');
+    setFx(INITIAL_FX);
+    const now = new Date().toISOString();
+    setQuoteUpdatedAt(now);
+    setStep('report');
+    await persist(INITIAL_SAMPLE_HOLDINGS, 'USD', INITIAL_FX, now);
+  }, [persist]);
 
   useEffect(() => {
     let active = true;
     loadSnapshot()
       .then((snapshot) => {
         if (!active) return;
-        if (snapshot?.holdings.length) {
+        if (snapshot?.holdings?.length) {
           setHasSavedPortfolio(true);
           setHoldings(snapshot.holdings);
           setBaseCurrency(snapshot.baseCurrency);
           setFx(snapshot.fx);
           setQuoteUpdatedAt(snapshot.quoteUpdatedAt);
           setStep('report');
-        } else {
-          handleSample();
         }
       })
       .catch(() => {
-        if (active) handleSample();
+        // Keep initial sample state if storage lookup fails
       });
     return () => {
       active = false;
     };
-  }, [handleSample]);
+  }, []);
+
+  const handleCurrencyChange = useCallback(
+    async (nextCurrency: BaseCurrency) => {
+      setBaseCurrency(nextCurrency);
+      const updated = recalculateBaseValues(holdings, fx, nextCurrency);
+      setHoldings(updated);
+      await persist(updated, nextCurrency, fx, quoteUpdatedAt);
+    },
+    [holdings, fx, quoteUpdatedAt, persist],
+  );
 
   const handleManualImport = useCallback(
     async (text: string) => {
@@ -480,6 +470,7 @@ function App() {
         quoteUpdatedAt={quoteUpdatedAt}
         hasSavedPortfolio={hasSavedPortfolio}
         onClear={clearAll}
+        onCurrencyChange={handleCurrencyChange}
         onAddHolding={addManualHolding}
         onUpdateHolding={updateReportHolding}
         onRemoveHolding={removeReportHolding}
@@ -497,6 +488,7 @@ function App() {
     confirmReview,
     error,
     fx,
+    handleCurrencyChange,
     handleFiles,
     handleJsonImport,
     handleManualImport,
@@ -519,7 +511,9 @@ function App() {
   return (
     <div className="app-shell">
       {superinvestorId ? (
-        <SuperinvestorDetailPage investorId={superinvestorId} />
+        <Suspense fallback={<div className="p-8 text-center text-sm text-muted-foreground">正在加载投资大师档案...</div>}>
+          <SuperinvestorDetailPage investorId={superinvestorId} />
+        </Suspense>
       ) : (
         <>
           {error && step !== 'processing' ? (

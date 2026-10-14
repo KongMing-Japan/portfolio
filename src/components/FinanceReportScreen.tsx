@@ -1,4 +1,6 @@
 import {
+  lazy,
+  Suspense,
   useEffect,
   useMemo,
   useRef,
@@ -43,7 +45,6 @@ import {
   POPULAR_BROKERS,
   suggestCurrencyFromTicker,
 } from '../lib/portfolio';
-import { SuperinvestorsScreen } from './SuperinvestorsScreen';
 import { PortfolioAreaChart } from './PortfolioAreaChart';
 import { HoldingsCompositionCard } from './HoldingsCompositionCard';
 import { PortfolioPanorama } from './PortfolioPanorama';
@@ -60,6 +61,10 @@ import type {
   ReviewSnapshot,
 } from '../types';
 
+const SuperinvestorsScreen = lazy(() =>
+  import('./SuperinvestorsScreen').then((m) => ({ default: m.SuperinvestorsScreen })),
+);
+
 interface FinanceReportScreenProps {
   holdings: Holding[];
   baseCurrency: BaseCurrency;
@@ -67,6 +72,7 @@ interface FinanceReportScreenProps {
   quoteUpdatedAt: string | null;
   hasSavedPortfolio: boolean;
   onClear: () => void;
+  onCurrencyChange?: (currency: BaseCurrency) => void;
   onAddHolding: (input: ManualHoldingInput) => Promise<void>;
   onUpdateHolding: (id: string, patch: Partial<Holding>) => Promise<void>;
   onRemoveHolding: (id: string) => Promise<void>;
@@ -334,6 +340,7 @@ export function FinanceReportScreen({
   quoteUpdatedAt,
   hasSavedPortfolio,
   onClear,
+  onCurrencyChange,
   onAddHolding,
   onUpdateHolding,
   onRemoveHolding,
@@ -357,6 +364,9 @@ export function FinanceReportScreen({
   const [dragging, setDragging] = useState(false);
   const [manualText, setManualText] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
+  const [isExportingImg, setIsExportingImg] = useState(false);
+  const exportMenuRef = useRef<HTMLDivElement>(null);
   const [workspaceView, setWorkspaceView] = useState<WorkspaceView>(() =>
     window.location.hash.startsWith('#superinvestors')
       ? 'superinvestors'
@@ -367,6 +377,59 @@ export function FinanceReportScreen({
     currency: baseCurrency === 'CNY' ? 'CNY' : 'USD',
   });
   const t = COPY;
+
+  useEffect(() => {
+    if (!exportMenuOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node)) {
+        setExportMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [exportMenuOpen]);
+
+  const handleExportImage = async () => {
+    setIsExportingImg(true);
+    try {
+      const { toPng } = await import('html-to-image');
+      const node = document.getElementById('portfolio');
+      if (!node) throw new Error('未找到组合视图');
+
+      const dataUrl = await toPng(node, {
+        cacheBust: true,
+        backgroundColor: '#ffffff',
+        pixelRatio: 2,
+        filter: (domNode: HTMLElement) => {
+          if (domNode.classList?.contains('nova-export-menu')) return false;
+          return true;
+        },
+      });
+
+      const link = document.createElement('a');
+      link.download = `portfolio-overview-${new Date().toISOString().slice(0, 10)}.png`;
+      link.href = dataUrl;
+      link.click();
+    } catch (err) {
+      console.error('Failed to export image:', err);
+      alert('长图生成失败，建议您使用“导出 PDF”或“导出 CSV”。');
+    } finally {
+      setIsExportingImg(false);
+      setExportMenuOpen(false);
+    }
+  };
+
+  const handleExportPdf = () => {
+    setExportMenuOpen(false);
+    setTimeout(() => {
+      window.print();
+    }, 150);
+  };
+
+  const handleExportCsv = () => {
+    setExportMenuOpen(false);
+    exportExcel(holdings, baseCurrency);
+  };
 
   useEffect(() => {
     const syncHash = () => {
@@ -574,23 +637,26 @@ export function FinanceReportScreen({
         </div>
 
         <div className="gf-top-actions">
-          <button
-            className="gf-primary-action"
-            onClick={() => setAddOpen(true)}
-            style={{ fontSize: '12px', padding: '5px 12px' }}
-          >
-            <Plus size={14} />
-            <span>添加标的</span>
-          </button>
-          <button
-            className="gf-text-action"
-            onClick={() => setTimelineOpen(true)}
-            title="低频季度/月度审视快照与历史对照"
-            style={{ fontSize: '12px', padding: '5px 11px' }}
-          >
-            <History size={14} />
-            <span>周期快照</span>
-          </button>
+          {/* Currency Switcher: USD vs JPY */}
+          <div className="nova-currency-toggle" role="group" aria-label="基准币种切换">
+            <button
+              type="button"
+              className={`nova-currency-btn ${baseCurrency === 'USD' ? 'is-active' : ''}`}
+              onClick={() => onCurrencyChange?.('USD')}
+              title="切换为美元 (USD) 计价"
+            >
+              USD $
+            </button>
+            <button
+              type="button"
+              className={`nova-currency-btn ${baseCurrency === 'JPY' ? 'is-active' : ''}`}
+              onClick={() => onCurrencyChange?.('JPY')}
+              title="切换为日元 (JPY) 计价"
+            >
+              JPY ¥
+            </button>
+          </div>
+
           <button
             className="gf-text-action"
             onClick={() => setRebalanceOpen(true)}
@@ -599,22 +665,81 @@ export function FinanceReportScreen({
             <Scale size={14} color="#16a34a" />
             <span>再平衡</span>
           </button>
+
           <button
-            className="gf-icon-button"
-            aria-label={t.exportJson}
-            title={t.exportJson}
-            onClick={() => exportExcel(holdings, baseCurrency)}
-          >
-            <FileSpreadsheet size={15} />
-          </button>
-          <button
-            className="gf-icon-button"
-            aria-label={t.importPositions}
-            title={t.importPositions}
+            className="gf-text-action"
             onClick={() => setImportOpen(true)}
+            style={{ fontSize: '12px', padding: '5px 11px' }}
           >
-            <Upload size={15} />
+            <Upload size={14} />
+            <span>导入</span>
           </button>
+
+          {/* Export Dropdown Menu (PNG / PDF / CSV) */}
+          <div className="nova-export-dropdown" ref={exportMenuRef}>
+            <button
+              type="button"
+              className="gf-primary-action"
+              onClick={() => setExportMenuOpen((prev) => !prev)}
+              aria-expanded={exportMenuOpen}
+              aria-haspopup="menu"
+              style={{ fontSize: '12px', padding: '5px 12px' }}
+            >
+              <Download size={14} />
+              <span>导出</span>
+              <ChevronDown
+                size={12}
+                style={{
+                  transition: 'transform 0.2s ease',
+                  transform: exportMenuOpen ? 'rotate(180deg)' : 'none',
+                }}
+              />
+            </button>
+
+            {exportMenuOpen && (
+              <div className="nova-export-menu" role="menu">
+                <button
+                  type="button"
+                  className="nova-export-item"
+                  role="menuitem"
+                  onClick={handleExportImage}
+                  disabled={isExportingImg}
+                >
+                  <span className="nova-export-item-icon">🖼️</span>
+                  <div className="nova-export-item-text">
+                    <div className="nova-export-item-title">
+                      {isExportingImg ? '正在渲染长图...' : '导出组合长图 (PNG)'}
+                    </div>
+                    <div className="nova-export-item-desc">高清资产穿透大图，适合分享与保存</div>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  className="nova-export-item"
+                  role="menuitem"
+                  onClick={handleExportPdf}
+                >
+                  <span className="nova-export-item-icon">📄</span>
+                  <div className="nova-export-item-text">
+                    <div className="nova-export-item-title">导出投资报告 (PDF)</div>
+                    <div className="nova-export-item-desc">A4 标准矢量排版，打印或存为 PDF</div>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  className="nova-export-item"
+                  role="menuitem"
+                  onClick={handleExportCsv}
+                >
+                  <span className="nova-export-item-icon">📊</span>
+                  <div className="nova-export-item-text">
+                    <div className="nova-export-item-title">导出持仓数据 (CSV)</div>
+                    <div className="nova-export-item-desc">Excel 兼容，包含单价与换算市值</div>
+                  </div>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
@@ -624,7 +749,9 @@ export function FinanceReportScreen({
           id="superinvestors"
           style={{ width: 'min(1160px, calc(100% - 3rem))', margin: '2rem auto 0' }}
         >
-          <SuperinvestorsScreen />
+          <Suspense fallback={<div style={{ padding: '3rem', textAlign: 'center', color: 'var(--muted-foreground)' }}>正在加载投资大师档案...</div>}>
+            <SuperinvestorsScreen />
+          </Suspense>
         </section>
       ) : (
         <>

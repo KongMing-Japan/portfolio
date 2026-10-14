@@ -1474,3 +1474,198 @@
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
+
+/* ==========================================================================
+   Currency Switcher (USD / JPY)
+   ========================================================================== */
+.nova-currency-toggle {
+  display: inline-flex;
+  align-items: center;
+  background: var(--muted);
+  padding: 2px;
+  border-radius: calc(var(--radius) * 0.7);
+  border: 1px solid var(--border);
+  gap: 2px;
+}
+
+.nova-currency-btn {
+  padding: 3px 9px;
+  border-radius: calc(var(--radius) * 0.5);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted-foreground);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  line-height: 1.2;
+}
+
+.nova-currency-btn:hover {
+  color: var(--foreground);
+}
+
+.nova-currency-btn.is-active {
+  background: var(--background);
+  color: var(--foreground);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+/* ==========================================================================
+   Export Dropdown Menu (PNG / PDF / CSV)
+   ========================================================================== */
+.nova-export-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.nova-export-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  width: 250px;
+  background: var(--popover);
+  color: var(--popover-foreground);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.12), 0 8px 10px -6px rgba(0, 0, 0, 0.08);
+  padding: 6px;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  animation: novaMenuFadeIn 0.15s ease-out;
+}
+
+@keyframes novaMenuFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.nova-export-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: calc(var(--radius) * 0.65);
+  background: transparent;
+  border: none;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.nova-export-item:hover:not(:disabled) {
+  background: var(--muted);
+}
+
+.nova-export-item:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.nova-export-item-icon {
+  font-size: 1.1rem;
+  line-height: 1;
+  margin-top: 2px;
+}
+
+.nova-export-item-text {
+  flex: 1;
+}
+
+.nova-export-item-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+.nova-export-item-desc {
+  font-size: 0.7rem;
+  color: var(--muted-foreground);
+  margin-top: 2px;
+  line-height: 1.3;
+}
+
+/* ==========================================================================
+   Print Styles for Clean Vector PDF Output
+   ========================================================================== */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 12mm;
+  }
+
+  /* Hide interactive or navigation elements */
+  .gf-topbar,
+  .nova-export-dropdown,
+  .gf-top-actions,
+  .nova-page-badges,
+  .gf-footer,
+  .gf-modal-backdrop,
+  .gf-import-modal,
+  .gf-text-action,
+  .gf-primary-action,
+  .gf-chart-card-actions,
+  button {
+    display: none !important;
+  }
+
+  body,
+  .gf-page,
+  .nova-shell {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-shadow: none !important;
+  }
+
+  .nova-card,
+  .gf-overview,
+  .gf-chart-card,
+  .gf-section,
+  .gf-methodology-card {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    box-shadow: none !important;
+    border: 1px solid #e2e8f0 !important;
+    background: #ffffff !important;
+  }
+
+  .nova-kpi-grid {
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 8px !important;
+  }
+
+  .nova-kpi-card {
+    border: 1px solid #e2e8f0 !important;
+    box-shadow: none !important;
+    background: #ffffff !important;
+    padding: 10px !important;
+  }
+
+  .gf-table-wrap {
+    overflow: visible !important;
+    border: 1px solid #e2e8f0 !important;
+  }
+
+  .gf-holdings-table {
+    font-size: 8pt !important;
+  }
+
+  .gf-holdings-table th,
+  .gf-holdings-table td {
+    padding: 6px 8px !important;
+  }
+}
+
