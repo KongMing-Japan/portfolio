@@ -47,6 +47,7 @@ import { SuperinvestorsScreen } from './SuperinvestorsScreen';
 import { PortfolioAreaChart } from './PortfolioAreaChart';
 import { HoldingsCompositionCard } from './HoldingsCompositionCard';
 import { PortfolioPanorama } from './PortfolioPanorama';
+import { NovaRebalanceAdviceCard } from './NovaRebalanceAdviceCard';
 import { RebalanceCockpitModal } from './RebalanceCockpitModal';
 import { ReviewTimelineModal } from './ReviewTimelineModal';
 import type {
@@ -607,415 +608,308 @@ export function FinanceReportScreen({
         </section>
       ) : (
         <>
-          <div className="gf-shell" id="portfolio">
-            <section className="gf-main">
-              <section className="gf-overview">
-                <div className="gf-overview-top">
-                  <div>
-                    <h1>{t.portfolio}</h1>
-                    <p>{t.updated} {quoteUpdatedAt ? formatDateTime(quoteUpdatedAt) : t.noUpdate}</p>
-                  </div>
-                  <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
-                    <button
-                      className="gf-text-action"
-                      onClick={() => setTimelineOpen(true)}
-                      title="低频季度/月度审视快照与历史对照"
-                    >
-                      <History size={15} />
-                      <span>周期审视时间轴</span>
-                    </button>
-                    <button
-                      className="gf-primary-action"
-                      onClick={() => setRebalanceOpen(true)}
-                    >
-                      <Scale size={15} color="#4ade80" />
-                      <span>再平衡驾驶舱</span>
-                    </button>
-                    <button className="gf-primary-action" onClick={() => setAddOpen(true)}>
-                      <Plus size={15} />
-                      <span>{t.addStock}</span>
-                    </button>
-                  </div>
+          <div className="nova-shell" id="portfolio">
+            <section className="gf-overview">
+              <div className="gf-overview-top">
+                <div>
+                  <h1>{t.portfolio}</h1>
+                  <p>{t.updated} {quoteUpdatedAt ? formatDateTime(quoteUpdatedAt) : t.noUpdate}</p>
                 </div>
+                <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
+                  <button
+                    className="gf-text-action"
+                    onClick={() => setTimelineOpen(true)}
+                    title="低频季度/月度审视快照与历史对照"
+                  >
+                    <History size={15} />
+                    <span>周期审视时间轴</span>
+                  </button>
+                  <button
+                    className="gf-primary-action"
+                    onClick={() => setRebalanceOpen(true)}
+                  >
+                    <Scale size={15} color="#4ade80" />
+                    <span>再平衡驾驶舱</span>
+                  </button>
+                  <button className="gf-primary-action" onClick={() => setAddOpen(true)}>
+                    <Plus size={15} />
+                    <span>{t.addStock}</span>
+                  </button>
+                </div>
+              </div>
 
-                <div className="gf-overview-body">
-                  <div>
-                    <div className="gf-total-value">{formatMoney(total, baseCurrency)}</div>
-                    <div className="gf-stat-row">
-                      <span>
-                        {aggregated.length}{' '}
-                        {aggregated.length === 1 ? t.securitySingular : t.securities}
-                      </span>
-                      <span>{brokers} {brokers === 1 ? t.brokerSingular : t.brokers}</span>
-                      <span>{t.base} {baseCurrency}</span>
-                      <span>{concentrationLabel(hhi)}</span>
-                    </div>
+              <div className="gf-overview-body">
+                <div>
+                  <div className="gf-total-value">{formatMoney(total, baseCurrency)}</div>
+                  <div className="gf-stat-row">
+                    <span>
+                      {aggregated.length}{' '}
+                      {aggregated.length === 1 ? t.securitySingular : t.securities}
+                    </span>
+                    <span>{brokers} {brokers === 1 ? t.brokerSingular : t.brokers}</span>
+                    <span>{t.base} {baseCurrency}</span>
+                    <span>{concentrationLabel(hhi)}</span>
+                  </div>
 
-                    <div className="gf-layer-cards-grid">
-                      {layerRows.map((row) => (
-                        <div key={row.layer} className="gf-layer-mini-card">
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', fontWeight: 600, color: '#0f172a' }}>
-                              <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: LAYER_META[row.layer].color }} />
-                              {LAYER_META[row.layer].label}
-                            </span>
-                            <span style={{ fontSize: '11px', color: '#64748b' }}>{row.rows.length}只</span>
-                          </div>
-                          <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginTop: '2px' }}>
-                            {formatPercent(row.weight)}
-                          </div>
-                          <div style={{ fontSize: '11px', color: '#64748b' }}>
-                            {formatMoney(row.value, baseCurrency)}
-                          </div>
+                  <div className="gf-layer-cards-grid">
+                    {layerRows.map((row) => (
+                      <div key={row.layer} className="gf-layer-mini-card">
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', fontWeight: 600, color: 'var(--foreground)' }}>
+                            <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: LAYER_META[row.layer].color }} />
+                            {LAYER_META[row.layer].label}
+                          </span>
+                          <span style={{ fontSize: '11px', color: 'var(--muted-foreground)' }}>{row.rows.length}只</span>
                         </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                    <div style={{ position: 'relative', width: '200px', height: '200px' }}>
-                      <ResponsiveContainer width="100%" height="100%">
-                        <RechartsPieChart>
-                          <RechartsTooltip content={<OverviewDonutTooltip baseCurrency={baseCurrency} />} />
-                          <Pie
-                            data={overviewDonutData}
-                            dataKey="value"
-                            nameKey="label"
-                            innerRadius={58}
-                            outerRadius={78}
-                            paddingAngle={3}
-                            stroke="none"
-                          >
-                            {overviewDonutData.map((entry) => (
-                              <Cell key={entry.layer} fill={entry.color} />
-                            ))}
-                          </Pie>
-                        </RechartsPieChart>
-                      </ResponsiveContainer>
-                      <div
-                        style={{
-                          position: 'absolute',
-                          top: '50%',
-                          left: '50%',
-                          transform: 'translate(-50%, -50%)',
-                          textAlign: 'center',
-                          pointerEvents: 'none',
-                        }}
-                      >
-                        <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 500, display: 'block' }}>
-                          Core 核心
-                        </span>
-                        <strong style={{ fontSize: '16px', color: '#0f172a', fontWeight: 700, display: 'block', marginTop: '1px' }}>
-                          {formatPercent(
-                            layerRows.find((r) => r.layer === 'Core')?.weight ?? 0,
-                          )}
-                        </strong>
-                        <span style={{ fontSize: '10px', color: '#94a3b8' }}>目标 50-60%</span>
+                        <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--foreground)', marginTop: '2px' }}>
+                          {formatPercent(row.weight)}
+                        </div>
+                        <div style={{ fontSize: '11px', color: 'var(--muted-foreground)' }}>
+                          {formatMoney(row.value, baseCurrency)}
+                        </div>
                       </div>
-                    </div>
+                    ))}
                   </div>
                 </div>
 
-                <div className="gf-allocation-strip" aria-label="Portfolio allocation" style={{ marginTop: '16px' }}>
-                  {layerRows.map((row) =>
-                    row.weight > 0 ? (
-                      <div
-                        key={row.layer}
-                        className="gf-allocation-segment"
-                        style={{
-                          width: `${row.weight * 100}%`,
-                          background: LAYER_META[row.layer].color,
-                        }}
-                        title={`${LAYER_META[row.layer].label} ${formatPercent(row.weight)}`}
-                      >
-                        <span>{LAYER_META[row.layer].label}</span>
-                        <strong>{formatPercent(row.weight)}</strong>
-                      </div>
-                    ) : null,
-                  )}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ position: 'relative', width: '200px', height: '200px' }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <RechartsPieChart>
+                        <RechartsTooltip content={<OverviewDonutTooltip baseCurrency={baseCurrency} />} />
+                        <Pie
+                          data={overviewDonutData}
+                          dataKey="value"
+                          nameKey="label"
+                          innerRadius={58}
+                          outerRadius={78}
+                          paddingAngle={3}
+                          stroke="none"
+                        >
+                          {overviewDonutData.map((entry) => (
+                            <Cell key={entry.layer} fill={entry.color} />
+                          ))}
+                        </Pie>
+                      </RechartsPieChart>
+                    </ResponsiveContainer>
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: '50%',
+                        left: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        textAlign: 'center',
+                        pointerEvents: 'none',
+                      }}
+                    >
+                      <span style={{ fontSize: '11px', color: 'var(--muted-foreground)', fontWeight: 500, display: 'block' }}>
+                        Core 核心
+                      </span>
+                      <strong style={{ fontSize: '16px', color: 'var(--foreground)', fontWeight: 700, display: 'block', marginTop: '1px' }}>
+                        {formatPercent(
+                          layerRows.find((r) => r.layer === 'Core')?.weight ?? 0,
+                        )}
+                      </strong>
+                      <span style={{ fontSize: '10px', color: 'var(--muted-foreground)' }}>目标 50-60%</span>
+                    </div>
+                  </div>
                 </div>
-              </section>
+              </div>
 
-          {aggregated.length > 0 && (
-            <PortfolioAreaChart
-              totalValue={total}
-              baseCurrency={baseCurrency}
-              layerRows={layerRows}
-            />
-          )}
-
-          {aggregated.length > 0 && (
-            <PortfolioPanorama
-              holdings={holdings}
-              aggregated={aggregated}
-              totalValue={total}
-              baseCurrency={baseCurrency}
-            />
-          )}
-
-          <section className="gf-section" id="holdings">
-            <div className="gf-section-header">
-              <h2>{t.yourPortfolio}</h2>
-              <button className="gf-text-action" onClick={() => setEditorOpen(true)}>
-                {t.manageAccounts}
-              </button>
-            </div>
+              <div className="gf-allocation-strip" aria-label="Portfolio allocation" style={{ marginTop: '16px' }}>
+                {layerRows.map((row) =>
+                  row.weight > 0 ? (
+                    <div
+                      key={row.layer}
+                      className="gf-allocation-segment"
+                      style={{
+                        width: `${row.weight * 100}%`,
+                        background: LAYER_META[row.layer].color,
+                      }}
+                      title={`${LAYER_META[row.layer].label} ${formatPercent(row.weight)}`}
+                    >
+                      <span>{LAYER_META[row.layer].label}</span>
+                      <strong>{formatPercent(row.weight)}</strong>
+                    </div>
+                  ) : null,
+                )}
+              </div>
+            </section>
 
             {aggregated.length > 0 && (
-              <HoldingsCompositionCard
-                aggregated={aggregated}
+              <PortfolioAreaChart
                 totalValue={total}
                 baseCurrency={baseCurrency}
-                onSelectTicker={(ticker) => {
-                  setExpandedTicker((prev) => (prev === ticker ? null : ticker));
-                }}
+                layerRows={layerRows}
               />
             )}
 
-            <div className="gf-table-wrap">
-              <table className="gf-holdings-table">
-                <thead>
-                  <tr>
-                    <th>{t.symbol}</th>
-                    <th className="numeric">{t.value}</th>
-                    <th className="numeric">{t.weight}</th>
-                    <th>{t.layer}</th>
-                    <th className="numeric">{t.qty}</th>
-                    <th className="numeric">{t.price}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {aggregated.length ? (
-                    aggregated.map((holding) => (
-                      <FinanceHoldingRow
-                        key={holding.ticker}
-                        holding={holding}
-                        baseCurrency={baseCurrency}
-                        expanded={expandedTicker === holding.ticker}
-                        onToggle={() =>
-                          setExpandedTicker((current) =>
-                            current === holding.ticker ? null : holding.ticker,
-                          )
-                        }
-                      />
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={6}>
-                        <div className="gf-empty-state">
-                          <strong>{t.emptyTitle}</strong>
-                          <span>{t.emptyBody}</span>
-                          <button onClick={() => setImportOpen(true)}>
-                            <Upload size={16} />
-                            {t.importPositions}
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </section>
+            {aggregated.length > 0 && (
+              <div className="nova-grid-2">
+                <HoldingsCompositionCard
+                  aggregated={aggregated}
+                  totalValue={total}
+                  baseCurrency={baseCurrency}
+                  onSelectTicker={(ticker) => {
+                    setExpandedTicker((prev) => (prev === ticker ? null : ticker));
+                  }}
+                />
+                <NovaRebalanceAdviceCard
+                  layerRows={layerRows}
+                  total={total}
+                  baseCurrency={baseCurrency}
+                  aggregated={aggregated}
+                  rebalancingSignals={rebalancingSignals}
+                  hhi={hhi}
+                  onOpenRebalance={() => setRebalanceOpen(true)}
+                  onOpenTimeline={() => setTimelineOpen(true)}
+                />
+              </div>
+            )}
 
-        </section>
+            {aggregated.length > 0 && (
+              <PortfolioPanorama
+                holdings={holdings}
+                aggregated={aggregated}
+                totalValue={total}
+                baseCurrency={baseCurrency}
+              />
+            )}
 
-        <aside className="gf-sidebar">
-          <section className="gf-side-card">
-            <div className="gf-side-title">
-              <Layers3 size={18} />
-              <h2>四层资产配置与目标偏离</h2>
-            </div>
-            <p style={{ margin: '0.2rem 0 0.8rem', fontSize: '0.78rem', color: '#64748b' }}>
-              机构风控基准偏离度 (红/黄/绿状态标注)
-            </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-              {layerRows.map((row) => {
-                let status: 'ok' | 'under' | 'over' = 'ok';
-                let minTarget = 0.50;
-                let maxTarget = 0.60;
-                let targetText = '50-60%';
-
-                if (row.layer === 'Satellite') {
-                  minTarget = 0.20;
-                  maxTarget = 0.30;
-                  targetText = '20-30%';
-                } else if (row.layer === 'Defensive') {
-                  minTarget = 0.10;
-                  maxTarget = 0.15;
-                  targetText = '10-15%';
-                } else if (row.layer === 'Cash') {
-                  minTarget = 0.05;
-                  maxTarget = 0.10;
-                  targetText = '5-10%';
-                }
-
-                if (row.weight > maxTarget) status = 'over';
-                else if (row.weight < minTarget) status = 'under';
-
-                return (
-                  <div key={row.layer} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.82rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                        <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: LAYER_META[row.layer].color }} />
-                        <strong style={{ color: '#020817' }}>{LAYER_META[row.layer].label}</strong>
-                        <span style={{ fontSize: '0.72rem', color: '#64748b' }}>({targetText})</span>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                        <strong style={{ color: '#020817' }}>{formatPercent(row.weight)}</strong>
-                        {status === 'over' ? (
-                          <span className="gf-target-badge is-over">超标</span>
-                        ) : status === 'under' ? (
-                          <span className="gf-target-badge is-under">偏低</span>
-                        ) : (
-                          <span className="gf-target-badge is-ok">合规</span>
-                        )}
-                      </div>
-                    </div>
-                    <div style={{ height: '6px', width: '100%', background: '#e2e8f0', borderRadius: '99px', overflow: 'hidden' }}>
-                      <div
-                        style={{
-                          height: '100%',
-                          width: `${Math.min(row.weight * 100, 100)}%`,
-                          background: status === 'over' ? '#ef4444' : status === 'under' ? '#f59e0b' : LAYER_META[row.layer].color,
-                          borderRadius: '99px',
-                          transition: 'width 0.3s ease',
-                        }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-              <button
-                onClick={() => setRebalanceOpen(true)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '6px',
-                  width: '100%',
-                  padding: '8px 12px',
-                  borderRadius: '6px',
-                  border: '1px solid #0f172a',
-                  background: '#0f172a',
-                  color: '#ffffff',
-                  fontSize: '0.78rem',
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                  marginTop: '0.4rem',
-                  boxShadow: '0 1px 2px 0 rgb(0 0 0 / 0.05)',
-                }}
-              >
-                <Scale size={14} color="#4ade80" />
-                <span>开启季度再平衡试算</span>
-              </button>
-            </div>
-          </section>
-
-          <section className="gf-side-card">
-            <div className="gf-side-title">
-              <PieChart size={18} />
-              <h2>赛道与主题分布</h2>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.5rem' }}>
-              {themeRows.slice(0, 5).map((row) => (
-                <div key={row.label} style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: '#3c4043' }}>
-                    <span style={{ fontWeight: 500 }} title={row.label}>{row.label}</span>
-                    <strong style={{ color: '#202124' }}>{formatPercent(row.weight)}</strong>
-                  </div>
-                  <div style={{ height: '5px', width: '100%', background: '#f1f5f9', borderRadius: '99px', overflow: 'hidden' }}>
-                    <div style={{ height: '100%', width: `${Math.min(row.weight * 100, 100)}%`, background: '#3b82f6', borderRadius: '99px' }} />
-                  </div>
+            <section className="gf-section" id="holdings">
+              <div className="gf-section-header">
+                <h2>{t.yourPortfolio}</h2>
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <button className="gf-text-action" onClick={() => setEditorOpen(true)}>
+                    {t.manageAccounts}
+                  </button>
+                  <button className="gf-primary-action" onClick={() => setAddOpen(true)}>
+                    <Plus size={14} />
+                    <span>{t.addStock}</span>
+                  </button>
                 </div>
-              ))}
-            </div>
-          </section>
+              </div>
 
-          <section className="gf-side-card">
-            <div className="gf-side-title">
-              <ShieldCheck size={18} />
-              <h2>{t.structureHealth}</h2>
-            </div>
-            <div className="gf-health-line">
-              <span>{t.largest}</span>
-              <strong>{formatPercent(largest)}</strong>
-            </div>
-            <div className="gf-health-line">
-              <span>{t.top5}</span>
-              <strong>{formatPercent(topFive)}</strong>
-            </div>
-            <div className="gf-health-line">
-              <span>{t.concentration}</span>
-              <strong>{Math.round(hhi * 100)}</strong>
-            </div>
-            <p style={{ marginTop: '0.6rem', fontSize: '0.76rem', color: '#5f6368', lineHeight: 1.4 }}>{t.healthNote}</p>
-          </section>
-        </aside>
-      </div>
+              <div className="gf-table-wrap">
+                <table className="gf-holdings-table">
+                  <thead>
+                    <tr>
+                      <th>{t.symbol}</th>
+                      <th className="numeric">{t.value}</th>
+                      <th className="numeric">{t.weight}</th>
+                      <th>{t.layer}</th>
+                      <th className="numeric">{t.qty}</th>
+                      <th className="numeric">{t.price}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {aggregated.length ? (
+                      aggregated.map((holding) => (
+                        <FinanceHoldingRow
+                          key={holding.ticker}
+                          holding={holding}
+                          baseCurrency={baseCurrency}
+                          expanded={expandedTicker === holding.ticker}
+                          onToggle={() =>
+                            setExpandedTicker((current) =>
+                              current === holding.ticker ? null : holding.ticker,
+                            )
+                          }
+                        />
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={6}>
+                          <div className="gf-empty-state">
+                            <strong>{t.emptyTitle}</strong>
+                            <span>{t.emptyBody}</span>
+                            <button onClick={() => setImportOpen(true)}>
+                              <Upload size={16} />
+                              {t.importPositions}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </section>
 
-      {/* ── Methodology & FAQ ── */}
-      <section style={{ width: 'min(1100px, calc(100% - 48px))', margin: '2.5rem auto 0' }}>
-        <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', background: '#fff', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
-          <div style={{ padding: '1.5rem 2rem 0.2rem' }}>
-            <h2 style={{ fontSize: '0.95rem', fontWeight: 600, color: '#0f172a', margin: '0 0 1.2rem' }}>
-              持仓分析方法论与常见问题
-            </h2>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem 2rem' }}>
-              <div>
-                <h3 style={{ fontSize: '0.82rem', fontWeight: 600, color: '#0f172a', margin: '0 0 0.35rem', lineHeight: 1.4 }}>
-                  什么是四层金字塔配比？
-                </h3>
-                <p style={{ fontSize: '0.78rem', color: '#64748b', lineHeight: 1.55, margin: 0 }}>
-                  机构标准将资产划分为核心基石（Core 50-60%）、卫星进攻（Satellite 20-30%）、防守缓冲（Defensive 10-15%）与现金（Cash 5-10%），分散黑天鹅冲击。
-                </p>
+            {/* Methodology & FAQ Card */}
+            <section className="gf-methodology-card">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid var(--border)', paddingBottom: '0.75rem' }}>
+                <ShieldCheck size={18} color="var(--primary)" />
+                <h2 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: 'var(--foreground)' }}>
+                  持仓分析方法论与风控说明
+                </h2>
               </div>
-              <div>
-                <h3 style={{ fontSize: '0.82rem', fontWeight: 600, color: '#0f172a', margin: '0 0 0.35rem', lineHeight: 1.4 }}>
-                  单一标的权重为何限制 20%？
-                </h3>
-                <p style={{ fontSize: '0.78rem', color: '#64748b', lineHeight: 1.55, margin: 0 }}>
-                  当单一持仓超过 20% 时，个股回调将大幅挤占组合整体收益。系统以 ⚠️ 标记过重标的，提示分批减仓锁利。
-                </p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem', marginTop: '0.5rem' }}>
+                <div>
+                  <h3 style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--foreground)', margin: '0 0 0.35rem' }}>
+                    四层资产金字塔原则
+                  </h3>
+                  <p style={{ fontSize: '0.78rem', color: 'var(--muted-foreground)', lineHeight: 1.6, margin: 0 }}>
+                    机构标准将资产划分为核心基石（Core 50-60%）、卫星进攻（Satellite 20-30%）、防守缓冲（Defensive 10-15%）与现金（Cash 5-10%），分散黑天鹅冲击。
+                  </p>
+                </div>
+                <div>
+                  <h3 style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--foreground)', margin: '0 0 0.35rem' }}>
+                    单一标的权重风控（20% 上限）
+                  </h3>
+                  <p style={{ fontSize: '0.78rem', color: 'var(--muted-foreground)', lineHeight: 1.6, margin: 0 }}>
+                    当单一持仓超过 20% 时，个股回调将大幅挤占组合整体收益。系统以 ⚠️ 标记过重标的，提示分批减仓锁利。
+                  </p>
+                </div>
+                <div>
+                  <h3 style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--foreground)', margin: '0 0 0.35rem' }}>
+                    HHI 集中度指数说明
+                  </h3>
+                  <p style={{ fontSize: '0.78rem', color: 'var(--muted-foreground)', lineHeight: 1.6, margin: 0 }}>
+                    HHI 衡量持仓分散程度。分数越低越分散（&lt; 15 优秀），越高越集中（&gt; 25 高风险），帮助量化组合健康度。
+                  </p>
+                </div>
               </div>
-              <div>
-                <h3 style={{ fontSize: '0.82rem', fontWeight: 600, color: '#0f172a', margin: '0 0 0.35rem', lineHeight: 1.4 }}>
-                  HHI 集中度指数说明
-                </h3>
-                <p style={{ fontSize: '0.78rem', color: '#64748b', lineHeight: 1.55, margin: 0 }}>
-                  HHI 衡量持仓分散程度。分数越低越分散（&lt; 15 优秀），越高越集中（&gt; 25 高风险），帮助量化组合健康度。
-                </p>
+              <div style={{ marginTop: '0.5rem', paddingTop: '0.85rem', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', fontSize: '0.78rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                  <a
+                    href="https://github.com/KongMing-Japan/portfolio/blob/main/docs/methodology.zh.md"
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ color: 'var(--primary)', fontWeight: 500, textDecoration: 'none' }}
+                  >
+                    详细方法论
+                  </a>
+                  <span style={{ color: 'var(--border)' }}>|</span>
+                  <span style={{ color: 'var(--muted-foreground)' }}>数据来源: Yahoo Finance · SEC EDGAR</span>
+                </div>
+                <button
+                  onClick={onClear}
+                  style={{
+                    fontSize: '0.75rem',
+                    padding: '4px 10px',
+                    border: '1px solid var(--border)',
+                    background: 'var(--background)',
+                    color: 'var(--muted-foreground)',
+                    borderRadius: 'calc(var(--radius) * 0.8)',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    fontWeight: 500,
+                  }}
+                >
+                  <Trash2 size={12} />
+                  {t.clear}
+                </button>
               </div>
-            </div>
+            </section>
           </div>
-          <div style={{ margin: '1.2rem 2rem 0', padding: '0.85rem 0', borderTop: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', fontSize: '0.78rem', color: '#64748b' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1.2rem', flexWrap: 'wrap' }}>
-              <a
-                href="https://github.com/KongMing-Japan/portfolio/blob/main/docs/methodology.zh.md"
-                target="_blank"
-                rel="noreferrer"
-                style={{ color: '#2563eb', fontWeight: 500, textDecoration: 'none' }}
-              >
-                详细方法论
-              </a>
-              <span style={{ color: '#e2e8f0' }}>|</span>
-              <span>数据来源: Yahoo Finance · SEC EDGAR</span>
-            </div>
-            <button
-              onClick={onClear}
-              style={{ flexShrink: 0, fontSize: '0.75rem', padding: '0.35rem 0.75rem', border: '1px solid #e2e8f0', background: '#fff', color: '#64748b', borderRadius: '6px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '5px', fontWeight: 500 }}
-            >
-              <Trash2 size={12} />
-              {t.clear}
-            </button>
-          </div>
-        </div>
-      </section>
-    </>
-  )}
+        </>
+      )}
 
-      <footer className="gf-footer" style={{ width: 'min(1100px, calc(100% - 48px))', margin: '3.5rem auto 0', paddingTop: '1.8rem', paddingBottom: '2.5rem', borderTop: '1px solid #e2e8f0', textAlign: 'center', fontSize: '0.75rem', color: '#64748b' }}>
-        <p style={{ margin: '0 0 0.35rem', fontWeight: 600, color: '#0f172a' }}>Portfolio 调仓 · 独立多券商资产配置与再平衡系统</p>
+      <footer className="gf-footer">
+        <p style={{ margin: '0 0 0.35rem', fontWeight: 600, color: 'var(--foreground)' }}>Portfolio 调仓 · 独立多券商资产配置与再平衡系统</p>
         <p style={{ margin: '0 0 0.6rem' }}>© 2026 KongMing LLC · 孔明合同会社</p>
         <div className="gf-footer-links">
           <a href="https://kongmingjapan.com/" target="_blank" rel="noreferrer" className="gf-footer-link">
