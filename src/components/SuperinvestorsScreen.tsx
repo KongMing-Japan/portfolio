@@ -108,16 +108,20 @@ function InvestorDonut({
       role="img"
       aria-label={`${investor.name} 投资组合配置。第一大重仓为 ${topLabel}，占比 ${formatPercent(investor.holdings[0]?.weight || 0)}。`}
     >
-      <ResponsiveContainer width="100%" height="100%">
+      <ResponsiveContainer
+        width="100%"
+        height="100%"
+        initialDimension={{ width: compact ? 100 : 200, height: compact ? 100 : 200 }}
+      >
         <PieChart>
           <Pie
             data={rows}
             dataKey="value"
             nameKey="name"
-            innerRadius="57%"
-            outerRadius="92%"
-            paddingAngle={1.1}
-            stroke="#ffffff"
+            innerRadius={compact ? 30 : 54}
+            outerRadius={compact ? 48 : 88}
+            paddingAngle={1.5}
+            stroke="var(--card)"
             strokeWidth={2}
             isAnimationActive={false}
           >
