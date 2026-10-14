@@ -1572,9 +1572,16 @@
 }
 
 .nova-export-item-icon {
-  font-size: 1.1rem;
-  line-height: 1;
-  margin-top: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: calc(var(--radius) * 0.5);
+  background: var(--muted);
+  color: var(--primary);
+  flex-shrink: 0;
+  margin-top: 1px;
 }
 
 .nova-export-item-text {

@@ -636,13 +636,13 @@ export function ReviewTimelineModal({
                         >
                           {snap.notes.bestDecision && (
                             <div>
-                              <strong style={{ color: '#166534' }}>✓ 得意决策: </strong>
+                              <strong style={{ color: '#166534' }}>得意决策: </strong>
                               {snap.notes.bestDecision}
                             </div>
                           )}
                           {snap.notes.worstDecision && (
                             <div>
-                              <strong style={{ color: '#b91c1c' }}>✗ 遗憾教训: </strong>
+                              <strong style={{ color: '#b91c1c' }}>反思教训: </strong>
                               {snap.notes.worstDecision}
                             </div>
                           )}
@@ -682,10 +682,10 @@ export function ReviewTimelineModal({
                       fontWeight: 500,
                     }}
                   >
-                    ← 返回快照列表
+                    返回快照列表
                   </button>
                   <h3 style={{ margin: 0, fontSize: '1rem', color: '#0f172a', fontWeight: 600 }}>
-                    跨期对比：{comparedSnapshot.label} ➔ 当前组合
+                    跨期对比：{comparedSnapshot.label} 与当前组合
                   </h3>
                 </div>
 

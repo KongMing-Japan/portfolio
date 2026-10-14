@@ -8,13 +8,16 @@ import {
   type FormEvent,
 } from 'react';
 import {
+  AlertTriangle,
   Briefcase,
   ChevronDown,
   ChevronRight,
   ClipboardList,
   Download,
   ExternalLink,
+  FileImage,
   FileSpreadsheet,
+  FileText,
   History,
   Landmark,
   Layers3,
@@ -705,7 +708,9 @@ export function FinanceReportScreen({
                   onClick={handleExportImage}
                   disabled={isExportingImg}
                 >
-                  <span className="nova-export-item-icon">🖼️</span>
+                  <span className="nova-export-item-icon">
+                    <FileImage size={15} />
+                  </span>
                   <div className="nova-export-item-text">
                     <div className="nova-export-item-title">
                       {isExportingImg ? '正在渲染长图...' : '导出组合长图 (PNG)'}
@@ -719,7 +724,9 @@ export function FinanceReportScreen({
                   role="menuitem"
                   onClick={handleExportPdf}
                 >
-                  <span className="nova-export-item-icon">📄</span>
+                  <span className="nova-export-item-icon">
+                    <FileText size={15} />
+                  </span>
                   <div className="nova-export-item-text">
                     <div className="nova-export-item-title">导出投资报告 (PDF)</div>
                     <div className="nova-export-item-desc">A4 标准矢量排版，打印或存为 PDF</div>
@@ -731,7 +738,9 @@ export function FinanceReportScreen({
                   role="menuitem"
                   onClick={handleExportCsv}
                 >
-                  <span className="nova-export-item-icon">📊</span>
+                  <span className="nova-export-item-icon">
+                    <FileSpreadsheet size={15} />
+                  </span>
                   <div className="nova-export-item-text">
                     <div className="nova-export-item-title">导出持仓数据 (CSV)</div>
                     <div className="nova-export-item-desc">Excel 兼容，包含单价与换算市值</div>
@@ -1025,7 +1034,7 @@ export function FinanceReportScreen({
                     单一标的权重风控（20% 上限）
                   </h3>
                   <p className="text-xs text-muted-foreground leading-relaxed" style={{ margin: 0 }}>
-                    当单一持仓超过 20% 时，个股回调将大幅挤占组合整体收益。系统以 ⚠️ 标记过重标的，提示分批减仓锁利。
+                    当单一持仓超过 20% 时，个股回调将大幅挤占组合整体收益。系统自动预警过重标的，提示分批减仓锁利。
                   </p>
                 </div>
                 <div>
@@ -1476,7 +1485,8 @@ function FinanceHoldingRow({
                 <span className="gf-symbol-ticker">{holding.ticker}</span>
                 {holding.weight > 0.20 && (
                   <span className="gf-risk-tag" title="单一标的过重 (高于 20% 机构风控线)">
-                    ⚠️ 过重
+                    <AlertTriangle size={11} style={{ display: 'inline', marginRight: '3px', verticalAlign: '-1px' }} />
+                    过重
                   </span>
                 )}
               </div>

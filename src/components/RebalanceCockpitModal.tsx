@@ -453,7 +453,7 @@ export function RebalanceCockpitModal({
                             fontWeight: 600,
                           }}
                         >
-                          超配 ⚠️
+                          超配
                         </span>
                       ) : isUnder ? (
                         <span
@@ -466,7 +466,7 @@ export function RebalanceCockpitModal({
                             fontWeight: 600,
                           }}
                         >
-                          低配 ⬇
+                          低配
                         </span>
                       ) : (
                         <span
@@ -479,7 +479,7 @@ export function RebalanceCockpitModal({
                             fontWeight: 600,
                           }}
                         >
-                          合规 ✓
+                          合规
                         </span>
                       )}
                     </div>
