@@ -53,7 +53,7 @@ export function UploadScreen({
       <section className="upload-intro">
         <div className="lifeos-eyebrow" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.32rem', marginBottom: '0.5rem', color: '#1a73e8', fontSize: '0.72rem', fontWeight: 700, textDecoration: 'none', opacity: 0.8 }}>
           <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/></svg>
-          <span>MoneyOS</span>
+          <span>Portfolio 调仓</span>
         </div>
         <div className="intro-mark">Portfolio Studio</div>
         <h1>把分散的持仓，变成一张清楚的组合报告。</h1>
@@ -211,8 +211,22 @@ export function UploadScreen({
       </div>
 
       <footer className="upload-footer" style={{ marginTop: '3rem', paddingTop: '1.5rem', borderTop: '1px solid rgba(0,0,0,0.08)', width: '100%', textAlign: 'center', fontSize: '0.78rem', color: '#64748b' }}>
-        <p style={{ margin: '0 0 0.35rem', fontWeight: 500, color: '#334155' }}>MoneyOS Portfolio · 独立多券商资产配置与再平衡系统</p>
-        <p style={{ margin: 0 }}>© 2026 MoneyOS. All holdings stored locally in your browser.</p>
+        <p style={{ margin: '0 0 0.35rem', fontWeight: 600, color: '#334155' }}>Portfolio 调仓 · 独立多券商资产配置与再平衡系统</p>
+        <p style={{ margin: '0 0 0.6rem' }}>© 2026 孔明 (KongMing). 保留所有权利 · 所有持仓数据均安全保存在您的本地浏览器中。</p>
+        <div className="gf-footer-links">
+          <a href="https://kongmingjapan.com/" target="_blank" rel="noreferrer" className="gf-footer-link">
+            孔明官网
+          </a>
+          <a href="https://planner.kongmingjapan.com/" target="_blank" rel="noreferrer" className="gf-footer-link">
+            Planner 人生规划
+          </a>
+          <a href="https://tax.kongmingjapan.com/" target="_blank" rel="noreferrer" className="gf-footer-link">
+            Tax 日本税务计算
+          </a>
+          <a href="https://github.com/KongMing-Japan/portfolio" target="_blank" rel="noreferrer" className="gf-footer-link">
+            GitHub 开源
+          </a>
+        </div>
       </footer>
     </main>
   );

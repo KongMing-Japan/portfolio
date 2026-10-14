@@ -11,6 +11,7 @@ import {
   ChevronRight,
   ClipboardList,
   Download,
+  ExternalLink,
   FileSpreadsheet,
   History,
   Landmark,
@@ -43,6 +44,8 @@ import {
   suggestCurrencyFromTicker,
 } from '../lib/portfolio';
 import { SuperinvestorsScreen } from './SuperinvestorsScreen';
+import { PortfolioAreaChart } from './PortfolioAreaChart';
+import { HoldingsCompositionCard } from './HoldingsCompositionCard';
 import { PortfolioPanorama } from './PortfolioPanorama';
 import { RebalanceCockpitModal } from './RebalanceCockpitModal';
 import { ReviewTimelineModal } from './ReviewTimelineModal';
@@ -207,7 +210,7 @@ function exportExcel(
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `moneyos-portfolio-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.download = `portfolio-rebalance-${new Date().toISOString().slice(0, 10)}.csv`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -549,7 +552,7 @@ export function FinanceReportScreen({
               openWorkspace('portfolio');
             }}
           >
-            MoneyOS Portfolio
+            Portfolio 调仓
           </button>
           <nav className="gf-nav-tabs" aria-label="视图导航">
             <button
@@ -734,6 +737,14 @@ export function FinanceReportScreen({
               </section>
 
           {aggregated.length > 0 && (
+            <PortfolioAreaChart
+              totalValue={total}
+              baseCurrency={baseCurrency}
+              layerRows={layerRows}
+            />
+          )}
+
+          {aggregated.length > 0 && (
             <PortfolioPanorama
               holdings={holdings}
               aggregated={aggregated}
@@ -749,6 +760,18 @@ export function FinanceReportScreen({
                 {t.manageAccounts}
               </button>
             </div>
+
+            {aggregated.length > 0 && (
+              <HoldingsCompositionCard
+                aggregated={aggregated}
+                totalValue={total}
+                baseCurrency={baseCurrency}
+                onSelectTicker={(ticker) => {
+                  setExpandedTicker((prev) => (prev === ticker ? null : ticker));
+                }}
+              />
+            )}
+
             <div className="gf-table-wrap">
               <table className="gf-holdings-table">
                 <thead>
@@ -992,8 +1015,22 @@ export function FinanceReportScreen({
   )}
 
       <footer className="gf-footer" style={{ width: 'min(1100px, calc(100% - 48px))', margin: '3.5rem auto 0', paddingTop: '1.8rem', paddingBottom: '2.5rem', borderTop: '1px solid #e2e8f0', textAlign: 'center', fontSize: '0.75rem', color: '#64748b' }}>
-        <p style={{ margin: '0 0 0.35rem', fontWeight: 500, color: '#0f172a' }}>MoneyOS Portfolio · 独立多券商资产配置与再平衡系统</p>
-        <p style={{ margin: 0 }}>© 2026 MoneyOS. All holdings stored locally and securely in your browser.</p>
+        <p style={{ margin: '0 0 0.35rem', fontWeight: 600, color: '#0f172a' }}>Portfolio 调仓 · 独立多券商资产配置与再平衡系统</p>
+        <p style={{ margin: '0 0 0.6rem' }}>© 2026 孔明 (KongMing). 保留所有权利 · 所有持仓数据均安全保存在您的本地浏览器中。</p>
+        <div className="gf-footer-links">
+          <a href="https://kongmingjapan.com/" target="_blank" rel="noreferrer" className="gf-footer-link">
+            孔明官网 <ExternalLink size={12} />
+          </a>
+          <a href="https://planner.kongmingjapan.com/" target="_blank" rel="noreferrer" className="gf-footer-link">
+            Planner 人生规划 <ExternalLink size={12} />
+          </a>
+          <a href="https://tax.kongmingjapan.com/" target="_blank" rel="noreferrer" className="gf-footer-link">
+            Tax 日本税务计算 <ExternalLink size={12} />
+          </a>
+          <a href="https://github.com/KongMing-Japan/portfolio" target="_blank" rel="noreferrer" className="gf-footer-link">
+            GitHub 开源 <ExternalLink size={12} />
+          </a>
+        </div>
       </footer>
 
       {importOpen ? (

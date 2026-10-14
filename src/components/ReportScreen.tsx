@@ -493,7 +493,7 @@ export function ReportScreen({
             </button>
           </div>
           <div className="portfolio-network-links" style={{ fontSize: '0.72rem', opacity: 0.7 }}>
-            <span>MoneyOS Portfolio · 独立资产配置与再平衡系统</span>
+            <span>Portfolio 调仓 · 独立资产配置与再平衡系统</span>
           </div>
         </footer>
       </div>

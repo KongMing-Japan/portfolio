@@ -2253,6 +2253,230 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+/* ==========================================================================
+   Shadcn UI Chart Cards & Area Chart System (https://ui.shadcn.com/charts/area)
+   ========================================================================== */
+
+.gf-chart-card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-bg);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+  margin-bottom: 24px;
+}
+
+.gf-chart-card-header {
+  padding: 16px 20px 14px;
+  border-bottom: 1px solid #f1f5f9;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.gf-chart-title-group h3 {
+  margin: 0;
+  font-size: 14.5px;
+  font-weight: 650;
+  color: var(--color-fg);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gf-chart-title-group p {
+  margin: 3px 0 0;
+  font-size: 12px;
+  color: var(--color-muted-fg);
+}
+
+.gf-chart-card-actions {
+  display: inline-flex;
+  align-items: center;
+  background: var(--color-muted);
+  border: 1px solid var(--color-border);
+  border-radius: calc(var(--radius) - 2px);
+  padding: 3px;
+  gap: 2px;
+}
+
+.gf-chart-pill-btn {
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  border: none;
+  border-radius: calc(var(--radius) - 4px);
+  background: transparent;
+  color: var(--color-muted-fg);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+}
+
+.gf-chart-pill-btn:hover {
+  color: var(--color-fg);
+}
+
+.gf-chart-pill-btn.is-active {
+  background: #ffffff;
+  color: var(--color-fg);
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.gf-chart-card-body {
+  padding: 16px 20px;
+}
+
+.gf-chart-card-footer {
+  padding: 10px 20px 14px;
+  border-top: 1px solid #f1f5f9;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--color-muted-fg);
+  background: #fafafa;
+}
+
+.gf-chart-trending-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.gf-chart-trending-tag svg {
+  color: #10b981;
+}
+
+/* Holdings Allocation Composition (Like Superinvestors) */
+.gf-composition-donut-panel {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  align-items: center;
+  gap: 24px;
+}
+
+@media (max-width: 640px) {
+  .gf-composition-donut-panel {
+    grid-template-columns: 1fr;
+    justify-items: center;
+  }
+}
+
+.gf-holdings-legend-list {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.gf-holdings-legend-row {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 8px;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 12px;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background 0.12s ease;
+}
+
+.gf-holdings-legend-row:hover {
+  background: #f8fafc;
+}
+
+.gf-holdings-legend-row:last-child {
+  border-bottom: none;
+}
+
+.gf-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.gf-legend-title {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.gf-legend-title b {
+  color: #0f172a;
+  font-weight: 600;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gf-legend-title span {
+  font-size: 11px;
+  color: #64748b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gf-legend-nums {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.gf-legend-nums strong {
+  font-size: 12px;
+  color: #0f172a;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.gf-legend-nums small {
+  font-size: 11px;
+  color: #64748b;
+  font-variant-numeric: tabular-nums;
+}
+
+/* KongMing Footer Links */
+.gf-footer-links {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed #e2e8f0;
+}
+
+.gf-footer-link {
+  color: #64748b;
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: color 0.15s ease;
+}
+
+.gf-footer-link:hover {
+  color: #0f172a;
+  text-decoration: underline;
+}
+
 .gf-currency select,
 .gf-language select {
   height: 36px;

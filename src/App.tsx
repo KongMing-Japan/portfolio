@@ -71,7 +71,7 @@ function App() {
 
   useEffect(() => {
     document.documentElement.lang = 'zh-CN';
-    document.title = 'MoneyOS 投资组合';
+    document.title = 'Portfolio 调仓 · 独立多券商资产配置与再平衡系统';
   }, []);
 
   const persist = useCallback(
