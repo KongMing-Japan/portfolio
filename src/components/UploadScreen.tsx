@@ -212,19 +212,30 @@ export function UploadScreen({
 
       <footer className="upload-footer" style={{ marginTop: '3rem', paddingTop: '1.5rem', borderTop: '1px solid rgba(0,0,0,0.08)', width: '100%', textAlign: 'center', fontSize: '0.78rem', color: '#64748b' }}>
         <p style={{ margin: '0 0 0.35rem', fontWeight: 600, color: '#334155' }}>Portfolio 调仓 · 独立多券商资产配置与再平衡系统</p>
-        <p style={{ margin: '0 0 0.6rem' }}>© 2026 孔明 (KongMing). 保留所有权利 · 所有持仓数据均安全保存在您的本地浏览器中。</p>
+        <p style={{ margin: '0 0 0.6rem' }}>© 2026 KongMing LLC · 孔明合同会社</p>
         <div className="gf-footer-links">
           <a href="https://kongmingjapan.com/" target="_blank" rel="noreferrer" className="gf-footer-link">
-            孔明官网
+            KongMing
           </a>
-          <a href="https://planner.kongmingjapan.com/" target="_blank" rel="noreferrer" className="gf-footer-link">
-            Planner 人生规划
+          <span className="gf-footer-sep">·</span>
+          <a href="https://radar.kongmingjapan.com/" target="_blank" rel="noreferrer" className="gf-footer-link">
+            Radar
           </a>
-          <a href="https://tax.kongmingjapan.com/" target="_blank" rel="noreferrer" className="gf-footer-link">
-            Tax 日本税务计算
+          <span className="gf-footer-sep">·</span>
+          <a href="https://lab.kongmingjapan.com/" target="_blank" rel="noreferrer" className="gf-footer-link">
+            Select China
           </a>
-          <a href="https://github.com/KongMing-Japan/portfolio" target="_blank" rel="noreferrer" className="gf-footer-link">
-            GitHub 开源
+          <span className="gf-footer-sep">·</span>
+          <a href="https://kodomo.fyi/" target="_blank" rel="noreferrer" className="gf-footer-link">
+            Kodomo Go!
+          </a>
+          <span className="gf-footer-sep">·</span>
+          <a href="https://money.kongmingjapan.com/" target="_blank" rel="noreferrer" className="gf-footer-link">
+            Money OS
+          </a>
+          <span className="gf-footer-sep">·</span>
+          <a href="https://citylog.kongmingjapan.com/" target="_blank" rel="noreferrer" className="gf-footer-link">
+            CityLog
           </a>
         </div>
       </footer>

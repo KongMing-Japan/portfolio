@@ -1016,19 +1016,30 @@ export function FinanceReportScreen({
 
       <footer className="gf-footer" style={{ width: 'min(1100px, calc(100% - 48px))', margin: '3.5rem auto 0', paddingTop: '1.8rem', paddingBottom: '2.5rem', borderTop: '1px solid #e2e8f0', textAlign: 'center', fontSize: '0.75rem', color: '#64748b' }}>
         <p style={{ margin: '0 0 0.35rem', fontWeight: 600, color: '#0f172a' }}>Portfolio 调仓 · 独立多券商资产配置与再平衡系统</p>
-        <p style={{ margin: '0 0 0.6rem' }}>© 2026 孔明 (KongMing). 保留所有权利 · 所有持仓数据均安全保存在您的本地浏览器中。</p>
+        <p style={{ margin: '0 0 0.6rem' }}>© 2026 KongMing LLC · 孔明合同会社</p>
         <div className="gf-footer-links">
           <a href="https://kongmingjapan.com/" target="_blank" rel="noreferrer" className="gf-footer-link">
-            孔明官网 <ExternalLink size={12} />
+            KongMing
           </a>
-          <a href="https://planner.kongmingjapan.com/" target="_blank" rel="noreferrer" className="gf-footer-link">
-            Planner 人生规划 <ExternalLink size={12} />
+          <span className="gf-footer-sep">·</span>
+          <a href="https://radar.kongmingjapan.com/" target="_blank" rel="noreferrer" className="gf-footer-link">
+            Radar
           </a>
-          <a href="https://tax.kongmingjapan.com/" target="_blank" rel="noreferrer" className="gf-footer-link">
-            Tax 日本税务计算 <ExternalLink size={12} />
+          <span className="gf-footer-sep">·</span>
+          <a href="https://lab.kongmingjapan.com/" target="_blank" rel="noreferrer" className="gf-footer-link">
+            Select China
           </a>
-          <a href="https://github.com/KongMing-Japan/portfolio" target="_blank" rel="noreferrer" className="gf-footer-link">
-            GitHub 开源 <ExternalLink size={12} />
+          <span className="gf-footer-sep">·</span>
+          <a href="https://kodomo.fyi/" target="_blank" rel="noreferrer" className="gf-footer-link">
+            Kodomo Go!
+          </a>
+          <span className="gf-footer-sep">·</span>
+          <a href="https://money.kongmingjapan.com/" target="_blank" rel="noreferrer" className="gf-footer-link">
+            Money OS
+          </a>
+          <span className="gf-footer-sep">·</span>
+          <a href="https://citylog.kongmingjapan.com/" target="_blank" rel="noreferrer" className="gf-footer-link">
+            CityLog
           </a>
         </div>
       </footer>

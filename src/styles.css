@@ -2477,6 +2477,12 @@ body {
   text-decoration: underline;
 }
 
+.gf-footer-sep {
+  color: #cbd5e1;
+  font-size: 11px;
+  user-select: none;
+}
+
 .gf-currency select,
 .gf-language select {
   height: 36px;
