@@ -6,12 +6,14 @@ import {
   type FormEvent,
 } from 'react';
 import {
+  Briefcase,
   ChevronDown,
   ChevronRight,
   ClipboardList,
   Download,
   FileSpreadsheet,
   History,
+  Landmark,
   Layers3,
   PieChart,
   Plus,
@@ -22,6 +24,13 @@ import {
   Trash2,
   Upload,
 } from 'lucide-react';
+import {
+  Cell,
+  Pie,
+  PieChart as RechartsPieChart,
+  ResponsiveContainer,
+  Tooltip as RechartsTooltip,
+} from 'recharts';
 import {
   aggregateHoldings,
   concentrationLabel,
@@ -259,6 +268,61 @@ function formatEditableNumber(value: number | null) {
   return Number.isInteger(value) ? String(value) : String(Number(value.toFixed(4)));
 }
 
+function OverviewDonutTooltip({
+  active,
+  payload,
+  baseCurrency,
+}: {
+  active?: boolean;
+  payload?: Array<{
+    payload: {
+      layer: Layer;
+      label: string;
+      value: number;
+      weight: number;
+      color: string;
+      count: number;
+      target: string;
+    };
+  }>;
+  baseCurrency: BaseCurrency;
+}) {
+  if (!active || !payload || !payload.length) return null;
+  const data = payload[0].payload;
+  return (
+    <div className="shadcn-chart-tooltip">
+      <div className="shadcn-chart-tooltip-header">
+        <span
+          style={{
+            width: '8px',
+            height: '8px',
+            borderRadius: '50%',
+            background: data.color,
+            display: 'inline-block',
+          }}
+        />
+        <span>{data.label}</span>
+      </div>
+      <div className="shadcn-chart-tooltip-row">
+        <span>当前权重</span>
+        <strong>{formatPercent(data.weight)}</strong>
+      </div>
+      <div className="shadcn-chart-tooltip-row">
+        <span>建议配置</span>
+        <span>{data.target}</span>
+      </div>
+      <div className="shadcn-chart-tooltip-row">
+        <span>评估市值</span>
+        <strong>{formatMoney(data.value, baseCurrency)}</strong>
+      </div>
+      <div className="shadcn-chart-tooltip-row">
+        <span>标的数量</span>
+        <span>{data.count} 只标的</span>
+      </div>
+    </div>
+  );
+}
+
 export function FinanceReportScreen({
   holdings,
   baseCurrency,
@@ -442,6 +506,26 @@ export function FinanceReportScreen({
     }
   };
 
+  const overviewDonutData = useMemo(() => {
+    const TARGETS: Record<Layer, string> = {
+      Core: '50% - 60%',
+      Satellite: '20% - 30%',
+      Defensive: '10% - 15%',
+      Cash: '5% - 10%',
+    };
+    return layerRows
+      .filter((row) => row.value > 0 || total === 0)
+      .map((row) => ({
+        layer: row.layer,
+        label: LAYER_META[row.layer].label,
+        value: row.value,
+        weight: row.weight,
+        color: LAYER_META[row.layer].color,
+        count: row.rows.length,
+        target: TARGETS[row.layer],
+      }));
+  }, [layerRows, total]);
+
   const openWorkspace = (view: WorkspaceView, section?: string) => {
     setWorkspaceView(view);
     if (view === 'superinvestors') {
@@ -451,27 +535,45 @@ export function FinanceReportScreen({
     }
     const target = section || 'portfolio';
     window.location.hash = target;
-    window.setTimeout(() => {
-      document.getElementById(target)?.scrollIntoView({ behavior: 'smooth' });
-    }, 0);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   return (
     <main className="gf-page">
       <header className="gf-topbar">
-        <button
-          className="gf-brand"
-          onClick={() => {
-            setImportOpen(false);
-            openWorkspace('portfolio');
-          }}
-        >
-          MoneyOS Portfolio
-        </button>
-        <button className="gf-search" onClick={() => setAddOpen(true)}>
-          <Search size={16} />
-          <span>{t.search}</span>
-        </button>
+        <div className="gf-topbar-left">
+          <button
+            className="gf-brand"
+            onClick={() => {
+              setImportOpen(false);
+              openWorkspace('portfolio');
+            }}
+          >
+            MoneyOS Portfolio
+          </button>
+          <nav className="gf-nav-tabs" aria-label="视图导航">
+            <button
+              className={`gf-nav-tab ${workspaceView === 'portfolio' ? 'is-active' : ''}`}
+              onClick={() => openWorkspace('portfolio')}
+            >
+              <Briefcase size={14} />
+              <span>我的投资组合</span>
+            </button>
+            <button
+              className={`gf-nav-tab ${workspaceView === 'superinvestors' ? 'is-active' : ''}`}
+              onClick={() => openWorkspace('superinvestors')}
+            >
+              <Landmark size={14} />
+              <span>投资大师</span>
+            </button>
+          </nav>
+        </div>
+        <div className="gf-topbar-center">
+          <button className="gf-search" onClick={() => setAddOpen(true)}>
+            <Search size={16} />
+            <span>{t.search}</span>
+          </button>
+        </div>
         <div className="gf-top-actions">
           <button
             className="gf-icon-button"
@@ -492,65 +594,144 @@ export function FinanceReportScreen({
         </div>
       </header>
 
-      <div className="gf-shell" id="portfolio">
-        <section className="gf-main">
-          <section className="gf-overview">
-            <div className="gf-overview-top">
-              <div>
-                <h1>{t.portfolio}</h1>
-                <p>{t.updated} {quoteUpdatedAt ? formatDateTime(quoteUpdatedAt) : t.noUpdate}</p>
-              </div>
-              <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
-                <button
-                  className="gf-text-action"
-                  onClick={() => setTimelineOpen(true)}
-                  title="低频季度/月度审视快照与历史对照"
-                >
-                  <History size={15} />
-                  <span>周期审视时间轴</span>
-                </button>
-                <button
-                  className="gf-primary-action"
-                  onClick={() => setRebalanceOpen(true)}
-                >
-                  <Scale size={15} color="#4ade80" />
-                  <span>再平衡驾驶舱</span>
-                </button>
-                <button className="gf-primary-action" onClick={() => setAddOpen(true)}>
-                  <Plus size={15} />
-                  <span>{t.addStock}</span>
-                </button>
-              </div>
-            </div>
-            <div className="gf-total-value">{formatMoney(total, baseCurrency)}</div>
-            <div className="gf-stat-row">
-              <span>
-                {aggregated.length}{' '}
-                {aggregated.length === 1 ? t.securitySingular : t.securities}
-              </span>
-              <span>{brokers} {brokers === 1 ? t.brokerSingular : t.brokers}</span>
-              <span>{t.base} {baseCurrency}</span>
-              <span>{concentrationLabel(hhi)}</span>
-            </div>
-            <div className="gf-allocation-strip" aria-label="Portfolio allocation">
-              {layerRows.map((row) =>
-                row.weight > 0 ? (
-                  <div
-                    key={row.layer}
-                    className="gf-allocation-segment"
-                    style={{
-                      width: `${row.weight * 100}%`,
-                      background: LAYER_META[row.layer].color,
-                    }}
-                    title={`${LAYER_META[row.layer].label} ${formatPercent(row.weight)}`}
-                  >
-                    <span>{LAYER_META[row.layer].label}</span>
-                    <strong>{formatPercent(row.weight)}</strong>
+      {workspaceView === 'superinvestors' ? (
+        <section
+          className="gf-full-superinvestors"
+          id="superinvestors"
+          style={{ width: 'min(1100px, calc(100% - 48px))', margin: '2rem auto 0' }}
+        >
+          <SuperinvestorsScreen />
+        </section>
+      ) : (
+        <>
+          <div className="gf-shell" id="portfolio">
+            <section className="gf-main">
+              <section className="gf-overview">
+                <div className="gf-overview-top">
+                  <div>
+                    <h1>{t.portfolio}</h1>
+                    <p>{t.updated} {quoteUpdatedAt ? formatDateTime(quoteUpdatedAt) : t.noUpdate}</p>
                   </div>
-                ) : null,
-              )}
-            </div>
-          </section>
+                  <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
+                    <button
+                      className="gf-text-action"
+                      onClick={() => setTimelineOpen(true)}
+                      title="低频季度/月度审视快照与历史对照"
+                    >
+                      <History size={15} />
+                      <span>周期审视时间轴</span>
+                    </button>
+                    <button
+                      className="gf-primary-action"
+                      onClick={() => setRebalanceOpen(true)}
+                    >
+                      <Scale size={15} color="#4ade80" />
+                      <span>再平衡驾驶舱</span>
+                    </button>
+                    <button className="gf-primary-action" onClick={() => setAddOpen(true)}>
+                      <Plus size={15} />
+                      <span>{t.addStock}</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="gf-overview-body">
+                  <div>
+                    <div className="gf-total-value">{formatMoney(total, baseCurrency)}</div>
+                    <div className="gf-stat-row">
+                      <span>
+                        {aggregated.length}{' '}
+                        {aggregated.length === 1 ? t.securitySingular : t.securities}
+                      </span>
+                      <span>{brokers} {brokers === 1 ? t.brokerSingular : t.brokers}</span>
+                      <span>{t.base} {baseCurrency}</span>
+                      <span>{concentrationLabel(hhi)}</span>
+                    </div>
+
+                    <div className="gf-layer-cards-grid">
+                      {layerRows.map((row) => (
+                        <div key={row.layer} className="gf-layer-mini-card">
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', fontWeight: 600, color: '#0f172a' }}>
+                              <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: LAYER_META[row.layer].color }} />
+                              {LAYER_META[row.layer].label}
+                            </span>
+                            <span style={{ fontSize: '11px', color: '#64748b' }}>{row.rows.length}只</span>
+                          </div>
+                          <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginTop: '2px' }}>
+                            {formatPercent(row.weight)}
+                          </div>
+                          <div style={{ fontSize: '11px', color: '#64748b' }}>
+                            {formatMoney(row.value, baseCurrency)}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ position: 'relative', width: '200px', height: '200px' }}>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <RechartsPieChart>
+                          <RechartsTooltip content={<OverviewDonutTooltip baseCurrency={baseCurrency} />} />
+                          <Pie
+                            data={overviewDonutData}
+                            dataKey="value"
+                            nameKey="label"
+                            innerRadius={58}
+                            outerRadius={78}
+                            paddingAngle={3}
+                            stroke="none"
+                          >
+                            {overviewDonutData.map((entry) => (
+                              <Cell key={entry.layer} fill={entry.color} />
+                            ))}
+                          </Pie>
+                        </RechartsPieChart>
+                      </ResponsiveContainer>
+                      <div
+                        style={{
+                          position: 'absolute',
+                          top: '50%',
+                          left: '50%',
+                          transform: 'translate(-50%, -50%)',
+                          textAlign: 'center',
+                          pointerEvents: 'none',
+                        }}
+                      >
+                        <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 500, display: 'block' }}>
+                          Core 核心
+                        </span>
+                        <strong style={{ fontSize: '16px', color: '#0f172a', fontWeight: 700, display: 'block', marginTop: '1px' }}>
+                          {formatPercent(
+                            layerRows.find((r) => r.layer === 'Core')?.weight ?? 0,
+                          )}
+                        </strong>
+                        <span style={{ fontSize: '10px', color: '#94a3b8' }}>目标 50-60%</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="gf-allocation-strip" aria-label="Portfolio allocation" style={{ marginTop: '16px' }}>
+                  {layerRows.map((row) =>
+                    row.weight > 0 ? (
+                      <div
+                        key={row.layer}
+                        className="gf-allocation-segment"
+                        style={{
+                          width: `${row.weight * 100}%`,
+                          background: LAYER_META[row.layer].color,
+                        }}
+                        title={`${LAYER_META[row.layer].label} ${formatPercent(row.weight)}`}
+                      >
+                        <span>{LAYER_META[row.layer].label}</span>
+                        <strong>{formatPercent(row.weight)}</strong>
+                      </div>
+                    ) : null,
+                  )}
+                </div>
+              </section>
 
           {aggregated.length > 0 && (
             <PortfolioPanorama
@@ -750,10 +931,6 @@ export function FinanceReportScreen({
         </aside>
       </div>
 
-      <section className="gf-full-superinvestors" id="superinvestors" style={{ width: 'min(1100px, calc(100% - 48px))', margin: '2.5rem auto 0', paddingTop: '2rem', borderTop: '1px solid #dadce0' }}>
-        <SuperinvestorsScreen />
-      </section>
-
       {/* ── Methodology & FAQ ── */}
       <section style={{ width: 'min(1100px, calc(100% - 48px))', margin: '2.5rem auto 0' }}>
         <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', background: '#fff', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
@@ -811,6 +988,8 @@ export function FinanceReportScreen({
           </div>
         </div>
       </section>
+    </>
+  )}
 
       <footer className="gf-footer" style={{ width: 'min(1100px, calc(100% - 48px))', margin: '3.5rem auto 0', paddingTop: '1.8rem', paddingBottom: '2.5rem', borderTop: '1px solid #e2e8f0', textAlign: 'center', fontSize: '0.75rem', color: '#64748b' }}>
         <p style={{ margin: '0 0 0.35rem', fontWeight: 500, color: '#0f172a' }}>MoneyOS Portfolio · 独立多券商资产配置与再平衡系统</p>

@@ -484,7 +484,7 @@ export function SuperinvestorDetailPage({ investorId }: { investorId: string }) 
   }, [investorId]);
 
   const goBack = () => {
-    window.location.hash = '';
+    window.location.hash = 'superinvestors';
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -520,7 +520,7 @@ export function SuperinvestorDetailPage({ investorId }: { investorId: string }) 
           <h1>未找到该投资大师</h1>
           <button className="si-back" onClick={goBack}>
             <ArrowLeft size={17} />
-            返回投资组合
+            返回投资大师列表
           </button>
         </section>
       </main>

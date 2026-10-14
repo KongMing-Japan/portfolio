@@ -2067,31 +2067,82 @@ body {
   padding: 0 24px;
   border-bottom: 1px solid var(--color-border);
   background: var(--color-bg);
-  display: grid;
-  grid-template-columns: 200px minmax(280px, 640px) max-content;
+  display: flex;
   align-items: center;
-  gap: 20px;
+  justify-content: space-between;
+  gap: 16px;
   position: sticky;
   top: 0;
   z-index: 30;
+}
+
+.gf-topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-shrink: 0;
+}
+
+.gf-nav-tabs {
+  display: inline-flex;
+  align-items: center;
+  background: var(--color-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 3px;
+  gap: 2px;
+}
+
+.gf-nav-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 14px;
+  border: none;
+  border-radius: calc(var(--radius) - 2px);
+  background: transparent;
+  color: var(--color-muted-fg);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+  white-space: nowrap;
+}
+
+.gf-nav-tab:hover {
+  color: var(--color-fg);
+}
+
+.gf-nav-tab.is-active {
+  background: #ffffff;
+  color: var(--color-fg);
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.gf-topbar-center {
+  flex: 1;
+  max-width: 480px;
+  min-width: 160px;
 }
 
 .gf-brand {
   border: 0;
   background: transparent;
   padding: 0;
-  justify-self: start;
   color: var(--color-fg);
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 700;
   letter-spacing: -0.025em;
   display: flex;
   align-items: center;
   gap: 8px;
+  white-space: nowrap;
 }
 
 .gf-search {
-  height: 40px;
+  height: 38px;
+  width: 100%;
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
   background: var(--color-secondary);
@@ -2100,7 +2151,7 @@ body {
   align-items: center;
   gap: 10px;
   color: var(--color-muted-fg);
-  font-size: 14px;
+  font-size: 13px;
   text-align: left;
   transition: all 0.15s ease-in-out;
 }
@@ -2119,6 +2170,87 @@ body {
   align-items: center;
   justify-content: end;
   gap: 8px;
+  flex-shrink: 0;
+}
+
+/* Shadcn Chart Tooltips & Overview Body */
+.gf-overview-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 24px;
+  align-items: center;
+  margin-top: 18px;
+}
+
+@media (max-width: 900px) {
+  .gf-overview-body {
+    grid-template-columns: 1fr;
+  }
+}
+
+.gf-layer-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-top: 16px;
+}
+
+@media (max-width: 640px) {
+  .gf-layer-cards-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.gf-layer-mini-card {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: all 0.15s ease;
+}
+
+.gf-layer-mini-card:hover {
+  border-color: #cbd5e1;
+  background: #f8fafc;
+}
+
+.shadcn-chart-tooltip {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  padding: 8px 12px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #0f172a;
+  min-width: 140px;
+}
+
+.shadcn-chart-tooltip-header {
+  font-weight: 600;
+  color: #0f172a;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.shadcn-chart-tooltip-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: #64748b;
+  font-size: 11px;
+}
+
+.shadcn-chart-tooltip-row strong {
+  color: #0f172a;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
 .gf-currency select,
