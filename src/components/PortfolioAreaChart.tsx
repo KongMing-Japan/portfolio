@@ -33,16 +33,26 @@ interface AreaChartPoint {
 
 function formatCompactAxis(val: number, currency: BaseCurrency) {
   if (val === 0) return '0';
-  if (currency === 'JPY') {
-    if (Math.abs(val) >= 10000) return `¥${(val / 10000).toFixed(0)}万`;
-    return `¥${val}`;
+  const prefix = currency === 'USD' ? '$' : currency === 'JPY' ? '¥' : currency === 'CNY' ? '¥' : 'HK$';
+  if (currency === 'JPY' || currency === 'CNY') {
+    if (Math.abs(val) >= 100_000_000) {
+      return `${prefix}${(val / 100_000_000).toFixed(1).replace(/\.0$/, '')}亿`;
+    }
+    if (Math.abs(val) >= 10_000) {
+      return `${prefix}${(val / 10_000).toFixed(0)}万`;
+    }
+    return `${prefix}${val}`;
   }
-  if (currency === 'CNY') {
-    if (Math.abs(val) >= 10000) return `¥${(val / 10000).toFixed(0)}万`;
-    return `¥${val}`;
+  if (Math.abs(val) >= 1_000_000_000) {
+    return `${prefix}${(val / 1_000_000_000).toFixed(1).replace(/\.0$/, '')}B`;
   }
-  if (Math.abs(val) >= 1000) return `$${(val / 1000).toFixed(0)}k`;
-  return `$${val}`;
+  if (Math.abs(val) >= 1_000_000) {
+    return `${prefix}${(val / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`;
+  }
+  if (Math.abs(val) >= 1_000) {
+    return `${prefix}${(val / 1_000).toFixed(0)}k`;
+  }
+  return `${prefix}${val}`;
 }
 
 function AreaCustomTooltip({
@@ -182,12 +192,10 @@ export function PortfolioAreaChart({
       <div className="gf-chart-card-header">
         <div className="gf-chart-title-group">
           <h3>
-            <AreaChartIcon size={17} color="#2563eb" />
-            <span>资产演进与分层趋势 (Area Chart)</span>
+            <AreaChartIcon size={18} color="var(--primary)" />
+            <span>资产演进与分层趋势</span>
           </h3>
-          <p>
-            参考 Shadcn UI 规范 · 跨周期资产净值走势与四层金字塔配比堆叠
-          </p>
+          <p>跨周期资产净值走势与四层金字塔动态配置堆叠</p>
         </div>
         <div className="gf-chart-card-actions" role="tablist" aria-label="图表视角切换">
           <button
@@ -214,8 +222,8 @@ export function PortfolioAreaChart({
       </div>
 
       <div className="gf-chart-card-body" style={{ height: '280px', padding: '16px 12px 10px' }}>
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={chartData} margin={{ top: 10, right: 18, left: 0, bottom: 0 }}>
+        <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 800, height: 280 }}>
+          <AreaChart data={chartData} margin={{ top: 12, right: 18, left: 10, bottom: 8 }}>
             <defs>
               <linearGradient id="areaCore" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="#2563eb" stopOpacity={0.75} />
@@ -251,7 +259,8 @@ export function PortfolioAreaChart({
             <YAxis
               tickLine={false}
               axisLine={false}
-              tickMargin={8}
+              width={55}
+              tickMargin={4}
               stroke="#64748b"
               fontSize={11}
               tickFormatter={(val) => formatCompactAxis(val, baseCurrency)}
@@ -266,6 +275,7 @@ export function PortfolioAreaChart({
                 stroke="#2563eb"
                 strokeWidth={2.5}
                 fill="url(#areaValuation)"
+                isAnimationActive={false}
               />
             ) : (
               <>
@@ -277,6 +287,7 @@ export function PortfolioAreaChart({
                   stroke="#2563eb"
                   strokeWidth={1.5}
                   fill="url(#areaCore)"
+                  isAnimationActive={false}
                 />
                 <Area
                   type="monotone"
@@ -286,6 +297,7 @@ export function PortfolioAreaChart({
                   stroke="#f59e0b"
                   strokeWidth={1.5}
                   fill="url(#areaSatellite)"
+                  isAnimationActive={false}
                 />
                 <Area
                   type="monotone"
@@ -295,6 +307,7 @@ export function PortfolioAreaChart({
                   stroke="#10b981"
                   strokeWidth={1.5}
                   fill="url(#areaDefensive)"
+                  isAnimationActive={false}
                 />
                 <Area
                   type="monotone"
@@ -304,6 +317,7 @@ export function PortfolioAreaChart({
                   stroke="#64748b"
                   strokeWidth={1.5}
                   fill="url(#areaCash)"
+                  isAnimationActive={false}
                 />
               </>
             )}

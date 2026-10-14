@@ -572,20 +572,40 @@ export function FinanceReportScreen({
             </button>
           </nav>
         </div>
-        <div className="gf-topbar-center">
-          <button className="gf-search" onClick={() => setAddOpen(true)}>
-            <Search size={16} />
-            <span>{t.search}</span>
-          </button>
-        </div>
+
         <div className="gf-top-actions">
+          <button
+            className="gf-primary-action"
+            onClick={() => setAddOpen(true)}
+            style={{ fontSize: '12px', padding: '5px 12px' }}
+          >
+            <Plus size={14} />
+            <span>添加标的</span>
+          </button>
+          <button
+            className="gf-text-action"
+            onClick={() => setTimelineOpen(true)}
+            title="低频季度/月度审视快照与历史对照"
+            style={{ fontSize: '12px', padding: '5px 11px' }}
+          >
+            <History size={14} />
+            <span>周期快照</span>
+          </button>
+          <button
+            className="gf-text-action"
+            onClick={() => setRebalanceOpen(true)}
+            style={{ fontSize: '12px', padding: '5px 11px' }}
+          >
+            <Scale size={14} color="#16a34a" />
+            <span>再平衡</span>
+          </button>
           <button
             className="gf-icon-button"
             aria-label={t.exportJson}
             title={t.exportJson}
             onClick={() => exportExcel(holdings, baseCurrency)}
           >
-            <FileSpreadsheet size={16} />
+            <FileSpreadsheet size={15} />
           </button>
           <button
             className="gf-icon-button"
@@ -593,7 +613,7 @@ export function FinanceReportScreen({
             title={t.importPositions}
             onClick={() => setImportOpen(true)}
           >
-            <RefreshCcw size={16} />
+            <Upload size={15} />
           </button>
         </div>
       </header>
@@ -602,7 +622,7 @@ export function FinanceReportScreen({
         <section
           className="gf-full-superinvestors"
           id="superinvestors"
-          style={{ width: 'min(1100px, calc(100% - 48px))', margin: '2rem auto 0' }}
+          style={{ width: 'min(1160px, calc(100% - 3rem))', margin: '2rem auto 0' }}
         >
           <SuperinvestorsScreen />
         </section>
@@ -612,111 +632,74 @@ export function FinanceReportScreen({
             <section className="gf-overview">
               <div className="gf-overview-top">
                 <div>
-                  <h1>{t.portfolio}</h1>
-                  <p>{t.updated} {quoteUpdatedAt ? formatDateTime(quoteUpdatedAt) : t.noUpdate}</p>
-                </div>
-                <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
-                  <button
-                    className="gf-text-action"
-                    onClick={() => setTimelineOpen(true)}
-                    title="低频季度/月度审视快照与历史对照"
-                  >
-                    <History size={15} />
-                    <span>周期审视时间轴</span>
-                  </button>
-                  <button
-                    className="gf-primary-action"
-                    onClick={() => setRebalanceOpen(true)}
-                  >
-                    <Scale size={15} color="#4ade80" />
-                    <span>再平衡驾驶舱</span>
-                  </button>
-                  <button className="gf-primary-action" onClick={() => setAddOpen(true)}>
-                    <Plus size={15} />
-                    <span>{t.addStock}</span>
-                  </button>
-                </div>
-              </div>
-
-              <div className="gf-overview-body">
-                <div>
+                  <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--muted-foreground)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    投资组合总资产 (Net Worth)
+                  </span>
                   <div className="gf-total-value">{formatMoney(total, baseCurrency)}</div>
-                  <div className="gf-stat-row">
-                    <span>
-                      {aggregated.length}{' '}
-                      {aggregated.length === 1 ? t.securitySingular : t.securities}
-                    </span>
-                    <span>{brokers} {brokers === 1 ? t.brokerSingular : t.brokers}</span>
-                    <span>{t.base} {baseCurrency}</span>
-                    <span>{concentrationLabel(hhi)}</span>
-                  </div>
-
-                  <div className="gf-layer-cards-grid">
-                    {layerRows.map((row) => (
-                      <div key={row.layer} className="gf-layer-mini-card">
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                          <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', fontWeight: 600, color: 'var(--foreground)' }}>
-                            <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: LAYER_META[row.layer].color }} />
-                            {LAYER_META[row.layer].label}
-                          </span>
-                          <span style={{ fontSize: '11px', color: 'var(--muted-foreground)' }}>{row.rows.length}只</span>
-                        </div>
-                        <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--foreground)', marginTop: '2px' }}>
-                          {formatPercent(row.weight)}
-                        </div>
-                        <div style={{ fontSize: '11px', color: 'var(--muted-foreground)' }}>
-                          {formatMoney(row.value, baseCurrency)}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
                 </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                  <div style={{ position: 'relative', width: '200px', height: '200px' }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <RechartsPieChart>
-                        <RechartsTooltip content={<OverviewDonutTooltip baseCurrency={baseCurrency} />} />
-                        <Pie
-                          data={overviewDonutData}
-                          dataKey="value"
-                          nameKey="label"
-                          innerRadius={58}
-                          outerRadius={78}
-                          paddingAngle={3}
-                          stroke="none"
-                        >
-                          {overviewDonutData.map((entry) => (
-                            <Cell key={entry.layer} fill={entry.color} />
-                          ))}
-                        </Pie>
-                      </RechartsPieChart>
-                    </ResponsiveContainer>
-                    <div
-                      style={{
-                        position: 'absolute',
-                        top: '50%',
-                        left: '50%',
-                        transform: 'translate(-50%, -50%)',
-                        textAlign: 'center',
-                        pointerEvents: 'none',
-                      }}
-                    >
-                      <span style={{ fontSize: '11px', color: 'var(--muted-foreground)', fontWeight: 500, display: 'block' }}>
-                        Core 核心
-                      </span>
-                      <strong style={{ fontSize: '16px', color: 'var(--foreground)', fontWeight: 700, display: 'block', marginTop: '1px' }}>
-                        {formatPercent(
-                          layerRows.find((r) => r.layer === 'Core')?.weight ?? 0,
-                        )}
-                      </strong>
-                      <span style={{ fontSize: '10px', color: 'var(--muted-foreground)' }}>目标 50-60%</span>
-                    </div>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.4rem' }}>
+                  <span style={{ fontSize: '12px', color: 'var(--muted-foreground)' }}>
+                    {quoteUpdatedAt ? `行情更新于 ${formatDateTime(quoteUpdatedAt)}` : '行情未更新'}
+                  </span>
+                  <div className="gf-stat-row" style={{ margin: 0 }}>
+                    <span>{aggregated.length} 只标的</span>
+                    <span>{brokers} 个券商账户</span>
+                    <span>基准币种 {baseCurrency}</span>
+                    <span style={{ color: hhi > 0.25 ? '#dc2626' : hhi > 0.15 ? '#b45309' : '#059669', borderColor: 'currentColor' }}>
+                      {concentrationLabel(hhi)}
+                    </span>
                   </div>
                 </div>
               </div>
 
-              <div className="gf-allocation-strip" aria-label="Portfolio allocation" style={{ marginTop: '16px' }}>
+              <div className="gf-layer-cards-grid">
+                {layerRows.map((row) => {
+                  let minTarget = 0.50, maxTarget = 0.60;
+                  if (row.layer === 'Satellite') { minTarget = 0.20; maxTarget = 0.30; }
+                  else if (row.layer === 'Defensive') { minTarget = 0.10; maxTarget = 0.15; }
+                  else if (row.layer === 'Cash') { minTarget = 0.05; maxTarget = 0.10; }
+
+                  const isOver = row.weight > maxTarget;
+                  const isUnder = row.weight < minTarget;
+
+                  return (
+                    <div key={row.layer} className="gf-layer-mini-card">
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 600, color: 'var(--foreground)' }}>
+                          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: LAYER_META[row.layer].color }} />
+                          {LAYER_META[row.layer].label}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: '10px',
+                            fontWeight: 600,
+                            padding: '1px 5px',
+                            borderRadius: '3px',
+                            background: isOver ? '#fee2e2' : isUnder ? '#fef3c7' : '#dcfce7',
+                            color: isOver ? '#dc2626' : isUnder ? '#b45309' : '#15803d',
+                          }}
+                        >
+                          {isOver ? '偏高' : isUnder ? '偏低' : '稳健'}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginTop: '4px' }}>
+                        <span style={{ fontSize: '18px', fontWeight: 800, color: 'var(--foreground)' }}>
+                          {formatPercent(row.weight)}
+                        </span>
+                        <span style={{ fontSize: '11px', color: 'var(--muted-foreground)' }}>
+                          目标 {minTarget * 100}-{maxTarget * 100}%
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '11px', color: 'var(--muted-foreground)', marginTop: '2px' }}>
+                        <span>{formatMoney(row.value, baseCurrency)}</span>
+                        <span>{row.rows.length} 只标的</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="gf-allocation-strip" aria-label="Portfolio allocation" style={{ marginTop: '0.25rem' }}>
                 {layerRows.map((row) =>
                   row.weight > 0 ? (
                     <div
@@ -727,22 +710,11 @@ export function FinanceReportScreen({
                         background: LAYER_META[row.layer].color,
                       }}
                       title={`${LAYER_META[row.layer].label} ${formatPercent(row.weight)}`}
-                    >
-                      <span>{LAYER_META[row.layer].label}</span>
-                      <strong>{formatPercent(row.weight)}</strong>
-                    </div>
+                    />
                   ) : null,
                 )}
               </div>
             </section>
-
-            {aggregated.length > 0 && (
-              <PortfolioAreaChart
-                totalValue={total}
-                baseCurrency={baseCurrency}
-                layerRows={layerRows}
-              />
-            )}
 
             {aggregated.length > 0 && (
               <div className="nova-grid-2">
@@ -765,6 +737,14 @@ export function FinanceReportScreen({
                   onOpenTimeline={() => setTimelineOpen(true)}
                 />
               </div>
+            )}
+
+            {aggregated.length > 0 && (
+              <PortfolioAreaChart
+                totalValue={total}
+                baseCurrency={baseCurrency}
+                layerRows={layerRows}
+              />
             )}
 
             {aggregated.length > 0 && (
@@ -1299,21 +1279,25 @@ function FinanceHoldingRow({
     <>
       <tr className="gf-symbol-row" onClick={onToggle}>
         <td>
-          <button className="gf-symbol-cell">
-            {expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+          <div className="gf-symbol-cell">
+            <span className="gf-symbol-chevron">
+              {expanded ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
+            </span>
             <span className="gf-symbol-logo">{holding.ticker.slice(0, 1)}</span>
-            <span>
-              <strong>
-                {holding.ticker}
-                {holding.weight > 0.20 ? (
+            <div className="gf-symbol-meta">
+              <div className="gf-symbol-title-row">
+                <span className="gf-symbol-ticker">{holding.ticker}</span>
+                {holding.weight > 0.20 && (
                   <span className="gf-risk-tag" title="单一标的过重 (高于 20% 机构风控线)">
                     ⚠️ 过重
                   </span>
-                ) : null}
-              </strong>
-              <small>{holding.name}</small>
-            </span>
-          </button>
+                )}
+              </div>
+              <span className="gf-symbol-name" title={holding.name}>
+                {holding.name}
+              </span>
+            </div>
+          </div>
         </td>
         <td className="numeric">{formatMoney(holding.marketValueBase, baseCurrency)}</td>
         <td className="numeric gf-positive">{formatPercent(holding.weight)}</td>

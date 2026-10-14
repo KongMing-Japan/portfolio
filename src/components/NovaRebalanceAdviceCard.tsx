@@ -43,25 +43,14 @@ export function NovaRebalanceAdviceCard({
           </h3>
           <p>四层资产配置偏离度评估 · 智能风控信号与再平衡建议</p>
         </div>
-        <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
-          <button
-            className="gf-text-action"
-            onClick={onOpenTimeline}
-            title="低频季度/月度审视快照与历史对照"
-            style={{ fontSize: '11px', padding: '4px 8px' }}
-          >
-            <History size={13} />
-            <span>周期快照</span>
-          </button>
-          <button
-            className="gf-primary-action"
-            onClick={onOpenRebalance}
-            style={{ fontSize: '11px', padding: '4px 10px' }}
-          >
-            <Scale size={13} color="#4ade80" />
-            <span>再平衡试算</span>
-          </button>
-        </div>
+        <button
+          className="gf-primary-action"
+          onClick={onOpenRebalance}
+          style={{ fontSize: '12px', padding: '5px 12px' }}
+        >
+          <Scale size={13} color="#ffffff" />
+          <span>再平衡试算</span>
+        </button>
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>

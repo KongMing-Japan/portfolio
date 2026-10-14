@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { PieChart as PieChartIcon } from 'lucide-react';
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 import { formatMoney, formatPercent, LAYER_META } from '../lib/portfolio';
 import type { AggregatedHolding, BaseCurrency, Layer } from '../types';
@@ -97,7 +98,7 @@ export function HoldingsCompositionCard({
   const { chartData, topFiveWeight } = useMemo(() => {
     if (!aggregated.length) return { chartData: [], topFiveWeight: 0 };
 
-    const topCount = 8;
+    const topCount = 5;
     const top = aggregated.slice(0, topCount);
     const others = aggregated.slice(topCount);
 
@@ -138,19 +139,21 @@ export function HoldingsCompositionCard({
   if (!aggregated.length) return null;
 
   const topHolding = aggregated[0];
+  const activeHolding = chartData.find((d) => d.ticker === hoveredTicker) || chartData[0];
 
   return (
     <div className="gf-chart-card">
       <div className="gf-chart-card-header">
         <div className="gf-chart-title-group">
           <h3>
+            <PieChartIcon size={18} color="var(--primary)" />
             <span>持仓配置构成</span>
           </h3>
           <p>
-            前八大核心重仓标的与其余资产组合构成 · 前五大集中度 {formatPercent(topFiveWeight)}
+            核心重仓标的与资产组合配置 · 前五大集中度 {formatPercent(topFiveWeight)}
           </p>
         </div>
-        <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 500 }}>
+        <div style={{ fontSize: '12px', color: 'var(--muted-foreground)', fontWeight: 500 }}>
           共 {aggregated.length} 只标的
         </div>
       </div>
@@ -158,9 +161,9 @@ export function HoldingsCompositionCard({
       <div className="gf-chart-card-body">
         <div className="gf-composition-donut-panel">
           {/* Left: Donut Chart with center text */}
-          <div style={{ position: 'relative', width: '220px', height: '220px', margin: '0 auto' }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
+          <div style={{ position: 'relative', width: '220px', height: '220px', margin: '0 auto', flexShrink: 0 }}>
+            <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 220, height: 220 }}>
+              <PieChart width={220} height={220}>
                 <Tooltip content={<HoldingPieTooltip baseCurrency={baseCurrency} />} />
                 <Pie
                   data={chartData}
@@ -170,6 +173,7 @@ export function HoldingsCompositionCard({
                   outerRadius={90}
                   paddingAngle={2}
                   stroke="none"
+                  isAnimationActive={false}
                 >
                   {chartData.map((entry) => {
                     const isHovered = hoveredTicker === entry.ticker;
@@ -198,13 +202,13 @@ export function HoldingsCompositionCard({
                 pointerEvents: 'none',
               }}
             >
-              <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 500, display: 'block' }}>
-                第一大重仓
+              <span style={{ fontSize: '11px', color: 'var(--muted-foreground)', fontWeight: 500, display: 'block' }}>
+                {hoveredTicker ? '聚焦标的' : '第一大重仓'}
               </span>
               <strong
                 style={{
                   fontSize: '15px',
-                  color: '#0f172a',
+                  color: 'var(--foreground)',
                   fontWeight: 700,
                   display: 'block',
                   marginTop: '1px',
@@ -214,10 +218,10 @@ export function HoldingsCompositionCard({
                   whiteSpace: 'nowrap',
                 }}
               >
-                {topHolding?.ticker || topHolding?.name}
+                {activeHolding?.ticker || activeHolding?.name}
               </strong>
-              <span style={{ fontSize: '11px', color: '#2563eb', fontWeight: 600 }}>
-                {formatPercent(topHolding?.weight ?? 0)}
+              <span style={{ fontSize: '11px', color: 'var(--primary)', fontWeight: 600 }}>
+                {formatPercent(activeHolding?.weight ?? 0)}
               </span>
             </div>
           </div>

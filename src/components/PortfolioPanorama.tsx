@@ -277,11 +277,11 @@ export function PortfolioPanorama({
               gap: '8px',
             }}
           >
-            <Globe2 size={18} color="#2563eb" />
+            <Globe2 size={18} color="var(--primary)" />
             <span>{dimensionTitle}</span>
           </h2>
-          <p style={{ margin: '3px 0 0', fontSize: '0.78rem', color: '#64748b' }}>
-            参考 Shadcn UI 资产图表标准，支持水平排行与环形配置多维交互透视
+          <p style={{ margin: '3px 0 0', fontSize: '0.78rem', color: 'var(--muted-foreground)' }}>
+            多维度资产暴露穿透 · 市场地域 / 券商机构 / 资产类型 / 货币暴露透视
           </p>
         </div>
 
@@ -443,21 +443,21 @@ export function PortfolioPanorama({
         }}
       >
         {chartType === 'bar' ? (
-          <div style={{ width: '100%', height: Math.max(160, activeGroups.length * 40) }}>
-            <ResponsiveContainer width="100%" height="100%">
+          <div style={{ width: '100%', height: activeGroups.length === 1 ? 68 : Math.max(100, activeGroups.length * 36) }}>
+            <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 800, height: activeGroups.length === 1 ? 68 : Math.max(100, activeGroups.length * 36) }}>
               <BarChart
                 data={activeGroups}
                 layout="vertical"
                 margin={{ top: 8, right: 36, left: 10, bottom: 8 }}
               >
-                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--border)" />
                 <XAxis
                   type="number"
                   tickLine={false}
                   axisLine={false}
-                  tick={{ fontSize: 11, fill: '#64748b' }}
+                  tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }}
                   tickFormatter={(val) => `${val}%`}
-                  domain={[0, 'dataMax + 5']}
+                  domain={[0, 100]}
                 />
                 <YAxis
                   type="category"
@@ -465,13 +465,13 @@ export function PortfolioPanorama({
                   tickLine={false}
                   axisLine={false}
                   width={110}
-                  tick={{ fontSize: 12, fill: '#0f172a', fontWeight: 500 }}
+                  tick={{ fontSize: 12, fill: 'var(--foreground)', fontWeight: 500 }}
                 />
                 <Tooltip
                   content={<PanoramaChartTooltip baseCurrency={baseCurrency} />}
                   cursor={{ fill: 'rgba(15, 23, 42, 0.04)' }}
                 />
-                <Bar dataKey="percentNum" radius={[0, 6, 6, 0]}>
+                <Bar dataKey="percentNum" radius={[0, 6, 6, 0]} maxBarSize={20} isAnimationActive={false}>
                   {activeGroups.map((entry) => (
                     <Cell key={entry.label} fill={entry.color} />
                   ))}
@@ -481,7 +481,7 @@ export function PortfolioPanorama({
           </div>
         ) : (
           <div style={{ width: '100%', height: 230, display: 'flex', alignItems: 'center' }}>
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 400, height: 230 }}>
               <PieChart>
                 <Tooltip content={<PanoramaChartTooltip baseCurrency={baseCurrency} />} />
                 <Pie
@@ -528,38 +528,11 @@ export function PortfolioPanorama({
         )}
       </div>
 
-      {/* Multi-Segment Color Bar */}
-      <div
-        style={{
-          display: 'flex',
-          height: '6px',
-          width: '100%',
-          borderRadius: '999px',
-          overflow: 'hidden',
-          background: '#f1f5f9',
-          marginBottom: '1.2rem',
-        }}
-      >
-        {activeGroups.map((group) =>
-          group.weight > 0 ? (
-            <div
-              key={group.label}
-              style={{
-                width: `${group.weight * 100}%`,
-                background: group.color,
-                transition: 'width 0.3s ease',
-              }}
-              title={`${group.label}: ${formatPercent(group.weight)}`}
-            />
-          ) : null,
-        )}
-      </div>
-
       {/* Group Cards Grid */}
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: `repeat(${Math.min(activeGroups.length, 4)}, 1fr)`,
+          gridTemplateColumns: activeGroups.length === 1 ? 'minmax(280px, 360px)' : 'repeat(auto-fill, minmax(220px, 1fr))',
           gap: '0.85rem',
         }}
       >
