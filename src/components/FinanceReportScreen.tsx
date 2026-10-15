@@ -21,6 +21,7 @@ import {
   History,
   Landmark,
   Layers3,
+  LayoutGrid,
   PieChart,
   Plus,
   RefreshCcw,
@@ -68,6 +69,10 @@ const SuperinvestorsScreen = lazy(() =>
   import('./SuperinvestorsScreen').then((m) => ({ default: m.SuperinvestorsScreen })),
 );
 
+const PreviewScreen = lazy(() =>
+  import('./preview-02/PreviewScreen').then((m) => ({ default: m.PreviewScreen })),
+);
+
 interface FinanceReportScreenProps {
   holdings: Holding[];
   baseCurrency: BaseCurrency;
@@ -89,7 +94,7 @@ interface FinanceReportScreenProps {
 
 type ExposureMode = 'currency' | 'theme' | 'broker';
 type ImportMode = 'upload' | 'paste';
-type WorkspaceView = 'portfolio' | 'superinvestors';
+type WorkspaceView = 'portfolio' | 'superinvestors' | 'preview';
 
 const LAYERS = Object.keys(LAYER_META) as Layer[];
 const CURRENCIES = ['USD', 'JPY', 'CNY', 'HKD'] as const;
@@ -370,11 +375,11 @@ export function FinanceReportScreen({
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [isExportingImg, setIsExportingImg] = useState(false);
   const exportMenuRef = useRef<HTMLDivElement>(null);
-  const [workspaceView, setWorkspaceView] = useState<WorkspaceView>(() =>
-    window.location.hash.startsWith('#superinvestors')
-      ? 'superinvestors'
-      : 'portfolio',
-  );
+  const [workspaceView, setWorkspaceView] = useState<WorkspaceView>(() => {
+    if (window.location.hash.startsWith('#superinvestors')) return 'superinvestors';
+    if (window.location.hash.startsWith('#preview')) return 'preview';
+    return 'portfolio';
+  });
   const [draft, setDraft] = useState<ManualHoldingInput>({
     ...EMPTY_DRAFT,
     currency: baseCurrency === 'CNY' ? 'CNY' : 'USD',
@@ -436,11 +441,13 @@ export function FinanceReportScreen({
 
   useEffect(() => {
     const syncHash = () => {
-      setWorkspaceView(
-        window.location.hash.startsWith('#superinvestors')
-          ? 'superinvestors'
-          : 'portfolio',
-      );
+      if (window.location.hash.startsWith('#superinvestors')) {
+        setWorkspaceView('superinvestors');
+      } else if (window.location.hash.startsWith('#preview')) {
+        setWorkspaceView('preview');
+      } else {
+        setWorkspaceView('portfolio');
+      }
     };
     window.addEventListener('hashchange', syncHash);
     return () => window.removeEventListener('hashchange', syncHash);
@@ -603,6 +610,11 @@ export function FinanceReportScreen({
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
+    if (view === 'preview') {
+      window.location.hash = 'preview';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
     const target = section || 'portfolio';
     window.location.hash = target;
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -611,7 +623,7 @@ export function FinanceReportScreen({
   return (
     <main className="gf-page">
       <header className="gf-topbar">
-        <div className="gf-topbar-left">
+        <div className="gf-topbar-inner">
           <button
             className="gf-brand"
             onClick={() => {
@@ -638,118 +650,6 @@ export function FinanceReportScreen({
             </button>
           </nav>
         </div>
-
-        <div className="gf-top-actions">
-          {/* Currency Switcher: USD vs JPY */}
-          <div className="nova-currency-toggle" role="group" aria-label="基准币种切换">
-            <button
-              type="button"
-              className={`nova-currency-btn ${baseCurrency === 'USD' ? 'is-active' : ''}`}
-              onClick={() => onCurrencyChange?.('USD')}
-              title="切换为美元 (USD) 计价"
-            >
-              USD $
-            </button>
-            <button
-              type="button"
-              className={`nova-currency-btn ${baseCurrency === 'JPY' ? 'is-active' : ''}`}
-              onClick={() => onCurrencyChange?.('JPY')}
-              title="切换为日元 (JPY) 计价"
-            >
-              JPY ¥
-            </button>
-          </div>
-
-          <button
-            className="gf-text-action"
-            onClick={() => setRebalanceOpen(true)}
-            style={{ fontSize: '12px', padding: '5px 11px' }}
-          >
-            <Scale size={14} color="#16a34a" />
-            <span>再平衡</span>
-          </button>
-
-          <button
-            className="gf-text-action"
-            onClick={() => setImportOpen(true)}
-            style={{ fontSize: '12px', padding: '5px 11px' }}
-          >
-            <Upload size={14} />
-            <span>导入</span>
-          </button>
-
-          {/* Export Dropdown Menu (PNG / PDF / CSV) */}
-          <div className="nova-export-dropdown" ref={exportMenuRef}>
-            <button
-              type="button"
-              className="gf-primary-action"
-              onClick={() => setExportMenuOpen((prev) => !prev)}
-              aria-expanded={exportMenuOpen}
-              aria-haspopup="menu"
-              style={{ fontSize: '12px', padding: '5px 12px' }}
-            >
-              <Download size={14} />
-              <span>导出</span>
-              <ChevronDown
-                size={12}
-                style={{
-                  transition: 'transform 0.2s ease',
-                  transform: exportMenuOpen ? 'rotate(180deg)' : 'none',
-                }}
-              />
-            </button>
-
-            {exportMenuOpen && (
-              <div className="nova-export-menu" role="menu">
-                <button
-                  type="button"
-                  className="nova-export-item"
-                  role="menuitem"
-                  onClick={handleExportImage}
-                  disabled={isExportingImg}
-                >
-                  <span className="nova-export-item-icon">
-                    <FileImage size={15} />
-                  </span>
-                  <div className="nova-export-item-text">
-                    <div className="nova-export-item-title">
-                      {isExportingImg ? '正在渲染长图...' : '导出组合长图 (PNG)'}
-                    </div>
-                    <div className="nova-export-item-desc">高清资产穿透大图，适合分享与保存</div>
-                  </div>
-                </button>
-                <button
-                  type="button"
-                  className="nova-export-item"
-                  role="menuitem"
-                  onClick={handleExportPdf}
-                >
-                  <span className="nova-export-item-icon">
-                    <FileText size={15} />
-                  </span>
-                  <div className="nova-export-item-text">
-                    <div className="nova-export-item-title">导出投资报告 (PDF)</div>
-                    <div className="nova-export-item-desc">A4 标准矢量排版，打印或存为 PDF</div>
-                  </div>
-                </button>
-                <button
-                  type="button"
-                  className="nova-export-item"
-                  role="menuitem"
-                  onClick={handleExportCsv}
-                >
-                  <span className="nova-export-item-icon">
-                    <FileSpreadsheet size={15} />
-                  </span>
-                  <div className="nova-export-item-text">
-                    <div className="nova-export-item-title">导出持仓数据 (CSV)</div>
-                    <div className="nova-export-item-desc">Excel 兼容，包含单价与换算市值</div>
-                  </div>
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
       </header>
 
       {workspaceView === 'superinvestors' ? (
@@ -762,31 +662,149 @@ export function FinanceReportScreen({
             <SuperinvestorsScreen />
           </Suspense>
         </section>
+      ) : workspaceView === 'preview' ? (
+        <section className="w-full">
+          <Suspense fallback={<div style={{ padding: '3rem', textAlign: 'center', color: 'var(--muted-foreground)' }}>正在加载设计系统展板...</div>}>
+            <PreviewScreen onBack={() => openWorkspace('portfolio')} />
+          </Suspense>
+        </section>
       ) : (
         <>
           <div className="nova-shell" id="portfolio">
             {/* Shadcn Dashboard Header */}
             <div className="nova-page-header">
-              <div>
-                <h1 className="nova-page-title">资产总览与驾驶舱</h1>
-                <p className="nova-page-desc">
-                  {quoteUpdatedAt ? `行情更新于 ${formatDateTime(quoteUpdatedAt)}` : '行情未更新'} · 基准币种 {baseCurrency}
-                </p>
+              <div className="nova-header-main">
+                <div>
+                  <h1 className="nova-page-title">资产总览与驾驶舱</h1>
+                  <p className="nova-page-desc">
+                    {quoteUpdatedAt ? `行情更新于 ${formatDateTime(quoteUpdatedAt)}` : '行情未更新'} · 基准币种 {baseCurrency}
+                  </p>
+                </div>
+                <div className="nova-page-badges">
+                  <span className="nova-meta-badge">
+                    <strong>{aggregated.length}</strong> 只标的
+                  </span>
+                  <span className="nova-meta-badge">
+                    <strong>{brokers}</strong> 个券商账户
+                  </span>
+                  <span
+                    className={`nova-meta-badge ${
+                      hhi > 0.25 ? 'is-danger' : hhi > 0.15 ? 'is-warning' : 'is-success'
+                    }`}
+                  >
+                    {concentrationLabel(hhi)}
+                  </span>
+                </div>
               </div>
-              <div className="nova-page-badges">
-                <span className="nova-meta-badge">
-                  <strong>{aggregated.length}</strong> 只标的
-                </span>
-                <span className="nova-meta-badge">
-                  <strong>{brokers}</strong> 个券商账户
-                </span>
-                <span
-                  className={`nova-meta-badge ${
-                    hhi > 0.25 ? 'is-danger' : hhi > 0.15 ? 'is-warning' : 'is-success'
-                  }`}
+
+              {/* Action Toolbar */}
+              <div className="nova-header-actions">
+                {/* Currency Switcher: USD vs JPY */}
+                <div className="nova-currency-toggle" role="group" aria-label="基准币种切换">
+                  <button
+                    type="button"
+                    className={`nova-currency-btn ${baseCurrency === 'USD' ? 'is-active' : ''}`}
+                    onClick={() => onCurrencyChange?.('USD')}
+                    title="切换为美元 (USD) 计价"
+                  >
+                    USD $
+                  </button>
+                  <button
+                    type="button"
+                    className={`nova-currency-btn ${baseCurrency === 'JPY' ? 'is-active' : ''}`}
+                    onClick={() => onCurrencyChange?.('JPY')}
+                    title="切换为日元 (JPY) 计价"
+                  >
+                    JPY ¥
+                  </button>
+                </div>
+
+                <button
+                  className="gf-text-action"
+                  onClick={() => setRebalanceOpen(true)}
                 >
-                  {concentrationLabel(hhi)}
-                </span>
+                  <Scale size={14} color="#16a34a" />
+                  <span>再平衡</span>
+                </button>
+
+                <button
+                  className="gf-text-action"
+                  onClick={() => setImportOpen(true)}
+                >
+                  <Upload size={14} />
+                  <span>导入</span>
+                </button>
+
+                {/* Export Dropdown Menu (PNG / PDF / CSV) */}
+                <div className="nova-export-dropdown" ref={exportMenuRef}>
+                  <button
+                    type="button"
+                    className="gf-primary-action"
+                    onClick={() => setExportMenuOpen((prev) => !prev)}
+                    aria-expanded={exportMenuOpen}
+                    aria-haspopup="menu"
+                  >
+                    <Download size={14} />
+                    <span>导出</span>
+                    <ChevronDown
+                      size={12}
+                      style={{
+                        transition: 'transform 0.2s ease',
+                        transform: exportMenuOpen ? 'rotate(180deg)' : 'none',
+                      }}
+                    />
+                  </button>
+
+                  {exportMenuOpen && (
+                    <div className="nova-export-menu" role="menu">
+                      <button
+                        type="button"
+                        className="nova-export-item"
+                        role="menuitem"
+                        onClick={handleExportImage}
+                        disabled={isExportingImg}
+                      >
+                        <span className="nova-export-item-icon">
+                          <FileImage size={15} />
+                        </span>
+                        <div className="nova-export-item-text">
+                          <div className="nova-export-item-title">
+                            {isExportingImg ? '正在渲染长图...' : '导出组合长图 (PNG)'}
+                          </div>
+                          <div className="nova-export-item-desc">高清资产穿透大图，适合分享与保存</div>
+                        </div>
+                      </button>
+                      <button
+                        type="button"
+                        className="nova-export-item"
+                        role="menuitem"
+                        onClick={handleExportPdf}
+                      >
+                        <span className="nova-export-item-icon">
+                          <FileText size={15} />
+                        </span>
+                        <div className="nova-export-item-text">
+                          <div className="nova-export-item-title">导出投资报告 (PDF)</div>
+                          <div className="nova-export-item-desc">A4 标准矢量排版，打印或存为 PDF</div>
+                        </div>
+                      </button>
+                      <button
+                        type="button"
+                        className="nova-export-item"
+                        role="menuitem"
+                        onClick={handleExportCsv}
+                      >
+                        <span className="nova-export-item-icon">
+                          <FileSpreadsheet size={15} />
+                        </span>
+                        <div className="nova-export-item-text">
+                          <div className="nova-export-item-title">导出持仓数据 (CSV)</div>
+                          <div className="nova-export-item-desc">Excel 兼容，包含单价与换算市值</div>
+                        </div>
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 

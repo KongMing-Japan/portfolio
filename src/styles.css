@@ -171,16 +171,17 @@
   backdrop-filter: blur(12px);
   display: flex;
   align-items: center;
-  justify-content: space-between;
   padding: 0 1.5rem;
   height: 3.5rem;
-  gap: 1rem;
 }
 
-.gf-topbar-left {
+.gf-topbar-inner {
+  width: min(1160px, calc(100% - 3rem));
+  margin: 0 auto;
   display: flex;
   align-items: center;
-  gap: 1.5rem;
+  justify-content: space-between;
+  gap: 1rem;
 }
 
 .gf-brand {
@@ -333,8 +334,21 @@
   align-items: flex-start;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 1rem;
+  gap: 1.25rem;
   padding-bottom: 0.25rem;
+}
+
+.nova-header-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.nova-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
 .nova-page-title {
@@ -2150,6 +2164,232 @@
   color: var(--muted-foreground);
   margin-top: 2px;
   line-height: 1.3;
+}
+
+/* ==========================================================================
+   Mobile Responsive Optimizations
+   ========================================================================== */
+@media (max-width: 768px) {
+  .gf-composition-donut-panel {
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+  }
+
+  .nova-grid-2 {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .si-detail-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+}
+
+@media (max-width: 640px) {
+  /* Topbar Mobile */
+  .gf-topbar {
+    padding: 0 0.875rem;
+    height: 3.25rem;
+  }
+
+  .gf-topbar-inner {
+    width: 100%;
+    margin: 0;
+    gap: 0.5rem;
+  }
+
+  .gf-brand {
+    font-size: 0.875rem;
+    white-space: nowrap;
+    gap: 0.35rem;
+  }
+
+  .gf-nav-tabs {
+    padding: 2px;
+    gap: 2px;
+  }
+
+  .gf-nav-tab {
+    padding: 4px 8px;
+    font-size: 0.75rem;
+    gap: 0.25rem;
+  }
+
+  .gf-nav-tab span {
+    font-size: 0.75rem;
+  }
+
+  /* Shell & Container Mobile */
+  .nova-shell,
+  .gf-shell,
+  .gf-full-superinvestors {
+    width: calc(100% - 1.25rem) !important;
+    margin: 1rem auto 2.5rem !important;
+    gap: 1rem !important;
+  }
+
+  /* Header & Action Toolbar Mobile */
+  .nova-page-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.875rem;
+  }
+
+  .nova-page-title {
+    font-size: 1.25rem;
+  }
+
+  .nova-page-desc {
+    font-size: 0.8rem;
+  }
+
+  .nova-page-badges {
+    gap: 0.35rem;
+  }
+
+  .nova-meta-badge {
+    padding: 2px 8px;
+    font-size: 0.7rem;
+  }
+
+  .nova-header-actions {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px;
+  }
+
+  .nova-header-actions .gf-text-action,
+  .nova-header-actions .gf-primary-action,
+  .nova-currency-toggle {
+    flex-shrink: 0;
+  }
+
+  /* KPI Grid Mobile */
+  .nova-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 0.75rem !important;
+  }
+
+  .nova-kpi-card {
+    padding: 0.875rem !important;
+  }
+
+  .nova-kpi-title {
+    font-size: 0.72rem;
+  }
+
+  .nova-kpi-value {
+    font-size: 1.25rem;
+    margin: 0.35rem 0 0.15rem;
+  }
+
+  .nova-kpi-desc {
+    font-size: 0.7rem;
+  }
+
+  /* Card & Panels Mobile */
+  .nova-card,
+  .gf-overview,
+  .gf-chart-card,
+  .gf-panel {
+    padding: 1rem !important;
+    border-radius: calc(var(--radius) * 0.8) !important;
+  }
+
+  .gf-overview-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  /* Table Mobile Scroll */
+  .gf-table-wrap,
+  .si-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: calc(var(--radius) * 0.8);
+  }
+
+  .gf-holdings-table th,
+  .gf-holdings-table td {
+    padding: 8px 10px;
+    font-size: 0.8rem;
+  }
+
+  /* Superinvestors Mobile */
+  .si-index-header h2 {
+    font-size: 1.25rem;
+  }
+
+  .si-card-grid {
+    grid-template-columns: 1fr;
+    gap: 0.875rem;
+  }
+
+  .si-card {
+    padding: 1rem;
+    gap: 0.75rem;
+  }
+
+  .si-card-visual {
+    width: 80px;
+    height: 80px;
+  }
+
+  .si-donut.is-compact {
+    width: 80px;
+    height: 80px;
+  }
+
+  .si-donut .si-portrait {
+    width: 44px;
+    height: 44px;
+  }
+
+  .si-detail-hero {
+    padding: 1rem;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+
+  .si-detail-stats {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.875rem;
+  }
+
+  .si-detail-stats strong {
+    font-size: 1.15rem;
+  }
+
+  .si-panel {
+    padding: 1rem;
+  }
+
+  /* Modals Mobile */
+  .gf-modal-backdrop {
+    padding: 0.75rem;
+  }
+
+  .gf-import-modal,
+  .gf-add-modal,
+  .gf-editor-modal,
+  .gf-cockpit-modal,
+  .gf-timeline-modal {
+    padding: 1rem;
+    max-height: 94vh;
+    gap: 1rem;
+  }
+
+  .gf-cockpit-stats-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* ==========================================================================
