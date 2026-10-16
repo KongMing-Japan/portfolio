@@ -265,6 +265,19 @@ export function applyQuotes(
   });
 }
 
+export function sanitizeCurrencyCode(cur?: string | null): string {
+  if (!cur) return 'USD';
+  const raw = String(cur).trim();
+  const clean = raw.toUpperCase();
+  if (/^[A-Z]{3}$/.test(clean)) return clean;
+  if (/日元|円|JPY|[¥￥]/i.test(raw)) return 'JPY';
+  if (/美元|USD|\$/i.test(raw)) return 'USD';
+  if (/人民币|CNY|RMB|元/i.test(raw)) return 'CNY';
+  if (/港币|HKD/i.test(raw)) return 'HKD';
+  if (/欧元|EUR/i.test(raw)) return 'EUR';
+  return 'USD';
+}
+
 export function recalculateBaseValues(
   holdings: Holding[],
   fx: Record<string, number>,
@@ -273,13 +286,15 @@ export function recalculateBaseValues(
   const safeFx = fx || { JPY: 1, USD: 157.97, HKD: 20.13, CNY: 23.61 };
   const baseToJpy = safeFx[baseCurrency] ?? 1;
   return holdings.map((holding) => {
+    const currency = sanitizeCurrencyCode(holding.currency);
     const localValue =
       holding.marketPrice == null
         ? holding.importedMarketValue
         : holding.marketPrice * holding.quantity;
-    const rate = safeFx[holding.currency] ?? 1;
+    const rate = safeFx[currency] ?? safeFx[holding.currency] ?? 1;
     return {
       ...holding,
+      currency,
       marketValue: localValue,
       valueInBase:
         localValue != null && rate != null ? (localValue * rate) / baseToJpy : null,
@@ -355,6 +370,7 @@ export function aggregateHoldings(
   const groups = new Map<string, Omit<AggregatedHolding, 'weight'>>();
 
   for (const holding of holdings) {
+    const currency = sanitizeCurrencyCode(holding.currency);
     const resolved = mergeEquivalent
       ? resolveCanonicalGroup(holding)
       : {
@@ -373,7 +389,7 @@ export function aggregateHoldings(
       groups.set(resolved.key, {
         ticker: resolved.ticker,
         name: resolved.name,
-        currency: holding.currency,
+        currency,
         layer: holding.layer,
         theme: resolved.theme || holding.theme || 'Uncategorized',
         quantity: holding.quantity,
@@ -405,27 +421,37 @@ export function concentrationLabel(score: number) {
 }
 
 export function formatExactMoney(value: number, currency: string) {
-  return new Intl.NumberFormat('zh-CN', {
-    style: 'currency',
-    currency,
-    maximumFractionDigits: currency === 'JPY' ? 0 : 2,
-  }).format(value);
+  const safeCur = sanitizeCurrencyCode(currency);
+  try {
+    return new Intl.NumberFormat('zh-CN', {
+      style: 'currency',
+      currency: safeCur,
+      maximumFractionDigits: safeCur === 'JPY' ? 0 : 2,
+    }).format(value);
+  } catch {
+    const symbol =
+      safeCur === 'JPY' ? '¥' : safeCur === 'USD' ? 'US$' : `${safeCur} `;
+    return `${symbol}${Number(value || 0).toLocaleString('zh-CN', {
+      maximumFractionDigits: safeCur === 'JPY' ? 0 : 2,
+    })}`;
+  }
 }
 
 export function formatMoney(value: number, currency: string) {
+  const safeCur = sanitizeCurrencyCode(currency);
   const prefix =
-    currency === 'USD'
+    safeCur === 'USD'
       ? 'US$'
-      : currency === 'JPY'
+      : safeCur === 'JPY'
         ? '¥'
-        : currency === 'CNY'
+        : safeCur === 'CNY'
           ? 'CN¥'
-          : currency === 'HKD'
+          : safeCur === 'HKD'
             ? 'HK$'
-            : `${currency} `;
+            : `${safeCur} `;
   const absolute = Math.abs(value);
 
-  if (currency === 'JPY' || currency === 'CNY') {
+  if (safeCur === 'JPY' || safeCur === 'CNY') {
     if (absolute >= 100_000_000) {
       return `${prefix}${(value / 100_000_000).toFixed(3).replace(/\.?0+$/, '')}亿`;
     }
@@ -444,11 +470,17 @@ export function formatMoney(value: number, currency: string) {
     }
   }
 
-  return new Intl.NumberFormat('zh-CN', {
-    style: 'currency',
-    currency,
-    maximumFractionDigits: currency === 'JPY' ? 0 : 2,
-  }).format(value);
+  try {
+    return new Intl.NumberFormat('zh-CN', {
+      style: 'currency',
+      currency: safeCur,
+      maximumFractionDigits: safeCur === 'JPY' ? 0 : 2,
+    }).format(value);
+  } catch {
+    return `${prefix}${Number(value || 0).toLocaleString('zh-CN', {
+      maximumFractionDigits: safeCur === 'JPY' ? 0 : 2,
+    })}`;
+  }
 }
 
 export function formatPercent(value: number, digits = 1) {

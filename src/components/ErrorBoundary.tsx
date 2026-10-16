@@ -34,6 +34,9 @@ export class ErrorBoundary extends Component<Props, State> {
     try {
       sessionStorage.clear();
       localStorage.clear();
+      if (typeof indexedDB !== 'undefined' && indexedDB.deleteDatabase) {
+        indexedDB.deleteDatabase('portfolio-generator');
+      }
     } catch {}
     window.location.href = window.location.pathname;
   };

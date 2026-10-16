@@ -4,6 +4,8 @@ import {
   makeId,
   marketFromTicker,
   normalizeLayer,
+  sanitizeCurrencyCode,
+  suggestCurrencyFromTicker,
 } from './portfolio';
 
 const FIELD_ALIASES = {
@@ -63,6 +65,25 @@ function normalizeRow(row: CsvRow) {
   return output;
 }
 
+export function isCommentaryLine(line: string): boolean {
+  const trimmed = line.trim();
+  if (!trimmed) return true;
+  if (
+    /^(全部补齐后|按币种|日元部分|美元部分|港币部分|人民币部分|折合约|账户小计|账户合计|证券市值合计|账户资产合计|今日盈亏合计|以上按截图|折算统一采用|总资产折合|即约|以下按账户)/i.test(
+      trimmed,
+    )
+  ) {
+    return true;
+  }
+  if (/^[0-9]+[\.、]\s*[\u4e00-\u9fa5]+[|｜]/.test(trimmed)) {
+    return true;
+  }
+  if (/^[A-Za-z\u4e00-\u9fa5\s]+[：:]\s*$/.test(trimmed)) {
+    return true;
+  }
+  return false;
+}
+
 function rowToHolding(
   row: CsvRow,
   sourceName: string,
@@ -73,8 +94,21 @@ function rowToHolding(
   const name = String(normalized.name ?? ticker).trim();
   if (!ticker && !name) return null;
 
+  if (
+    ticker.length > 35 ||
+    /^(全部补齐后|按币种|日元部分|美元部分|港币部分|人民币部分|折合约|账户小计|账户合计|证券市值合计|账户资产合计|今日盈亏合计|以上按截图|折算统一采用|总资产折合|即约)/i.test(
+      ticker,
+    ) ||
+    /[。，]/.test(ticker)
+  ) {
+    return null;
+  }
+
   const quantity = parseNumber(normalized.quantity);
-  const currency = String(normalized.currency ?? '').trim().toUpperCase();
+  const rawCurrency = String(normalized.currency ?? '').trim();
+  const currency = sanitizeCurrencyCode(
+    rawCurrency || suggestCurrencyFromTicker(ticker, name),
+  );
   const costPerUnit = parseNumber(normalized.cost);
   const importedMarketValue = parseNumber(normalized.marketValue);
   const marketPrice = parseNumber(normalized.marketPrice);
@@ -83,7 +117,7 @@ function rowToHolding(
   const reviewReasons: string[] = [];
 
   if (!ticker) reviewReasons.push('Missing ticker');
-  if (!currency) reviewReasons.push('Missing currency');
+  if (!rawCurrency) reviewReasons.push('Missing currency');
   if (quantity == null || quantity < 0) reviewReasons.push('Invalid quantity');
 
   return {
@@ -93,7 +127,7 @@ function rowToHolding(
     broker,
     account: String(normalized.account ?? '').trim(),
     market: marketFromTicker(ticker),
-    currency: currency || 'JPY',
+    currency,
     quantity: quantity ?? 0,
     costPerUnit,
     importedMarketValue,
@@ -169,7 +203,7 @@ export function parseHoldingsText(text: string, sourceName = 'Manual import') {
   const rows = trimmed
     .split(/\r?\n/)
     .map((line) => line.trim())
-    .filter(Boolean)
+    .filter((line) => Boolean(line) && !isCommentaryLine(line))
     .map((line) => {
       const delimiter = line.includes('\t') ? '\t' : ',';
       const parts = line

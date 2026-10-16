@@ -7,6 +7,7 @@ import type {
   SnapshotDiffItem,
   SnapshotDiffResult,
 } from '../types';
+import { sanitizeCurrencyCode } from './portfolio';
 
 const DB_NAME = 'portfolio-generator';
 const STORE_NAME = 'portfolio';
@@ -38,6 +39,43 @@ function getDb() {
   return dbInstance;
 }
 
+export function isCorruptedHolding(holding: unknown): boolean {
+  if (!holding || typeof holding !== 'object') return true;
+  const h = holding as Record<string, unknown>;
+  const ticker = String(h.ticker ?? '').trim();
+  const name = String(h.name ?? '').trim();
+  const currency = String(h.currency ?? '').trim();
+  const combined = `${ticker} ${name} ${currency}`;
+
+  if (ticker.length > 50 || name.length > 80 || currency.length > 20) return true;
+  if (
+    /全部补齐后|按币种|日元部分|美元部分|港币部分|人民币部分|折合约|账户小计|账户合计|总资产折合|折算统一采用|即约|以下按账户/i.test(
+      combined,
+    )
+  ) {
+    return true;
+  }
+  return false;
+}
+
+export function sanitizeLoadedSnapshot(
+  snapshot: PortfolioSnapshot | undefined,
+): PortfolioSnapshot | undefined {
+  if (!snapshot || !Array.isArray(snapshot.holdings)) return snapshot;
+
+  const sanitizedHoldings = snapshot.holdings
+    .filter((h) => !isCorruptedHolding(h))
+    .map((h) => ({
+      ...h,
+      currency: sanitizeCurrencyCode(h.currency),
+    }));
+
+  return {
+    ...snapshot,
+    holdings: sanitizedHoldings,
+  };
+}
+
 export async function saveSnapshot(snapshot: PortfolioSnapshot) {
   const db = await getDb();
   await db.put(STORE_NAME, snapshot, SNAPSHOT_KEY);
@@ -45,9 +83,10 @@ export async function saveSnapshot(snapshot: PortfolioSnapshot) {
 
 export async function loadSnapshot() {
   const db = await getDb();
-  return (await db.get(STORE_NAME, SNAPSHOT_KEY)) as
+  const raw = (await db.get(STORE_NAME, SNAPSHOT_KEY)) as
     | PortfolioSnapshot
     | undefined;
+  return sanitizeLoadedSnapshot(raw);
 }
 
 export async function clearSnapshot() {
@@ -62,9 +101,10 @@ export async function saveOwnerSnapshot(snapshot: PortfolioSnapshot) {
 
 export async function loadOwnerSnapshot() {
   const db = await getDb();
-  return (await db.get(STORE_NAME, OWNER_SNAPSHOT_KEY)) as
+  const raw = (await db.get(STORE_NAME, OWNER_SNAPSHOT_KEY)) as
     | PortfolioSnapshot
     | undefined;
+  return sanitizeLoadedSnapshot(raw);
 }
 
 export async function clearOwnerSnapshot() {

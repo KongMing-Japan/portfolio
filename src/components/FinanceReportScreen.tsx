@@ -10,6 +10,7 @@ import {
 import {
   AlertTriangle,
   Briefcase,
+  Check,
   ChevronDown,
   ChevronRight,
   ClipboardList,
@@ -26,6 +27,7 @@ import {
   PieChart,
   Plus,
   RefreshCcw,
+  Save,
   Scale,
   Search,
   ShieldCheck,
@@ -98,6 +100,7 @@ interface FinanceReportScreenProps {
   onAddHolding: (input: ManualHoldingInput) => Promise<void>;
   onUpdateHolding: (id: string, patch: Partial<Holding>) => Promise<void>;
   onRemoveHolding: (id: string) => Promise<void>;
+  onSave?: () => Promise<void> | void;
   onFiles: (files: File[]) => void;
   onJsonImport: (file: File) => Promise<void>;
   onManualImport: (text: string) => Promise<void>;
@@ -370,6 +373,7 @@ export function FinanceReportScreen({
   onAddHolding,
   onUpdateHolding,
   onRemoveHolding,
+  onSave,
   onFiles,
   onJsonImport,
   onManualImport,
@@ -397,6 +401,8 @@ export function FinanceReportScreen({
   const [localError, setLocalError] = useState<string | null>(null);
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [isExportingImg, setIsExportingImg] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const [saveToast, setSaveToast] = useState<string | null>(null);
   const exportMenuRef = useRef<HTMLDivElement>(null);
   const [workspaceView, setWorkspaceView] = useState<WorkspaceView>(() => {
     if (window.location.hash.startsWith('#superinvestors')) return 'superinvestors';
@@ -408,6 +414,46 @@ export function FinanceReportScreen({
     currency: 'USD',
   });
   const t = COPY;
+
+  const handleManualSave = async () => {
+    setSaveStatus('saving');
+    try {
+      if (onSave) {
+        await onSave();
+      }
+      setSaveStatus('saved');
+      setSaveToast('持仓配置与修改已保存到本地存储，下次打开将自动载入全部修改。');
+      setTimeout(() => {
+        setSaveToast(null);
+      }, 4000);
+      setTimeout(() => {
+        setSaveStatus('idle');
+      }, 2500);
+    } catch {
+      setSaveStatus('idle');
+    }
+  };
+
+  const handleExportJson = () => {
+    setExportMenuOpen(false);
+    const snapshot: PortfolioSnapshot = {
+      version: 1,
+      holdings,
+      baseCurrency,
+      fx,
+      quoteUpdatedAt,
+      savedAt: new Date().toISOString(),
+    };
+    const blob = new Blob([JSON.stringify(snapshot, null, 2)], {
+      type: 'application/json',
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `portfolio-snapshot-${baseCurrency}-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   useEffect(() => {
     if (!exportMenuOpen) return;
@@ -872,7 +918,38 @@ export function FinanceReportScreen({
                   <span>导入</span>
                 </button>
 
-                {/* Export Dropdown Menu (PNG / PDF / CSV) */}
+                {/* Save Portfolio to Local Storage Button */}
+                <button
+                  type="button"
+                  className="gf-text-action"
+                  onClick={handleManualSave}
+                  disabled={saveStatus === 'saving'}
+                  style={{
+                    borderColor: saveStatus === 'saved' ? '#86efac' : undefined,
+                    backgroundColor: saveStatus === 'saved' ? '#f0fdf4' : undefined,
+                    color: saveStatus === 'saved' ? '#15803d' : undefined,
+                  }}
+                  title="保存当前修改到浏览器本地存储，下次打开时自动载入"
+                >
+                  {saveStatus === 'saved' ? (
+                    <>
+                      <Check size={14} color="#15803d" />
+                      <span>已保存</span>
+                    </>
+                  ) : saveStatus === 'saving' ? (
+                    <>
+                      <RefreshCcw size={14} className="spin-slow" />
+                      <span>保存中...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save size={14} />
+                      <span>保存修改</span>
+                    </>
+                  )}
+                </button>
+
+                {/* Export Dropdown Menu (PNG / PDF / CSV / JSON) */}
                 <div className="nova-export-dropdown" ref={exportMenuRef}>
                   <button
                     type="button"
@@ -937,6 +1014,20 @@ export function FinanceReportScreen({
                         <div className="nova-export-item-text">
                           <div className="nova-export-item-title">导出持仓数据 (CSV)</div>
                           <div className="nova-export-item-desc">Excel 兼容，包含单价与换算市值</div>
+                        </div>
+                      </button>
+                      <button
+                        type="button"
+                        className="nova-export-item"
+                        role="menuitem"
+                        onClick={handleExportJson}
+                      >
+                        <span className="nova-export-item-icon">
+                          <Download size={15} />
+                        </span>
+                        <div className="nova-export-item-text">
+                          <div className="nova-export-item-title">导出 JSON 备份文件</div>
+                          <div className="nova-export-item-desc">完整配置与明细，随时恢复修改</div>
                         </div>
                       </button>
                     </div>
@@ -1761,6 +1852,33 @@ export function FinanceReportScreen({
           <option key={brokerName} value={brokerName} />
         ))}
       </datalist>
+
+      {saveToast && (
+        <div
+          role="status"
+          aria-live="polite"
+          style={{
+            position: 'fixed',
+            bottom: '24px',
+            right: '24px',
+            zIndex: 9999,
+            backgroundColor: '#0f172a',
+            color: '#f8fafc',
+            padding: '12px 20px',
+            borderRadius: '12px',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3)',
+            fontSize: '0.86rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            fontWeight: 500,
+            border: '1px solid #334155',
+          }}
+        >
+          <Check size={16} color="#4ade80" />
+          <span>{saveToast}</span>
+        </div>
+      )}
     </main>
   );
 }

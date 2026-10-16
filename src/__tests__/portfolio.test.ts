@@ -7,8 +7,12 @@ import {
   applyQuotes,
   concentrationScore,
   estimateAssetVolatility,
+  formatExactMoney,
+  formatMoney,
   isDailyMemoAccount,
+  sanitizeCurrencyCode,
 } from '../lib/portfolio';
+import { sanitizeLoadedSnapshot } from '../lib/storage';
 import { REAL_PORTFOLIO_SNAPSHOT } from '../lib/realPortfolioData';
 
 const samplePath = resolve(process.cwd(), 'public/sample-positions.csv');
@@ -105,5 +109,49 @@ describe('portfolio import and analysis', () => {
       expect(vol.annualVol).toBeGreaterThan(0);
       expect(typeof vol.beta).toBe('number');
     }
+  });
+
+  it('safely handles and sanitizes invalid currency codes without throwing', () => {
+    const invalidCurrency = '889日元，即约1.099亿日元。以下按账户、类别列出明细和小计。';
+    expect(sanitizeCurrencyCode(invalidCurrency)).toBe('JPY');
+    expect(sanitizeCurrencyCode('USD')).toBe('USD');
+    expect(sanitizeCurrencyCode('人民币')).toBe('CNY');
+    expect(sanitizeCurrencyCode('¥')).toBe('JPY');
+    expect(sanitizeCurrencyCode('unknown_garbage')).toBe('USD');
+
+    // Neither formatMoney nor formatExactMoney should ever throw RangeError
+    expect(() => formatMoney(1234567, invalidCurrency)).not.toThrow();
+    expect(() => formatExactMoney(1234567, invalidCurrency)).not.toThrow();
+    expect(formatMoney(109902889, invalidCurrency)).toContain('1.099亿');
+  });
+
+  it('sanitizes loaded snapshots by filtering out corrupted commentary holdings', () => {
+    const rawSnapshot: any = {
+      version: 1,
+      baseCurrency: 'JPY',
+      fx: { JPY: 1, USD: 157.9 },
+      holdings: [
+        {
+          id: 'valid-1',
+          ticker: '1482.T',
+          name: '美国国债ETF 1482',
+          currency: 'JPY',
+          quantity: 100,
+          marketPrice: 1479,
+        },
+        {
+          id: 'corrupted-commentary',
+          ticker: '全部补齐后，资产折合约109',
+          name: '902',
+          currency: '889日元，即约1.099亿日元。以下按账户、类别列出明细和小计。',
+          quantity: 0,
+        },
+      ],
+    };
+
+    const sanitized = sanitizeLoadedSnapshot(rawSnapshot);
+    expect(sanitized).toBeDefined();
+    expect(sanitized?.holdings).toHaveLength(1);
+    expect(sanitized?.holdings[0].ticker).toBe('1482.T');
   });
 });

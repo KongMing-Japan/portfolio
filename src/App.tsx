@@ -593,6 +593,10 @@ function App() {
     [persist],
   );
 
+  const handleManualSave = useCallback(async () => {
+    await persist(holdings, baseCurrency, fx, quoteUpdatedAt);
+  }, [holdings, baseCurrency, fx, quoteUpdatedAt, persist]);
+
   const appContent = useMemo(() => {
     if (step === 'processing') {
       return (
@@ -630,6 +634,7 @@ function App() {
         onAddHolding={addManualHolding}
         onUpdateHolding={updateReportHolding}
         onRemoveHolding={removeReportHolding}
+        onSave={handleManualSave}
         onFiles={handleFiles}
         onJsonImport={handleJsonImport}
         onManualImport={handleManualImport}
@@ -649,6 +654,7 @@ function App() {
     handleJsonImport,
     handleLockOwner,
     handleManualImport,
+    handleManualSave,
     handleResetOwnerBaseline,
     handleRestoreSnapshot,
     handleSample,
