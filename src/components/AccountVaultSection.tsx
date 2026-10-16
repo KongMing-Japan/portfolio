@@ -176,14 +176,14 @@ export function AccountVaultSection({
               <div className="flex items-center gap-2 flex-wrap">
                 <NotebookPen className="size-4 text-primary" />
                 <CardTitle className="text-base">
-                  独立账户备忘录 · 日常生活银行与支付/钱包台账 (Account & Banking Vault)
+                  日常生活账户与钱包备忘
                 </CardTitle>
                 <Badge variant="outline">
-                  {dailyItems.length} 个日常备忘账户 + {brokerageAccounts.length} 个证券投资户
+                  {dailyItems.length} 个日常备忘户 + {brokerageAccounts.length} 个投资户
                 </Badge>
               </div>
               <CardDescription className="mt-1">
-                将日常生活银行卡、跨境支付与数字钱包从主投资图表中独立划出作为备忘管理：既防止遗忘小额账户与尾号，又不干扰核心证券调仓分析
+                日常生活银行卡、支付钱包与闲置资金独立备忘，不干扰核心投资调仓分析
               </CardDescription>
             </div>
 
@@ -197,10 +197,10 @@ export function AccountVaultSection({
                 spacing={1}
               >
                 <ToggleGroupItem value="daily" className="text-xs px-2.5 h-7">
-                  日常银行与钱包备忘 ({dailyItems.length})
+                  日常银行与钱包 ({dailyItems.length})
                 </ToggleGroupItem>
                 <ToggleGroupItem value="brokerage" className="text-xs px-2.5 h-7">
-                  核心证券投资账户 ({brokerageAccounts.length})
+                  证券与投资账户 ({brokerageAccounts.length})
                 </ToggleGroupItem>
                 <ToggleGroupItem value="all" className="text-xs px-2.5 h-7">
                   全部账户汇总 ({dailyItems.length + brokerageAccounts.length})

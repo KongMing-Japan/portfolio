@@ -604,14 +604,14 @@ export function ClassicRebalanceAnalytics({
               <div className="flex items-center gap-2 flex-wrap">
                 <Compass className="size-4 text-primary" />
                 <CardTitle className="text-base">
-                  经典金融资产配置与定量再平衡分析台 (Quantitative Rebalancing Suite)
+                  资产配置与量化再平衡
                 </CardTitle>
                 <Badge variant="secondary" className="font-mono text-[11px]">
-                  Markowitz · Swensen 5/25 · Risk Parity
+                  5/25 走廊 · 风险预算
                 </Badge>
               </div>
               <CardDescription className="mt-1">
-                融合耶鲁捐赠基金模型、马科维茨风险预算 (MCTR)、桥水全天候风险平价与 Vanguard 零卖出现金流调仓法
+                结合经典资产配置模型与波动率风险预算，推演最少摩擦的调仓路径
               </CardDescription>
             </div>
 
@@ -621,7 +621,7 @@ export function ClassicRebalanceAnalytics({
                 <div
                   className="inline-flex items-center rounded-lg border bg-muted p-0.5 text-xs"
                   role="group"
-                  aria-label="调仓分析资产口径"
+                  aria-label="资产口径"
                 >
                   <button
                     type="button"
@@ -632,7 +632,7 @@ export function ClassicRebalanceAnalytics({
                         : 'text-muted-foreground hover:text-foreground'
                     }`}
                   >
-                    纯投资组合口径 (剔除 {dailyAccountsStats.count} 个日常账户)
+                    投资组合口径
                   </button>
                   <button
                     type="button"
@@ -643,7 +643,7 @@ export function ClassicRebalanceAnalytics({
                         : 'text-muted-foreground hover:text-foreground'
                     }`}
                   >
-                    全量家庭资产口径
+                    全量家庭资产 (含日常备忘)
                   </button>
                 </div>
                 <Button
@@ -652,7 +652,7 @@ export function ClassicRebalanceAnalytics({
                   onClick={onOpenAccountVault}
                   className="text-xs h-7"
                 >
-                  日常与全账户备忘 ({ formatMoney(dailyAccountsStats.totalValue, baseCurrency) })
+                  日常账户备忘 ({ formatMoney(dailyAccountsStats.totalValue, baseCurrency) })
                 </Button>
               </div>
             )}
@@ -696,18 +696,18 @@ export function ClassicRebalanceAnalytics({
 
       {/* Row 1: Classic Model Radar + Swensen 5/25 Corridor AND Markowitz Risk Budgeting */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
-        {/* Card A: Radar + Swensen 5/25 Corridor Drift */}
+        {/* Card A: Model Radar & 5/25 Corridor */}
         <Card className="flex flex-col justify-between">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <Scale className="size-4 text-primary" />
-              <span>模型拟合雷达与 Swensen 5/25 容忍走廊</span>
+              <span>模型拟合与 5/25 走廊</span>
             </CardTitle>
             <CardDescription>
-              当单一层级偏离超过 ±5% 绝对阈值或目标权重的 ±25% 时触发再平衡信号
+              偏离超过 ±5% 绝对阈值或目标权重的 ±25% 时触发调仓信号
             </CardDescription>
             <CardAction>
-              <Badge variant="outline">5/25 Rule</Badge>
+              <Badge variant="outline">5/25 走廊</Badge>
             </CardAction>
           </CardHeader>
 
@@ -815,13 +815,13 @@ export function ClassicRebalanceAnalytics({
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <Gauge className="size-4 text-primary" />
-              <span>马科维茨风险预算分解 (资金权重 vs 波动风险贡献)</span>
+              <span>风险预算与波动贡献</span>
             </CardTitle>
             <CardDescription>
-              量化各资产板块的边际风险贡献 (MCTR)：揭示为何少部分高 Beta 仓位主导了组合整体波动
+              对比各资产资金权重与边际风险贡献 (MCTR)
             </CardDescription>
             <CardAction>
-              <Badge variant="outline">Risk Budgeting</Badge>
+              <Badge variant="outline">风险预算</Badge>
             </CardAction>
           </CardHeader>
 
@@ -868,75 +868,75 @@ export function ClassicRebalanceAnalytics({
 
             <Separator />
 
-            {/* 4 Quantitative Financial KPIs (Shadcn contribution-history pattern) */}
+            {/* 4 Quantitative Financial KPIs */}
             <div className="grid grid-cols-2 gap-3">
               <Item variant="muted" className="flex-col items-stretch py-2.5 px-3">
                 <ItemContent className="gap-0.5">
-                  <ItemDescription className="text-[11px] font-medium uppercase tracking-wider">
-                    组合预估年化波动率 (σ_p)
+                  <ItemDescription className="text-[11px] font-medium tracking-wider">
+                    组合年化波动率 (σ)
                   </ItemDescription>
                   <span className="text-xl font-bold tabular-nums text-foreground">
                     {(riskBudgetStats.portfolioAnnualVol * 100).toFixed(1)}%
                   </span>
                   <span className="text-[11px] text-muted-foreground">
-                    预期年化复合回报 ≈ {(riskBudgetStats.expectedAnnualReturn * 100).toFixed(1)}%
+                    预期年化回报 ≈ {(riskBudgetStats.expectedAnnualReturn * 100).toFixed(1)}%
                   </span>
                 </ItemContent>
               </Item>
 
               <Item variant="muted" className="flex-col items-stretch py-2.5 px-3">
                 <ItemContent className="gap-0.5">
-                  <ItemDescription className="text-[11px] font-medium uppercase tracking-wider">
-                    预估夏普比率 & 有效分散度
+                  <ItemDescription className="text-[11px] font-medium tracking-wider">
+                    夏普比率与有效分散度
                   </ItemDescription>
                   <span className="text-xl font-bold tabular-nums text-primary">
                     Sharpe {riskBudgetStats.sharpeRatio.toFixed(2)}
                   </span>
                   <span className="text-[11px] text-muted-foreground">
-                    有效独立押注 N_eff = {riskBudgetStats.effectiveN.toFixed(1)} 项
+                    有效标的数 N_eff = {riskBudgetStats.effectiveN.toFixed(1)}
                   </span>
                 </ItemContent>
               </Item>
             </div>
 
-            {/* Carry Drag & Risk Concentration Alert */}
+            {/* Carry Drag Alert */}
             {riskBudgetStats.jpyHedgedValue > 0 && (
               <div className="rounded-lg border border-amber-200 bg-amber-50/70 p-3 text-xs text-amber-900 flex items-start gap-2.5">
                 <AlertTriangle className="size-4 text-amber-600 shrink-0 mt-0.5" />
                 <div className="leading-relaxed">
-                  <strong>跨市场利差损耗诊断 (FX Hedge Carry Drag)：</strong>
-                  当前持有 <strong>{formatMoney(riskBudgetStats.jpyHedgedValue, baseCurrency)}</strong> 日元对冲型美股/美债 ETF（1482/2563/2845）。受日美短端利差影响，每年隐含对冲成本约{' '}
-                  <strong>{formatMoney(riskBudgetStats.annualCarryDragValue, baseCurrency)}/年 (~4.1%)</strong>。新增资金优先配置无对冲投信（eMAXIS Slim）或直接美股。
+                  <strong>日元对冲利差损耗：</strong>
+                  当前持有 <strong>{formatMoney(riskBudgetStats.jpyHedgedValue, baseCurrency)}</strong> 日元对冲资产（1482/2563/2845），受美日利差影响年化对冲成本约{' '}
+                  <strong>{formatMoney(riskBudgetStats.annualCarryDragValue, baseCurrency)}/年 (~4.1%)</strong>。新增资金优先配置无对冲投信或直接持有原生资产。
                 </div>
               </div>
             )}
           </CardContent>
 
           <CardFooter className="text-xs text-muted-foreground border-t pt-3 flex items-center justify-between">
-            <span>浅蓝条 = 账面资金权重 (w_i) · 深蓝条 = 边际波动风险贡献 (PCR_i)</span>
-            <span className="font-mono text-[11px]">Qian (2005) Risk Parity</span>
+            <span>浅蓝条 = 资金权重 · 深蓝条 = 风险贡献</span>
+            <span className="font-mono text-[11px]">Risk Parity</span>
           </CardFooter>
         </Card>
       </div>
 
       {/* Row 2: Rebalancing Execution Waterfall + Risk-Weight Quadrant Scatter Matrix */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
-        {/* Card C: Rebalancing Execution Waterfall & Cash Bullet Slider */}
+        {/* Card C: Rebalancing Simulation */}
         <Card className="flex flex-col justify-between">
           <CardHeader>
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between gap-2 flex-wrap">
                 <CardTitle className="flex items-center gap-2 text-base">
                   <Sparkles className="size-4 text-primary" />
-                  <span>三大经典调仓算法推演与增减持瀑布图</span>
+                  <span>调仓算法推演</span>
                 </CardTitle>
                 <Button size="sm" onClick={onOpenRebalanceCockpit} className="h-7 text-xs gap-1">
-                  <span>打开完整调仓指令单</span>
+                  <span>调仓执行单</span>
                   <ArrowRight className="size-3.5" />
                 </Button>
               </div>
               <CardDescription>
-                对比「零卖出现金流补仓法」、「5/25 走廊均值回归法」与「逆波动率风险平价法」的精确调仓路径
+                对比现金流补仓法、5/25 走廊回归与逆波动率风险平价
               </CardDescription>
             </div>
           </CardHeader>
@@ -1105,18 +1105,18 @@ export function ClassicRebalanceAnalytics({
           </CardFooter>
         </Card>
 
-        {/* Card D: Risk-Weight Quadrant Scatter Matrix */}
+        {/* Card D: Risk-Weight Scatter Matrix */}
         <Card className="flex flex-col justify-between">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <Crosshair className="size-4 text-primary" />
-              <span>持仓波动率 × 仓位权重四象限散点矩阵</span>
+              <span>风险与权重四象限</span>
             </CardTitle>
             <CardDescription>
-              横轴为标的年化波动率 (σ)，纵轴为持仓占比 (Weight %)：检验是否存在「高波动却重仓」的尾部敞口
+              横轴为标的年化波动率 (σ)，纵轴为持仓权重 (Weight %)
             </CardDescription>
             <CardAction>
-              <Badge variant="outline">σ-Weight Matrix</Badge>
+              <Badge variant="outline">四象限矩阵</Badge>
             </CardAction>
           </CardHeader>
 

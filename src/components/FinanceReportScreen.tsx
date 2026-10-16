@@ -953,8 +953,8 @@ export function FinanceReportScreen({
                   <span className="nova-kpi-title">
                     <Landmark size={14} />
                     {excludeDailyAccounts && dailyAccountsStats.count > 0
-                      ? '投资组合净值 (Investment)'
-                      : '组合总资产 (Net Worth)'}
+                      ? '投资组合净值'
+                      : '组合总资产'}
                   </span>
                   <span className="nova-kpi-chip">{isOwnerUnlocked ? '精确核对' : '估值基准'}</span>
                 </div>
@@ -981,7 +981,7 @@ export function FinanceReportScreen({
                     <div className="nova-kpi-header">
                       <span className="nova-kpi-title">
                         <span className="nova-dot" style={{ background: LAYER_META.Core.color }} />
-                        核心基石 (Core)
+                        核心资产
                       </span>
                       <span className={`nova-status-badge ${isOver ? 'is-over' : isUnder ? 'is-under' : 'is-ok'}`}>
                         {isOver ? '偏高' : isUnder ? '偏低' : '稳健'}
@@ -1006,7 +1006,7 @@ export function FinanceReportScreen({
                     <div className="nova-kpi-header">
                       <span className="nova-kpi-title">
                         <span className="nova-dot" style={{ background: LAYER_META.Satellite.color }} />
-                        进攻卫星 (Satellite)
+                        卫星资产
                       </span>
                       <span className={`nova-status-badge ${isOver ? 'is-over' : isUnder ? 'is-under' : 'is-ok'}`}>
                         {isOver ? '偏高' : isUnder ? '偏低' : '稳健'}
@@ -1034,7 +1034,7 @@ export function FinanceReportScreen({
                     <div className="nova-kpi-header">
                       <span className="nova-kpi-title">
                         <span className="nova-dot" style={{ background: LAYER_META.Defensive.color }} />
-                        防守与现金 (Def + Cash)
+                        防守与现金
                       </span>
                       <span className={`nova-status-badge ${isOver ? 'is-over' : isUnder ? 'is-under' : 'is-ok'}`}>
                         {isOver ? '现金充裕' : isUnder ? '偏低' : '稳健'}

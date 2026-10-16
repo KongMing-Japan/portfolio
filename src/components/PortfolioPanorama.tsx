@@ -193,12 +193,12 @@ export function PortfolioPanorama({
       const cls = assetClassFromHolding(h.ticker, h.name, h.theme);
       const label =
         cls === 'ETF'
-          ? '交易所 ETF (宽基/行业/美债)'
+          ? 'ETF 基金'
           : cls === 'Equity'
-            ? '上市企业个股 (美/港/日/A股)'
+            ? '股票'
             : cls === 'Fund'
-              ? '公募指数投信与 QDII 基金'
-              : '机动现金与货币储备池';
+              ? '公募基金'
+              : '现金储备';
 
       const estYieldRate =
         cls === 'ETF'
@@ -328,15 +328,15 @@ export function PortfolioPanorama({
     <section className="flex flex-col gap-6" id="panorama">
       {/* Row 1: Underlying Geography Look-Through + Underlying FX & Hedge Exposure (Both Visible!) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
-        {/* Card 1: Underlying Country & Economic Exposure (Penetrating ETFs & QDII) */}
+        {/* Card 1: Underlying Country & Economic Exposure */}
         <Card className="flex flex-col justify-between">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <Globe2 className="size-4 text-primary" />
-              <span>底层真实国别与经济体敞口 (Look-Through Geography)</span>
+              <span>国别与地区敞口</span>
             </CardTitle>
             <CardDescription>
-              自动穿透日股挂牌的美债/标普/纳指 ETF (1482/2563/2845) 与 A 股跨境 ETF/QDII 至底层真实经济体
+              穿透 ETF 与基金至底层挂钩国家与经济体
             </CardDescription>
             <CardAction>
               <Badge variant="outline">底层穿透</Badge>
@@ -423,18 +423,18 @@ export function PortfolioPanorama({
           </CardFooter>
         </Card>
 
-        {/* Card 2: Underlying FX & Hedge Exposure (Shadcn savings-progress Donut + Breakdown) */}
+        {/* Card 2: Currency & FX Hedge Exposure */}
         <Card className="flex flex-col justify-between">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <Coins className="size-4 text-primary" />
-              <span>底层真实汇率敞口与对冲成本透视 (FX & Hedge Exposure)</span>
+              <span>汇率与对冲敞口</span>
             </CardTitle>
             <CardDescription>
-              区分「日元对冲美元资产 (為替ヘッジあり)」与「无对冲原生外币资产」的真实汇率弹性
+              区分日元对冲资产与原生外币资产的汇率敞口
             </CardDescription>
             <CardAction>
-              <Badge variant="outline">FX Look-Through</Badge>
+              <Badge variant="outline">汇率透视</Badge>
             </CardAction>
           </CardHeader>
 
@@ -548,17 +548,17 @@ export function PortfolioPanorama({
         </Card>
       </div>
 
-      {/* Row 2: Asset Vehicles & Passive Yield Stream (Shadcn dividend-income style) + Theme Matrix */}
+      {/* Row 2: Asset Vehicles & Yield + Theme Matrix */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-        {/* Left 5 cols: Asset Class & Dividend/Coupon Cashflow Card */}
+        {/* Left 5 cols: Asset Class & Dividend Cashflow Card */}
         <Card className="lg:col-span-5 flex flex-col justify-between">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <Layers className="size-4 text-primary" />
-              <span>资产载体结构与被动票息/分红流估算</span>
+              <span>资产形态与分红现金流</span>
             </CardTitle>
             <CardDescription>
-              按 ETF、上市个股、公募投信与流动性工具拆解载体占比及年度预估分红/利息现金流
+              ETF、个股与公募基金分布及预估年度分红
             </CardDescription>
           </CardHeader>
 
@@ -624,13 +624,13 @@ export function PortfolioPanorama({
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <LayoutGrid className="size-4 text-primary" />
-              <span>四层架构 × 投资主题穿透矩阵 (Theme & Layer Matrix)</span>
+              <span>投资主题穿透</span>
             </CardTitle>
             <CardDescription>
-              按战略投资主题（美股宽基、中港科技、日本内需基建、AI算力、美债固收等）展示内部权重构成
+              按战略投资主题展示细分权重构成
             </CardDescription>
             <CardAction>
-              <Badge variant="secondary">{themeGroups.length} 个主题簇</Badge>
+              <Badge variant="secondary">{themeGroups.length} 个主题</Badge>
             </CardAction>
           </CardHeader>
 

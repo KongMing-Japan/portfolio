@@ -89,45 +89,43 @@ export function marketFromTicker(ticker: string, name = ''): string {
 }
 
 /**
- * Look-Through Underlying Economy / Geography (底层穿透国别敞口)
- * Distinguishes listing market (e.g., TSE 2845.T / 2563.T / 1482.T or SSE 513500.SS)
- * from the actual underlying economic exposure (US, China, Japan, Vietnam, Cash).
+ * 资产底层经济体与国别分布
+ * 穿透日股挂牌的美债/标普/纳指 ETF 与 A 股跨境 ETF/QDII 至底层真实挂钩经济体
  */
 export function underlyingMarketFromHolding(holding: Pick<Holding, 'ticker' | 'name' | 'theme' | 'currency'>): string {
   const combined = `${holding.ticker} ${holding.name} ${holding.theme}`.toLowerCase();
-  if (CASH_PATTERN.test(combined)) return '多币种现金池 (Cash)';
-  if (/vietnam|越南|cn_qdii_vn/i.test(combined)) return '越南市场 (Vietnam)';
+  if (CASH_PATTERN.test(combined)) return '现金储备';
+  if (/vietnam|越南|cn_qdii_vn/i.test(combined)) return '越南';
   if (
     /\b(1482|2563|2845|513500)\b|emaxis.*s&p|s&p\s*500|标普\s*500|nasdaq|纳指|美国国债|美债/i.test(
       combined,
     )
   ) {
-    return '美国核心资产 (US)';
+    return '美国';
   }
   if (
     /\b(00700|01810|513130|300750)\b|腾讯|小米|恒生科技|宁德时代|china/i.test(
       combined,
     )
   ) {
-    return '中国核心资产 (China)';
+    return '中国';
   }
   if (
     /\b(1571|3905|7581|9023|9616)\b|\.t\b|日经|日経|萨莉亚|共立|东京地铁|datasection/i.test(
       combined,
     )
   ) {
-    return '日本本土资产 (Japan)';
+    return '日本';
   }
   const surface = marketFromTicker(holding.ticker, holding.name);
-  if (surface === 'US') return '美国核心资产 (US)';
-  if (surface === 'Hong Kong' || surface === 'China') return '中国核心资产 (China)';
-  if (surface === 'Japan') return '日本本土资产 (Japan)';
-  return '全球与其他 (Global)';
+  if (surface === 'US') return '美国';
+  if (surface === 'Hong Kong' || surface === 'China') return '中国';
+  if (surface === 'Japan') return '日本';
+  return '全球与其他';
 }
 
 /**
- * Checks whether a holding is a JPY-hedged foreign asset ETF (為替ヘッジあり),
- * which carries USD-JPY interest rate differential hedging cost.
+ * 检查是否为日元对冲型外币资产 ETF (為替ヘッジあり)
  */
 export function isJpyHedgedAsset(holding: Pick<Holding, 'ticker' | 'name' | 'theme'>): boolean {
   const combined = `${holding.ticker} ${holding.name} ${holding.theme}`;
@@ -135,7 +133,7 @@ export function isJpyHedgedAsset(holding: Pick<Holding, 'ticker' | 'name' | 'the
 }
 
 /**
- * Checks whether a holding is an inverse ETF or tactical short hedge that should not be auto-bought.
+ * 检查是否为战术反向对冲标的
  */
 export function isTacticalHedgeHolding(holding: Pick<Holding, 'ticker' | 'name' | 'theme'>): boolean {
   const combined = `${holding.ticker} ${holding.name} ${holding.theme}`;
@@ -143,27 +141,27 @@ export function isTacticalHedgeHolding(holding: Pick<Holding, 'ticker' | 'name' 
 }
 
 /**
- * Look-Through Currency & FX Hedge Exposure (底层真实汇率与对冲敞口)
+ * 底层币种与汇率对冲敞口
  */
 export function fxExposureFromHolding(holding: Pick<Holding, 'ticker' | 'name' | 'theme' | 'currency'>): string {
   const combined = `${holding.ticker} ${holding.name} ${holding.theme}`;
   if (isJpyHedgedAsset(holding)) {
-    return 'USD→JPY 对冲敞口 (為替ヘッジ)';
+    return '日元对冲 (USD→JPY)';
   }
   if (/emaxis.*s&p|513500|标普500etf博时/i.test(combined)) {
-    return 'USD 底层敞口 (无对冲)';
+    return '美元';
   }
   if (/vietnam|越南|cn_qdii_vn/i.test(combined)) {
-    return 'VND 越南盾底层敞口';
+    return '越南盾';
   }
   if (/513130|恒生科技/i.test(combined)) {
-    return 'HKD 港股底层敞口 (CNY计价)';
+    return '港币';
   }
   const cur = (holding.currency || 'JPY').toUpperCase();
-  if (cur === 'USD') return 'USD 底层敞口 (无对冲)';
-  if (cur === 'HKD') return 'HKD 港币敞口';
-  if (cur === 'CNY') return 'CNY 人民币敞口';
-  return 'JPY 纯日元敞口';
+  if (cur === 'USD') return '美元';
+  if (cur === 'HKD') return '港币';
+  if (cur === 'CNY') return '人民币';
+  return '日元';
 }
 
 export const POPULAR_BROKERS = [
@@ -470,8 +468,7 @@ export function formatDateTime(value: string | null) {
 
 export type AccountRole = 'brokerage' | 'banking' | 'wallet';
 
-const BANKING_BROKERS = new Set([
-  '乐天银行',
+const DAILY_BANKING_BROKERS = new Set([
   '三井住友银行',
   'Sony银行',
   '招商银行',
@@ -479,7 +476,7 @@ const BANKING_BROKERS = new Set([
   'ANT BANK',
 ]);
 
-const WALLET_BROKERS = new Set([
+const DAILY_WALLET_BROKERS = new Set([
   'Wise',
   '微信支付',
   'Revolut',
@@ -489,22 +486,57 @@ const WALLET_BROKERS = new Set([
 ]);
 
 /**
- * Classifies a holding's account into:
- * - 'brokerage': Core securities & fund investment accounts (乐天证券, Tiger证券, moomoo证券, 微信证券, 蚂蚁财富)
- * - 'banking': Daily life & savings bank accounts (乐天银行, 三井住友银行, Sony银行, 招商银行, 瑞穗银行, ANT BANK)
- * - 'wallet': Cross-border payment & digital wallets (Wise, 微信支付, Revolut, PayPal, Bitget Wallet, Worldcoin)
+ * 判断持仓是否属于日常消费、生活现金或备忘账户：
+ * - 乐天银行：属于投资现金，纳入主投资组合（不属于日常备忘）
+ * - 证券账户现金（乐天证券、moomoo证券、Tiger证券、微信证券）：属于投资现金
+ * - 蚂蚁财富：天弘越南股票QDII属于投资；余额宝属于日常消费现金
+ * - 微信支付、招商银行活期、三井住友、Sony银行、瑞穗、Wise、Revolut、PayPal等：属于日常消费生活现金
  */
-export function classifyAccountRole(holding: Pick<Holding, 'broker' | 'ticker' | 'layer'>): AccountRole {
+export function isDailyMemoAccount(holding: Pick<Holding, 'broker' | 'ticker' | 'name' | 'layer'>): boolean {
   const broker = (holding.broker || '').trim();
-  if (WALLET_BROKERS.has(broker)) return 'wallet';
-  if (BANKING_BROKERS.has(broker)) return 'banking';
-  if (holding.ticker === 'CRYPTO_BITGET' || holding.ticker === 'CRYPTO_WLD') return 'wallet';
-  return 'brokerage';
+  const ticker = (holding.ticker || '').toUpperCase();
+  const name = (holding.name || '').trim();
+
+  // 乐天银行现金属于投资现金
+  if (broker === '乐天银行') return false;
+
+  // 蚂蚁财富：余额宝为日常生活现金；越南QDII为投资
+  if (broker === '蚂蚁财富') {
+    return ticker.includes('YU_E_BAO') || ticker.includes('YUEBAO') || name.includes('余额宝');
+  }
+
+  // 核心证券账户（包括证券内现金）属于投资
+  if (
+    broker === '乐天证券' ||
+    broker === 'moomoo证券' ||
+    broker === 'Tiger证券' ||
+    broker === '微信证券'
+  ) {
+    return false;
+  }
+
+  // 其余银行与支付/数字钱包均属于日常生活备忘账户
+  return true;
 }
 
-export function isDailyMemoAccount(holding: Pick<Holding, 'broker' | 'ticker' | 'layer'>): boolean {
-  const role = classifyAccountRole(holding);
-  return role === 'banking' || role === 'wallet';
+/**
+ * 账户角色归类：
+ * - 'brokerage': 核心证券与基金账户、投资备用现金（乐天银行）
+ * - 'banking': 日常生活银行账户（三井住友、Sony、招行、瑞穗、ANT BANK、余额宝）
+ * - 'wallet': 跨境支付与数字钱包（Wise、微信支付、Revolut、PayPal、Bitget、Worldcoin）
+ */
+export function classifyAccountRole(holding: Pick<Holding, 'broker' | 'ticker' | 'name' | 'layer'>): AccountRole {
+  const broker = (holding.broker || '').trim();
+  if (DAILY_WALLET_BROKERS.has(broker) || holding.ticker === 'CRYPTO_BITGET' || holding.ticker === 'CRYPTO_WLD') {
+    return 'wallet';
+  }
+  if (DAILY_BANKING_BROKERS.has(broker)) {
+    return 'banking';
+  }
+  if (isDailyMemoAccount(holding)) {
+    return 'banking';
+  }
+  return 'brokerage';
 }
 
 export interface AssetRiskMetrics {

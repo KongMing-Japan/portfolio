@@ -81,13 +81,19 @@ describe('portfolio import and analysis', () => {
     expect(sp500?.marketValueBase ?? 0).toBeCloseTo(15_297_300, -1);
   });
 
-  it('separates 12 daily life bank/wallet accounts from 5 core brokerage accounts and estimates volatility', () => {
+  it('separates daily life cash from investment portfolio according to user classification', () => {
     const holdings = REAL_PORTFOLIO_SNAPSHOT.holdings;
     const dailyHoldings = holdings.filter(isDailyMemoAccount);
     const coreHoldings = holdings.filter((h) => !isDailyMemoAccount(h));
 
-    expect(new Set(dailyHoldings.map((h) => h.broker)).size).toBe(12);
-    expect(new Set(coreHoldings.map((h) => h.broker)).size).toBe(5);
+    // Rakuten Bank is investment cash
+    expect(coreHoldings.some((h) => h.broker === '乐天银行')).toBe(true);
+    // Ant Fortune Vietnam QDII is investment
+    expect(coreHoldings.some((h) => h.ticker === 'CN_QDII_VN')).toBe(true);
+    // Ant Fortune Yu'e Bao is daily life cash
+    expect(dailyHoldings.some((h) => h.ticker === 'Cash_CNY_Yuebao')).toBe(true);
+    // WeChat Pay is daily life cash
+    expect(dailyHoldings.some((h) => h.broker === '微信支付')).toBe(true);
 
     const dailySum = dailyHoldings.reduce((sum, h) => sum + (h.valueInBase ?? 0), 0);
     const coreSum = coreHoldings.reduce((sum, h) => sum + (h.valueInBase ?? 0), 0);
