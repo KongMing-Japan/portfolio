@@ -102,7 +102,7 @@ function App() {
 
   useEffect(() => {
     document.documentElement.lang = 'zh-CN';
-    document.title = 'Portfolio 调仓 · 独立多券商资产配置与再平衡系统';
+    document.title = 'AssetLog · 资产配置与量化再平衡系统';
   }, []);
 
   const persist = useCallback(

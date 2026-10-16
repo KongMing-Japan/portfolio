@@ -40,9 +40,9 @@ export function NovaRebalanceAdviceCard({
         <div className="gf-chart-title-group">
           <h3>
             <Scale size={18} color="var(--primary)" />
-            <span>再平衡风控诊断与偏离监控</span>
+            <span>四层金字塔与再平衡风控</span>
           </h3>
-          <p>四层资产配置偏离度评估 · 智能风控信号与再平衡建议</p>
+          <p>四层资产配置目标走廊与智能偏离诊断</p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <button

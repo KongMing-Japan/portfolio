@@ -771,35 +771,26 @@ export function FinanceReportScreen({
               openWorkspace('portfolio');
             }}
           >
-            Portfolio 调仓
+            AssetLog
           </button>
           <nav className="gf-nav-tabs" aria-label="视图导航">
-            <button
-              className={`gf-nav-tab ${workspaceView === 'portfolio' && !isOwnerUnlocked ? 'is-active' : ''}`}
-              onClick={() => {
-                if (isOwnerUnlocked) {
-                  onLockOwner?.();
-                } else {
-                  openWorkspace('portfolio');
-                }
-              }}
-            >
-              <Briefcase size={14} />
-              <span>公开示例</span>
-            </button>
-            <button
-              className={`gf-nav-tab ${workspaceView === 'portfolio' && isOwnerUnlocked ? 'is-active' : ''}`}
-              onClick={() => {
-                if (isOwnerUnlocked) {
-                  openWorkspace('portfolio');
-                } else {
-                  setAuthModalOpen(true);
-                }
-              }}
-            >
-              {isOwnerUnlocked ? <Briefcase size={14} /> : <Lock size={13} />}
-              <span>我的私享组合</span>
-            </button>
+            {!isOwnerUnlocked ? (
+              <button
+                className={`gf-nav-tab ${workspaceView === 'portfolio' ? 'is-active' : ''}`}
+                onClick={() => openWorkspace('portfolio')}
+              >
+                <Briefcase size={14} />
+                <span>公开示例</span>
+              </button>
+            ) : (
+              <button
+                className={`gf-nav-tab ${workspaceView === 'portfolio' ? 'is-active' : ''}`}
+                onClick={() => openWorkspace('portfolio')}
+              >
+                <Briefcase size={14} />
+                <span>我的组合</span>
+              </button>
+            )}
             <button
               className={`gf-nav-tab ${workspaceView === 'superinvestors' ? 'is-active' : ''}`}
               onClick={() => openWorkspace('superinvestors')}
@@ -885,19 +876,15 @@ export function FinanceReportScreen({
               <div className="nova-header-main">
                 <div>
                   <h1 className="nova-page-title">
-                    {isOwnerUnlocked ? '我的私享资产总览与再平衡驾驶舱' : '资产总览与驾驶舱'}
+                    {isOwnerUnlocked ? '我的组合' : '组合示例'}
                   </h1>
-                  <p className="nova-page-desc">
-                    {quoteUpdatedAt ? `行情更新于 ${formatDateTime(quoteUpdatedAt)}` : '行情未更新'} · 基准币种 {baseCurrency}
-                    {isOwnerUnlocked ? ' · 法国央行参考汇率完整精度' : ''}
-                  </p>
                 </div>
                 <div className="nova-page-badges">
                   <span className="nova-meta-badge">
-                    <strong>{aggregated.length}</strong> 项归并标的 ({activeHoldings.length}笔明细)
+                    <strong>{aggregated.length}</strong> 项标的 ({activeHoldings.length}笔明细)
                   </span>
                   <span className="nova-meta-badge">
-                    <strong>{brokers}</strong> 个核心投资账户
+                    <strong>{brokers}</strong> 个投资账户
                   </span>
                   {dailyAccountsStats.count > 0 && (
                     <a
@@ -910,9 +897,9 @@ export function FinanceReportScreen({
                         color: '#1d4ed8',
                         cursor: 'pointer',
                       }}
-                      title="点击跳转至底部「独立账户备忘录 · 日常生活银行与支付台账」"
+                      title="点击跳转至底部「日常生活银行与支付台账」"
                     >
-                      日常备忘台账 <strong>{dailyAccountsStats.count}</strong> 户 ({formatMoney(dailyAccountsStats.totalValue, baseCurrency)})
+                      日常备忘 <strong>{dailyAccountsStats.count}</strong> 户 ({formatMoney(dailyAccountsStats.totalValue, baseCurrency)})
                     </a>
                   )}
                   <span
@@ -946,14 +933,6 @@ export function FinanceReportScreen({
                     USD $
                   </button>
                 </div>
-
-                <button
-                  className="gf-text-action"
-                  onClick={() => setRebalanceOpen(true)}
-                >
-                  <Scale size={14} color="#16a34a" />
-                  <span>再平衡</span>
-                </button>
 
                 <button
                   className="gf-text-action"
@@ -1493,7 +1472,10 @@ export function FinanceReportScreen({
       )}
 
       <footer className="gf-footer">
-        <p style={{ margin: '0 0 0.35rem', fontWeight: 600, color: 'var(--foreground)' }}>Portfolio 调仓 · 独立多券商资产配置与再平衡系统</p>
+        <p style={{ margin: '0 0 0.35rem', fontWeight: 600, color: 'var(--foreground)' }}>AssetLog · 资产配置与量化再平衡系统</p>
+        <p style={{ margin: '0 0 0.45rem', fontSize: '0.75rem', color: 'var(--muted-foreground)', lineHeight: 1.6 }}>
+          {quoteUpdatedAt ? `行情更新于 ${formatDateTime(quoteUpdatedAt)}` : '行情未更新'} · 基准币种 {baseCurrency} · 法国央行参考汇率折算 · 仅用于资产结构偏离度分析与再平衡试算，不构成买卖投资建议
+        </p>
         <p style={{ margin: '0 0 0.6rem' }}>© 2026 KongMing LLC · 孔明合同会社</p>
         <div className="gf-footer-links">
           <a href="https://kongmingjapan.com/" target="_blank" rel="noreferrer" className="gf-footer-link">

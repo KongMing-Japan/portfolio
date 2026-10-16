@@ -124,8 +124,9 @@ describe('portfolio import and analysis', () => {
     // Neither formatMoney nor formatExactMoney should ever throw RangeError
     expect(() => formatMoney(1234567, invalidCurrency)).not.toThrow();
     expect(() => formatExactMoney(1234567, invalidCurrency)).not.toThrow();
-    // JPY rule: >= 10,000 uses integer 万 without decimals
-    expect(formatMoney(109902889, invalidCurrency)).toBe('¥10,990万');
+    // JPY rule: >= 1亿 uses 亿 with decimal point (e.g. 1.1亿), >= 10,000 uses integer 万, < 10,000 exact
+    expect(formatMoney(109902889, invalidCurrency)).toBe('¥1.1亿');
+    expect(formatMoney(128418099, 'JPY')).toBe('¥1.3亿');
     expect(formatMoney(62144, 'JPY')).toBe('¥6万');
     expect(formatMoney(4872000, 'JPY')).toBe('¥487万');
     expect(formatMoney(7058, 'JPY')).toBe('¥7,058');

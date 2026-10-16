@@ -455,6 +455,10 @@ export function formatMoney(value: number, currency: string) {
   const absolute = Math.abs(value);
 
   if (safeCur === 'JPY') {
+    if (absolute >= 100_000_000) {
+      const yi = (value / 100_000_000).toFixed(1).replace(/\.0$/, '');
+      return `${prefix}${yi}亿`;
+    }
     if (absolute >= 10_000) {
       const wan = Math.round(value / 10_000);
       return `${prefix}${wan.toLocaleString('en-US')}万`;

@@ -71,7 +71,7 @@ export function UserAuthModal({
         onUnlockSuccess();
         onClose();
       } else {
-        setError('用户名或密码不正确。首次使用默认账号: owner / 密码: 888888');
+        setError('用户名或密码不正确，请重试');
       }
     } catch {
       setError('登录验证出错，请重试');
@@ -320,7 +320,7 @@ export function UserAuthModal({
                       required
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
-                      placeholder="例如 owner"
+                      placeholder="输入用户名"
                       className="w-full h-9 pl-9 pr-3 rounded-md border border-input bg-background text-sm text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                     />
                   </div>
@@ -342,7 +342,7 @@ export function UserAuthModal({
                       required
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      placeholder={mode === 'register' ? '设置新密码 (最少4位)' : '输入密码 (默认 888888)'}
+                      placeholder={mode === 'register' ? '设置新密码 (最少4位)' : '输入密码'}
                       className="w-full h-9 pl-9 pr-3 rounded-md border border-input bg-background text-sm text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                     />
                   </div>
