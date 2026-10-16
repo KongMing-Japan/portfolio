@@ -221,7 +221,7 @@ export function suggestBaseCurrency(holdings: Holding[]): BaseCurrency {
     totals.set(item.currency, (totals.get(item.currency) ?? 0) + estimate);
   }
   const top = [...totals.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
-  return top === 'USD' || top === 'CNY' ? top : 'JPY';
+  return top === 'USD' ? 'USD' : 'JPY';
 }
 
 export function applyQuotes(
@@ -467,3 +467,197 @@ export function formatDateTime(value: string | null) {
     hour12: false,
   }).format(new Date(value));
 }
+
+export type AccountRole = 'brokerage' | 'banking' | 'wallet';
+
+const BANKING_BROKERS = new Set([
+  '乐天银行',
+  '三井住友银行',
+  'Sony银行',
+  '招商银行',
+  '瑞穗银行',
+  'ANT BANK',
+]);
+
+const WALLET_BROKERS = new Set([
+  'Wise',
+  '微信支付',
+  'Revolut',
+  'PayPal',
+  'Bitget Wallet',
+  'Worldcoin',
+]);
+
+/**
+ * Classifies a holding's account into:
+ * - 'brokerage': Core securities & fund investment accounts (乐天证券, Tiger证券, moomoo证券, 微信证券, 蚂蚁财富)
+ * - 'banking': Daily life & savings bank accounts (乐天银行, 三井住友银行, Sony银行, 招商银行, 瑞穗银行, ANT BANK)
+ * - 'wallet': Cross-border payment & digital wallets (Wise, 微信支付, Revolut, PayPal, Bitget Wallet, Worldcoin)
+ */
+export function classifyAccountRole(holding: Pick<Holding, 'broker' | 'ticker' | 'layer'>): AccountRole {
+  const broker = (holding.broker || '').trim();
+  if (WALLET_BROKERS.has(broker)) return 'wallet';
+  if (BANKING_BROKERS.has(broker)) return 'banking';
+  if (holding.ticker === 'CRYPTO_BITGET' || holding.ticker === 'CRYPTO_WLD') return 'wallet';
+  return 'brokerage';
+}
+
+export function isDailyMemoAccount(holding: Pick<Holding, 'broker' | 'ticker' | 'layer'>): boolean {
+  const role = classifyAccountRole(holding);
+  return role === 'banking' || role === 'wallet';
+}
+
+export interface AssetRiskMetrics {
+  annualVol: number;
+  expectedReturn: number;
+  beta: number;
+  riskCategory: string;
+}
+
+/**
+ * Empirical annualized volatility (σ), beta (β), and expected return (μ)
+ * for classic Markowitz Mean-Variance & Risk Parity budgeting.
+ */
+export function estimateAssetVolatility(
+  item: Pick<Holding, 'ticker' | 'name' | 'layer' | 'theme'>,
+): AssetRiskMetrics {
+  const sym = (item.ticker || '').toUpperCase();
+  const name = (item.name || '').toUpperCase();
+
+  if (item.layer === 'Cash' || sym.startsWith('CASH')) {
+    return {
+      annualVol: 0.015,
+      expectedReturn: 0.024,
+      beta: 0.02,
+      riskCategory: '机动现金与货币工具',
+    };
+  }
+  if (sym.includes('1482')) {
+    return {
+      annualVol: 0.075,
+      expectedReturn: 0.042,
+      beta: 0.15,
+      riskCategory: '美债与防守固收',
+    };
+  }
+  if (sym.includes('9023')) {
+    return {
+      annualVol: 0.135,
+      expectedReturn: 0.078,
+      beta: 0.45,
+      riskCategory: '日本内需与高息基建',
+    };
+  }
+  if (
+    sym.includes('S&P500') ||
+    sym.includes('2563') ||
+    sym.includes('EMAXIS') ||
+    sym.includes('513500') ||
+    sym === 'VOO' ||
+    sym === 'SPY'
+  ) {
+    return {
+      annualVol: 0.165,
+      expectedReturn: 0.098,
+      beta: 1.0,
+      riskCategory: '美股核心宽基',
+    };
+  }
+  if (sym.includes('2845') || sym === 'QQQ') {
+    return {
+      annualVol: 0.215,
+      expectedReturn: 0.118,
+      beta: 1.22,
+      riskCategory: '美股核心宽基',
+    };
+  }
+  if (sym.includes('7581') || sym.includes('9616')) {
+    return {
+      annualVol: 0.22,
+      expectedReturn: 0.096,
+      beta: 0.78,
+      riskCategory: '日本内需与高息基建',
+    };
+  }
+  if (sym.includes('1571')) {
+    return {
+      annualVol: 0.19,
+      expectedReturn: -0.015,
+      beta: -0.85,
+      riskCategory: '战术对冲与新兴市场',
+    };
+  }
+  if (sym.includes('QDII_VN') || name.includes('越南')) {
+    return {
+      annualVol: 0.24,
+      expectedReturn: 0.112,
+      beta: 0.88,
+      riskCategory: '战术对冲与新兴市场',
+    };
+  }
+  if (sym.includes('00700') || sym.includes('513130') || sym.includes('300750')) {
+    return {
+      annualVol: 0.31,
+      expectedReturn: 0.126,
+      beta: 1.18,
+      riskCategory: '中港科技与新经济',
+    };
+  }
+  if (sym.includes('01810')) {
+    return {
+      annualVol: 0.36,
+      expectedReturn: 0.138,
+      beta: 1.32,
+      riskCategory: '中港科技与新经济',
+    };
+  }
+  if (sym === 'NVDA') {
+    return {
+      annualVol: 0.44,
+      expectedReturn: 0.165,
+      beta: 1.62,
+      riskCategory: '高Beta前沿卫星',
+    };
+  }
+  if (sym.includes('3905')) {
+    return {
+      annualVol: 0.52,
+      expectedReturn: 0.172,
+      beta: 1.7,
+      riskCategory: '高Beta前沿卫星',
+    };
+  }
+  if (sym === 'CRCL' || sym === 'SMR' || sym.startsWith('CRYPTO')) {
+    return {
+      annualVol: 0.60,
+      expectedReturn: 0.188,
+      beta: 1.85,
+      riskCategory: '高Beta前沿卫星',
+    };
+  }
+
+  // Fallback by layer
+  if (item.layer === 'Defensive') {
+    return {
+      annualVol: 0.11,
+      expectedReturn: 0.06,
+      beta: 0.35,
+      riskCategory: '美债与防守固收',
+    };
+  }
+  if (item.layer === 'Satellite') {
+    return {
+      annualVol: 0.38,
+      expectedReturn: 0.145,
+      beta: 1.45,
+      riskCategory: '高Beta前沿卫星',
+    };
+  }
+  return {
+    annualVol: 0.19,
+    expectedReturn: 0.102,
+    beta: 1.05,
+    riskCategory: '美股核心宽基',
+  };
+}
+

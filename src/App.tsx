@@ -237,14 +237,16 @@ function App() {
     try {
       const savedOwner = await loadOwnerSnapshot();
       if (savedOwner?.holdings?.length) {
+        const nextBase: BaseCurrency =
+          savedOwner.baseCurrency === 'USD' ? 'USD' : 'JPY';
         // Ensure values are recalculated with saved FX & baseCurrency
         const recalculated = recalculateBaseValues(
           savedOwner.holdings,
           savedOwner.fx,
-          savedOwner.baseCurrency,
+          nextBase,
         );
         setHoldings(recalculated);
-        setBaseCurrency(savedOwner.baseCurrency);
+        setBaseCurrency(nextBase);
         setFx(savedOwner.fx);
         setQuoteUpdatedAt(savedOwner.quoteUpdatedAt);
       } else {
@@ -270,8 +272,16 @@ function App() {
     try {
       const guestSnapshot = await loadSnapshot();
       if (guestSnapshot?.holdings?.length) {
-        setHoldings(guestSnapshot.holdings);
-        setBaseCurrency(guestSnapshot.baseCurrency);
+        const nextBase: BaseCurrency =
+          guestSnapshot.baseCurrency === 'JPY' ? 'JPY' : 'USD';
+        setHoldings(
+          recalculateBaseValues(
+            guestSnapshot.holdings,
+            guestSnapshot.fx,
+            nextBase,
+          ),
+        );
+        setBaseCurrency(nextBase);
         setFx(guestSnapshot.fx);
         setQuoteUpdatedAt(guestSnapshot.quoteUpdatedAt);
       } else {
@@ -308,14 +318,16 @@ function App() {
         .then((snapshot) => {
           if (!active) return;
           if (snapshot?.holdings?.length) {
+            const nextBase: BaseCurrency =
+              snapshot.baseCurrency === 'USD' ? 'USD' : 'JPY';
             setHoldings(
               recalculateBaseValues(
                 snapshot.holdings,
                 snapshot.fx,
-                snapshot.baseCurrency,
+                nextBase,
               ),
             );
-            setBaseCurrency(snapshot.baseCurrency);
+            setBaseCurrency(nextBase);
             setFx(snapshot.fx);
             setQuoteUpdatedAt(snapshot.quoteUpdatedAt);
           } else {
@@ -333,9 +345,17 @@ function App() {
         .then((snapshot) => {
           if (!active) return;
           if (snapshot?.holdings?.length) {
+            const nextBase: BaseCurrency =
+              snapshot.baseCurrency === 'JPY' ? 'JPY' : 'USD';
             setHasSavedPortfolio(true);
-            setHoldings(snapshot.holdings);
-            setBaseCurrency(snapshot.baseCurrency);
+            setHoldings(
+              recalculateBaseValues(
+                snapshot.holdings,
+                snapshot.fx,
+                nextBase,
+              ),
+            );
+            setBaseCurrency(nextBase);
             setFx(snapshot.fx);
             setQuoteUpdatedAt(snapshot.quoteUpdatedAt);
             setStep('report');

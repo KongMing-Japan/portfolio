@@ -18,7 +18,6 @@ import {
   FileImage,
   FileSpreadsheet,
   FileText,
-  Globe,
   History,
   Landmark,
   Layers3,
@@ -50,6 +49,7 @@ import {
   formatExactMoney,
   formatMoney,
   formatPercent,
+  isDailyMemoAccount,
   isJpyHedgedAsset,
   isTacticalHedgeHolding,
   LAYER_META,
@@ -60,6 +60,8 @@ import { PortfolioAreaChart } from './PortfolioAreaChart';
 import { HoldingsCompositionCard } from './HoldingsCompositionCard';
 import { PortfolioPanorama } from './PortfolioPanorama';
 import { NovaRebalanceAdviceCard } from './NovaRebalanceAdviceCard';
+import { ClassicRebalanceAnalytics } from './ClassicRebalanceAnalytics';
+import { AccountVaultSection } from './AccountVaultSection';
 import { RebalanceCockpitModal } from './RebalanceCockpitModal';
 import { ReviewTimelineModal } from './ReviewTimelineModal';
 import { OwnerPinModal } from './OwnerPinModal';
@@ -383,6 +385,7 @@ export function FinanceReportScreen({
   const [timelineOpen, setTimelineOpen] = useState(false);
   const [pinModalOpen, setPinModalOpen] = useState(false);
   const [mergeEquivalent, setMergeEquivalent] = useState(true);
+  const [excludeDailyAccounts, setExcludeDailyAccounts] = useState(true);
   const [layerFilter, setLayerFilter] = useState<'ALL' | Layer>('ALL');
   const [holdingSearch, setHoldingSearch] = useState('');
   const [addOpen, setAddOpen] = useState(false);
@@ -402,7 +405,7 @@ export function FinanceReportScreen({
   });
   const [draft, setDraft] = useState<ManualHoldingInput>({
     ...EMPTY_DRAFT,
-    currency: baseCurrency === 'CNY' ? 'CNY' : 'USD',
+    currency: 'USD',
   });
   const t = COPY;
 
@@ -473,21 +476,42 @@ export function FinanceReportScreen({
     return () => window.removeEventListener('hashchange', syncHash);
   }, []);
 
+  // Separate daily life banking/payment memo accounts from core investment portfolio
+  const dailyAccountsStats = useMemo(() => {
+    const daily = holdings.filter((h) => isDailyMemoAccount(h));
+    const totalValue = daily.reduce((sum, h) => sum + (h.valueInBase ?? 0), 0);
+    return {
+      count: daily.length,
+      totalValue,
+    };
+  }, [holdings]);
+
+  const activeHoldings = useMemo(() => {
+    if (!excludeDailyAccounts) return holdings;
+    const investmentOnly = holdings.filter((h) => !isDailyMemoAccount(h));
+    return investmentOnly.length > 0 ? investmentOnly : holdings;
+  }, [holdings, excludeDailyAccounts]);
+
+  const grandTotal = useMemo(
+    () => holdings.reduce((sum, h) => sum + (h.valueInBase ?? 0), 0),
+    [holdings],
+  );
+
   const aggregated = useMemo(
-    () => aggregateHoldings(holdings, { mergeEquivalent }),
-    [holdings, mergeEquivalent],
+    () => aggregateHoldings(activeHoldings, { mergeEquivalent }),
+    [activeHoldings, mergeEquivalent],
   );
   const rawAggregated = useMemo(
-    () => aggregateHoldings(holdings, { mergeEquivalent: false }),
-    [holdings],
+    () => aggregateHoldings(activeHoldings, { mergeEquivalent: false }),
+    [activeHoldings],
   );
   const total = useMemo(
     () => aggregated.reduce((sum, holding) => sum + holding.marketValueBase, 0),
     [aggregated],
   );
   const brokers = useMemo(
-    () => new Set(holdings.map((holding) => holding.broker)).size,
-    [holdings],
+    () => new Set(activeHoldings.map((holding) => holding.broker)).size,
+    [activeHoldings],
   );
   const layerRows = useMemo(
     () =>
@@ -506,41 +530,6 @@ export function FinanceReportScreen({
       }),
     [aggregated, total],
   );
-
-  // Multi-currency native ledger subtotals (JPY / CNY / HKD / USD)
-  const currencyLedgerRows = useMemo(() => {
-    const map = new Map<
-      string,
-      { nativeTotal: number; baseTotal: number; count: number; brokers: Set<string> }
-    >();
-    for (const h of holdings) {
-      const cur = (h.currency || baseCurrency).toUpperCase();
-      const localVal = h.marketValue ?? h.importedMarketValue ?? 0;
-      const baseVal = h.valueInBase ?? 0;
-      const existing = map.get(cur) ?? {
-        nativeTotal: 0,
-        baseTotal: 0,
-        count: 0,
-        brokers: new Set<string>(),
-      };
-      existing.nativeTotal += localVal;
-      existing.baseTotal += baseVal;
-      existing.count += 1;
-      existing.brokers.add(h.broker || '未分类');
-      map.set(cur, existing);
-    }
-    return [...map.entries()]
-      .map(([currency, d]) => ({
-        currency,
-        nativeTotal: d.nativeTotal,
-        baseTotal: d.baseTotal,
-        weight: total > 0 ? d.baseTotal / total : 0,
-        count: d.count,
-        lotCount: d.count,
-        accountCount: d.brokers.size,
-      }))
-      .sort((a, b) => b.baseTotal - a.baseTotal);
-  }, [baseCurrency, holdings, total]);
 
   // Filtered holdings for the table
   const filteredHoldings = useMemo(() => {
@@ -814,11 +803,27 @@ export function FinanceReportScreen({
                 </div>
                 <div className="nova-page-badges">
                   <span className="nova-meta-badge">
-                    <strong>{aggregated.length}</strong> 项归并标的 ({holdings.length}笔明细)
+                    <strong>{aggregated.length}</strong> 项归并标的 ({activeHoldings.length}笔明细)
                   </span>
                   <span className="nova-meta-badge">
-                    <strong>{brokers}</strong> 个机构账户
+                    <strong>{brokers}</strong> 个核心投资账户
                   </span>
+                  {dailyAccountsStats.count > 0 && (
+                    <a
+                      href="#account-vault"
+                      className="nova-meta-badge"
+                      style={{
+                        textDecoration: 'none',
+                        background: '#eff6ff',
+                        borderColor: '#bfdbfe',
+                        color: '#1d4ed8',
+                        cursor: 'pointer',
+                      }}
+                      title="点击跳转至底部「独立账户备忘录 · 日常生活银行与支付台账」"
+                    >
+                      日常备忘台账 <strong>{dailyAccountsStats.count}</strong> 户 ({formatMoney(dailyAccountsStats.totalValue, baseCurrency)})
+                    </a>
+                  )}
                   <span
                     className={`nova-meta-badge ${
                       hhi > 0.25 ? 'is-danger' : hhi > 0.15 ? 'is-warning' : 'is-success'
@@ -831,7 +836,7 @@ export function FinanceReportScreen({
 
               {/* Action Toolbar */}
               <div className="nova-header-actions">
-                {/* Currency Switcher: JPY vs CNY vs USD */}
+                {/* Currency Switcher: JPY vs USD only */}
                 <div className="nova-currency-toggle" role="group" aria-label="基准币种切换">
                   <button
                     type="button"
@@ -840,14 +845,6 @@ export function FinanceReportScreen({
                     title="切换为日元 (JPY) 计价"
                   >
                     JPY ¥
-                  </button>
-                  <button
-                    type="button"
-                    className={`nova-currency-btn ${baseCurrency === 'CNY' ? 'is-active' : ''}`}
-                    onClick={() => onCurrencyChange?.('CNY')}
-                    title="切换为人民币 (CNY) 计价"
-                  >
-                    CNY ¥
                   </button>
                   <button
                     type="button"
@@ -955,7 +952,9 @@ export function FinanceReportScreen({
                 <div className="nova-kpi-header">
                   <span className="nova-kpi-title">
                     <Landmark size={14} />
-                    组合总资产 (Net Worth)
+                    {excludeDailyAccounts && dailyAccountsStats.count > 0
+                      ? '投资组合净值 (Investment)'
+                      : '组合总资产 (Net Worth)'}
                   </span>
                   <span className="nova-kpi-chip">{isOwnerUnlocked ? '精确核对' : '估值基准'}</span>
                 </div>
@@ -964,7 +963,11 @@ export function FinanceReportScreen({
                   <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 500 }}>
                     {formatExactMoney(total, baseCurrency)}
                   </span>
-                  <span>{brokers} 个账户 · {holdings.length} 笔</span>
+                  <span>
+                    {excludeDailyAccounts && dailyAccountsStats.count > 0
+                      ? `全量含备忘 ${formatMoney(grandTotal, baseCurrency)}`
+                      : `${brokers} 个账户 · ${activeHoldings.length} 笔`}
+                  </span>
                 </div>
               </div>
 
@@ -1064,38 +1067,6 @@ export function FinanceReportScreen({
               )}
             </div>
 
-            {/* Multi-Currency Native Ledger Strip (4-Currency Reconciliation) */}
-            {currencyLedgerRows.length > 1 && (
-              <div className="nova-currency-ledger-strip">
-                <div className="nova-currency-ledger-head">
-                  <span className="nova-currency-ledger-title">
-                    <Globe size={13} />
-                    多币种原币台账对账 (Native Currency Ledger)
-                  </span>
-                  <span className="nova-currency-ledger-fx">
-                    参考汇率基准：1 USD ≈ 157.9764 JPY · 1 HKD ≈ 20.1312 JPY · 1 CNY ≈ 23.6102 JPY
-                  </span>
-                </div>
-                <div className="nova-currency-ledger-grid">
-                  {currencyLedgerRows.map((item) => (
-                    <div key={item.currency} className="nova-currency-ledger-cell">
-                      <div className="nova-currency-ledger-top">
-                        <span className="nova-currency-badge">{item.currency}</span>
-                        <span className="nova-currency-weight">{formatPercent(item.weight)}</span>
-                      </div>
-                      <div className="nova-currency-native">
-                        {formatExactMoney(item.nativeTotal, item.currency as BaseCurrency)}
-                      </div>
-                      <div className="nova-currency-sub">
-                        <span>折合 {formatMoney(item.baseTotal, baseCurrency)}</span>
-                        <span>{item.accountCount} 账户 · {item.lotCount} 笔</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
             {aggregated.length > 0 && (
               <div className="nova-grid-2">
                 <HoldingsCompositionCard
@@ -1119,9 +1090,28 @@ export function FinanceReportScreen({
               </div>
             )}
 
+            {/* Classic Quantitative Rebalancing & Risk Budgeting Suite (Shadcn UI) */}
+            {aggregated.length > 0 && (
+              <ClassicRebalanceAnalytics
+                holdings={activeHoldings}
+                aggregated={aggregated}
+                rawAggregated={rawAggregated}
+                totalValue={total}
+                baseCurrency={baseCurrency}
+                excludeDailyAccounts={excludeDailyAccounts}
+                onToggleExcludeDaily={setExcludeDailyAccounts}
+                dailyAccountsStats={dailyAccountsStats}
+                onOpenRebalanceCockpit={() => setRebalanceOpen(true)}
+                onOpenAccountVault={() => {
+                  document.getElementById('account-vault')?.scrollIntoView({ behavior: 'smooth' });
+                }}
+              />
+            )}
+
+            {/* Full-Page Look-Through Exposure Panorama (Shadcn UI) */}
             {aggregated.length > 0 && (
               <PortfolioPanorama
-                holdings={holdings}
+                holdings={activeHoldings}
                 aggregated={aggregated}
                 totalValue={total}
                 baseCurrency={baseCurrency}
@@ -1144,8 +1134,8 @@ export function FinanceReportScreen({
                   </h2>
                   <p className="text-sm text-muted-foreground" style={{ margin: '4px 0 0' }}>
                     {mergeEquivalent
-                      ? '已开启「同源穿透归并」：标普500跨三地合并 (2563+eMAXIS+513500)，现金按三级流动性池聚合（点击任意行展开账户明细）'
-                      : '当前为「逐笔代码模式」：按原始标的代码展示各账户独立仓位'}
+                      ? '已开启「同源穿透归并」：标普500跨三地合并 (2563+eMAXIS+513500)，证券与货币基金现金按流动性池聚合（点击任意行展开账户明细）'
+                      : '当前为「逐笔代码模式」：按原始标的代码展示各投资账户独立仓位'}
                   </p>
                 </div>
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -1283,6 +1273,16 @@ export function FinanceReportScreen({
                 </table>
               </div>
             </section>
+
+            {/* Independent Account & Daily Banking/Wallet Vault */}
+            <AccountVaultSection
+              allHoldings={holdings}
+              baseCurrency={baseCurrency}
+              excludeDailyAccounts={excludeDailyAccounts}
+              onToggleExcludeDaily={setExcludeDailyAccounts}
+              onUpdateHolding={onUpdateHolding}
+              onOpenFullEditor={() => setEditorOpen(true)}
+            />
 
             {/* Methodology & FAQ Card */}
             <section className="gf-methodology-card">
