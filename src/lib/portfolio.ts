@@ -75,12 +75,12 @@ export function normalizeLayer(
 export function marketFromTicker(ticker: string, name = ''): string {
   const combined = `${ticker} ${name}`.trim();
   if (CASH_PATTERN.test(combined)) return 'Cash';
-  if (/\.T$|^TYO:/i.test(ticker) || /日本|東証|日経|TOPIX/i.test(name)) return 'Japan';
-  if (/^HKG:|\.HK$/i.test(ticker) || /港股|恒生/i.test(name)) return 'Hong Kong';
+  if (/\.T$|^TYO:|^(1482|1571|2563|2845|3905|7581|9023|9616)(\.T)?$/i.test(ticker) || /日本|東証|日経|TOPIX|emaxis/i.test(name)) return 'Japan';
+  if (/^HKG:|\.HK$|^0\d{4}$/i.test(ticker) || /港股|恒生/i.test(name)) return 'Hong Kong';
   if (
     /^(SHA|SHE):|\.(SS|SZ)$/i.test(ticker) ||
-    /^[036]\d{5}$/.test(ticker) ||
-    /A股|沪深/i.test(name)
+    /^[0356]\d{5}$/.test(ticker) ||
+    /A股|沪深|QDII|华泰柏瑞|博时|天弘|宁德时代/i.test(name)
   ) {
     return 'China';
   }
@@ -88,18 +88,96 @@ export function marketFromTicker(ticker: string, name = ''): string {
   return 'Global / Other';
 }
 
+/**
+ * Look-Through Underlying Economy / Geography (底层穿透国别敞口)
+ * Distinguishes listing market (e.g., TSE 2845.T / 2563.T / 1482.T or SSE 513500.SS)
+ * from the actual underlying economic exposure (US, China, Japan, Vietnam, Cash).
+ */
+export function underlyingMarketFromHolding(holding: Pick<Holding, 'ticker' | 'name' | 'theme' | 'currency'>): string {
+  const combined = `${holding.ticker} ${holding.name} ${holding.theme}`.toLowerCase();
+  if (CASH_PATTERN.test(combined)) return '多币种现金池 (Cash)';
+  if (/vietnam|越南|cn_qdii_vn/i.test(combined)) return '越南市场 (Vietnam)';
+  if (
+    /\b(1482|2563|2845|513500)\b|emaxis.*s&p|s&p\s*500|标普\s*500|nasdaq|纳指|美国国债|美债/i.test(
+      combined,
+    )
+  ) {
+    return '美国核心资产 (US)';
+  }
+  if (
+    /\b(00700|01810|513130|300750)\b|腾讯|小米|恒生科技|宁德时代|china/i.test(
+      combined,
+    )
+  ) {
+    return '中国核心资产 (China)';
+  }
+  if (
+    /\b(1571|3905|7581|9023|9616)\b|\.t\b|日经|日経|萨莉亚|共立|东京地铁|datasection/i.test(
+      combined,
+    )
+  ) {
+    return '日本本土资产 (Japan)';
+  }
+  const surface = marketFromTicker(holding.ticker, holding.name);
+  if (surface === 'US') return '美国核心资产 (US)';
+  if (surface === 'Hong Kong' || surface === 'China') return '中国核心资产 (China)';
+  if (surface === 'Japan') return '日本本土资产 (Japan)';
+  return '全球与其他 (Global)';
+}
+
+/**
+ * Checks whether a holding is a JPY-hedged foreign asset ETF (為替ヘッジあり),
+ * which carries USD-JPY interest rate differential hedging cost.
+ */
+export function isJpyHedgedAsset(holding: Pick<Holding, 'ticker' | 'name' | 'theme'>): boolean {
+  const combined = `${holding.ticker} ${holding.name} ${holding.theme}`;
+  return /\b(1482|2563|2845)(\.T)?\b|日元对冲|為替ヘッジあり|jpy\s*hedged/i.test(combined);
+}
+
+/**
+ * Checks whether a holding is an inverse ETF or tactical short hedge that should not be auto-bought.
+ */
+export function isTacticalHedgeHolding(holding: Pick<Holding, 'ticker' | 'name' | 'theme'>): boolean {
+  const combined = `${holding.ticker} ${holding.name} ${holding.theme}`;
+  return /\b(1571|1357|1459|sqqq|spxu|sh)\b|反向|インバース|inverse|空头对冲/i.test(combined);
+}
+
+/**
+ * Look-Through Currency & FX Hedge Exposure (底层真实汇率与对冲敞口)
+ */
+export function fxExposureFromHolding(holding: Pick<Holding, 'ticker' | 'name' | 'theme' | 'currency'>): string {
+  const combined = `${holding.ticker} ${holding.name} ${holding.theme}`;
+  if (isJpyHedgedAsset(holding)) {
+    return 'USD→JPY 对冲敞口 (為替ヘッジ)';
+  }
+  if (/emaxis.*s&p|513500|标普500etf博时/i.test(combined)) {
+    return 'USD 底层敞口 (无对冲)';
+  }
+  if (/vietnam|越南|cn_qdii_vn/i.test(combined)) {
+    return 'VND 越南盾底层敞口';
+  }
+  if (/513130|恒生科技/i.test(combined)) {
+    return 'HKD 港股底层敞口 (CNY计价)';
+  }
+  const cur = (holding.currency || 'JPY').toUpperCase();
+  if (cur === 'USD') return 'USD 底层敞口 (无对冲)';
+  if (cur === 'HKD') return 'HKD 港币敞口';
+  if (cur === 'CNY') return 'CNY 人民币敞口';
+  return 'JPY 纯日元敞口';
+}
+
 export const POPULAR_BROKERS = [
-  'SBI証券',
-  '楽天証券',
-  'Interactive Brokers',
-  'Charles Schwab',
-  '富途牛牛',
-  '老虎证券',
-  '华泰证券',
+  '乐天证券',
+  'moomoo证券',
+  'Tiger证券',
+  '微信证券',
+  '蚂蚁财富',
+  '乐天银行',
+  '三井住友银行',
   '招商银行',
-  '中信证券',
-  '东方财富',
-  '三菱UFJ / 日本银行',
+  'SBI証券',
+  'Interactive Brokers',
+  '富途牛牛',
   '现金储备 (Cash Reserve)',
 ];
 
@@ -124,13 +202,13 @@ export function assetClassFromHolding(
   const combined = `${ticker} ${name} ${theme}`.toLowerCase();
   if (CASH_PATTERN.test(combined)) return 'Cash';
   if (
-    /(etf|index|インデックス|指数|510\d{3}|159\d{3}|1306|2558|\bspy\b|\bvoo\b|\bqqq\b|\bvti\b)/i.test(
+    /(etf|1482|1571|2563|2845|513130|513500|510\d{3}|159\d{3}|1306|2558|\bspy\b|\bvoo\b|\bqqq\b|\bvti\b)/i.test(
       combined,
     )
   ) {
     return 'ETF';
   }
-  if (/(fund|基金|信託|投信|emaxis|mutual)/i.test(combined)) return 'Fund';
+  if (/(fund|基金|信託|投信|emaxis|qdii|mutual|理财|世界|worldcoin|bitget|crypto)/i.test(combined)) return 'Fund';
   return 'Equity';
 }
 
@@ -210,22 +288,95 @@ export function recalculateBaseValues(
   });
 }
 
-export function aggregateHoldings(holdings: Holding[]): AggregatedHolding[] {
+/**
+ * Resolves a canonical grouping key when `mergeEquivalent` is enabled:
+ * - Merges all S&P 500 wrappers (2563.T + EMAXIS_SP500 + 513500.SS) into a single Look-Through group
+ * - Groups scattered cash/bank/wallet items into 3 actionable liquidity tiers:
+ *   1) 券商交易子弹 (Brokerage Cash)
+ *   2) 银证联动与理财储备 (Linked Bank & Money Market)
+ *   3) 日常银行与支付钱包 (Living & Payment Wallets)
+ */
+function resolveCanonicalGroup(holding: Holding): {
+  key: string;
+  ticker: string;
+  name: string;
+  theme?: string;
+} {
+  const combined = `${holding.ticker} ${holding.name} ${holding.theme}`;
+
+  // 1. S&P 500 Equivalent Index Group (2563.T + eMAXIS Slim + 513500.SS)
+  if (/\b(2563|513500)(\.T|\.SS)?\b|emaxis_sp500|emaxis.*s&p/i.test(combined)) {
+    return {
+      key: 'GROUP_SP500_INDEX',
+      ticker: 'S&P500·合并',
+      name: '标普 500 指数全口径 (2563.T + eMAXIS + 513500)',
+      theme: 'Bonds & Index (标普500定投)',
+    };
+  }
+
+  // 2. Three-Tier Cash Pool Grouping when multiple cash accounts exist
+  if (holding.layer === 'Cash' || CASH_PATTERN.test(combined)) {
+    if (/brokerage|券商|moomoo|tiger|wechatsec|微信证券/i.test(combined)) {
+      return {
+        key: 'CASH_POOL_BROKER',
+        ticker: 'Cash·券商子弹',
+        name: '券商可用交易现金池 (Tiger美港币 / moomoo / 微信证券)',
+        theme: 'Brokerage Cash (券商交易子弹)',
+      };
+    }
+    if (/linked|联动|乐天银行|rakutenbank|余额宝|yuebao|招商银行|cmb|ant\s*bank/i.test(combined)) {
+      return {
+        key: 'CASH_POOL_LINKED',
+        ticker: 'Cash·联动储备',
+        name: '银证联动与理财储备池 (乐天银行 / 余额宝 / 招行 / ANT)',
+        theme: 'Linked Bank Reserve (银证联动储备)',
+      };
+    }
+    return {
+      key: 'CASH_POOL_LIVING',
+      ticker: 'Cash·日常与钱包',
+      name: '日常银行与跨境支付钱包池 (SMBC / Sony / Wise / 微信等)',
+      theme: 'Living & Emergency (日常与应急储备)',
+    };
+  }
+
+  const defaultKey = holding.ticker || `${holding.broker}-${holding.name}`;
+  return {
+    key: defaultKey,
+    ticker: holding.ticker,
+    name: holding.name || holding.ticker,
+  };
+}
+
+export function aggregateHoldings(
+  holdings: Holding[],
+  options?: { mergeEquivalent?: boolean },
+): AggregatedHolding[] {
+  const mergeEquivalent = options?.mergeEquivalent ?? false;
   const groups = new Map<string, Omit<AggregatedHolding, 'weight'>>();
+
   for (const holding of holdings) {
-    const key = holding.ticker || `${holding.broker}-${holding.name}`;
-    const existing = groups.get(key);
+    const resolved = mergeEquivalent
+      ? resolveCanonicalGroup(holding)
+      : {
+          key: holding.ticker || `${holding.broker}-${holding.name}`,
+          ticker: holding.ticker,
+          name: holding.name || holding.ticker,
+          theme: undefined,
+        };
+
+    const existing = groups.get(resolved.key);
     if (existing) {
       existing.quantity += holding.quantity;
       existing.marketValueBase += holding.valueInBase ?? 0;
       existing.accounts.push(holding);
     } else {
-      groups.set(key, {
-        ticker: holding.ticker,
-        name: holding.name || holding.ticker,
+      groups.set(resolved.key, {
+        ticker: resolved.ticker,
+        name: resolved.name,
         currency: holding.currency,
         layer: holding.layer,
-        theme: holding.theme || 'Uncategorized',
+        theme: resolved.theme || holding.theme || 'Uncategorized',
         quantity: holding.quantity,
         marketValueBase: holding.valueInBase ?? 0,
         accounts: [holding],
@@ -254,6 +405,14 @@ export function concentrationLabel(score: number) {
   return '高度集中 (关注单边波动)';
 }
 
+export function formatExactMoney(value: number, currency: string) {
+  return new Intl.NumberFormat('zh-CN', {
+    style: 'currency',
+    currency,
+    maximumFractionDigits: currency === 'JPY' ? 0 : 2,
+  }).format(value);
+}
+
 export function formatMoney(value: number, currency: string) {
   const prefix =
     currency === 'USD'
@@ -262,14 +421,30 @@ export function formatMoney(value: number, currency: string) {
         ? '¥'
         : currency === 'CNY'
           ? 'CN¥'
-          : `${currency} `;
+          : currency === 'HKD'
+            ? 'HK$'
+            : `${currency} `;
   const absolute = Math.abs(value);
-  if (absolute >= 1_000_000_000) {
-    return `${prefix}${(value / 1_000_000_000).toFixed(1)}B`;
+
+  if (currency === 'JPY' || currency === 'CNY') {
+    if (absolute >= 100_000_000) {
+      return `${prefix}${(value / 100_000_000).toFixed(3).replace(/\.?0+$/, '')}亿`;
+    }
+    if (absolute >= 1_000_000) {
+      const wan = value / 10_000;
+      return `${prefix}${wan.toLocaleString('en-US', {
+        maximumFractionDigits: wan >= 100 ? 1 : 2,
+      })}万`;
+    }
+  } else {
+    if (absolute >= 1_000_000_000) {
+      return `${prefix}${(value / 1_000_000_000).toFixed(1)}B`;
+    }
+    if (absolute >= 1_000_000) {
+      return `${prefix}${(value / 1_000_000).toFixed(2)}M`;
+    }
   }
-  if (absolute >= 1_000_000) {
-    return `${prefix}${(value / 1_000_000).toFixed(1)}M`;
-  }
+
   return new Intl.NumberFormat('zh-CN', {
     style: 'currency',
     currency,

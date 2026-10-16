@@ -25,6 +25,16 @@ export const TARGET_PRESETS: Record<
     targets: LayerTargetConfig;
   }
 > = {
+  crossBorderCore: {
+    name: '跨境双核均衡 (55/15/20/10)',
+    description: '适合多币种跨境实盘：55% 核心双主线、15% 战术卫星、20% 防守指数与基建、10% 机动现金',
+    targets: {
+      Core: 0.55,
+      Satellite: 0.15,
+      Defensive: 0.2,
+      Cash: 0.1,
+    },
+  },
   institutional: {
     name: '机构基准 (60/20/15/5)',
     description: '标准机构资产配置：60% 核心基石、20% 战术卫星、15% 防守缓冲、5% 流动现金',
@@ -119,6 +129,14 @@ export function calculateLayerDrift(
       valueDelta,
     };
   });
+}
+
+function isEligibleForAutoBuy(item: AggregatedHolding): boolean {
+  const combined = `${item.ticker} ${item.name} ${item.theme}`;
+  if (/\b(1571|1357|1459|sqqq|spxu)\b|反向|インバース|inverse|空头对冲|crypto_|worldcoin|bitget/i.test(combined)) {
+    return false;
+  }
+  return true;
 }
 
 /**
@@ -233,14 +251,15 @@ export function calculateInflowRebalance(
     }
 
     // Distribute layerFund among existing layer holdings, prioritizing lower weights
-    // and respecting singleSecurityCap
+    // and respecting singleSecurityCap + excluding tactical short hedges
     const eligibleItems = layerItems.filter((item) => {
+      if (!isEligibleForAutoBuy(item)) return false;
       const currentWeight =
         projectedTotal > 0 ? item.marketValueBase / projectedTotal : 0;
       return currentWeight < singleSecurityCap;
     });
 
-    const targetList = eligibleItems.length > 0 ? eligibleItems : layerItems;
+    const targetList = eligibleItems.length > 0 ? eligibleItems : layerItems.filter(isEligibleForAutoBuy);
     const totalCurrentLayerBase = targetList.reduce(
       (sum, item) => sum + item.marketValueBase,
       0,
@@ -261,8 +280,13 @@ export function calculateInflowRebalance(
       let suggestedShares =
         unitPriceInBase > 0 ? itemAllocation / unitPriceInBase : 0;
 
-      // Round shares intelligently (integer for JP/CN stocks or large unit prices, 2 decimals for US)
-      if (item.currency === 'JPY' || item.ticker.includes('.T')) {
+      // Round shares intelligently (integer for JP/CN/HK stocks, 2 decimals for US)
+      if (
+        item.currency === 'JPY' ||
+        item.currency === 'CNY' ||
+        item.currency === 'HKD' ||
+        /\.(T|SS|SZ|HK)$/i.test(item.ticker)
+      ) {
         suggestedShares = Math.max(1, Math.round(suggestedShares));
       } else {
         suggestedShares = Number(suggestedShares.toFixed(2));
@@ -364,6 +388,33 @@ export function calculateFullRebalance(
 
     if (!layerItems.length) continue;
 
+    // Consolidate multi-account Cash deployment instead of splitting across 14 bank/wallet rows
+    if (layer === 'Cash' && layerItems.length > 2) {
+      const cashDiff = targetLayerVal - layerTotalVal;
+      if (cashDiff < -100) {
+        const deployAmount = Math.abs(cashDiff);
+        totalSellAmount += deployAmount;
+        trades.push({
+          ticker: 'Cash·机动调配',
+          name: '动用超配现金储备池 (优先券商子弹与乐天银证联动)',
+          layer: 'Cash',
+          broker: 'Tiger证券 / 乐天银行 / moomoo',
+          action: 'SELL',
+          currentShares: 1,
+          suggestedShares: 1,
+          currentWeight: layerTotalVal / currentTotal,
+          projectedWeight: targetLayerVal / currentTotal,
+          priceInBase: deployAmount,
+          amountInBase: deployAmount,
+          currency: 'JPY',
+          priceInCurrency: null,
+          urgency: layerDrift?.status === 'over' ? 'high' : 'medium',
+          reason: '现金储备高于目标走廊，划转富余交易子弹补齐低配核心/卫星资产',
+        });
+      }
+      continue;
+    }
+
     for (const item of layerItems) {
       const currentWeight = item.marketValueBase / currentTotal;
       const unitPriceInBase =
@@ -389,12 +440,18 @@ export function calculateFullRebalance(
         continue;
       }
 
+      const isIntegerLot =
+        item.currency === 'JPY' ||
+        item.currency === 'CNY' ||
+        item.currency === 'HKD' ||
+        /\.(T|SS|SZ|HK)$/i.test(item.ticker);
+
       if (diffVal < 0) {
         // Need to SELL
         const sellAmount = Math.abs(diffVal);
         let sharesToSell =
           unitPriceInBase > 0 ? sellAmount / unitPriceInBase : 0;
-        if (item.currency === 'JPY' || item.ticker.includes('.T')) {
+        if (isIntegerLot) {
           sharesToSell = Math.min(item.quantity, Math.round(sharesToSell));
         } else {
           sharesToSell = Math.min(item.quantity, Number(sharesToSell.toFixed(2)));
@@ -427,12 +484,12 @@ export function calculateFullRebalance(
                 : `${item.layer} 整体处于超配状态，按规则止盈收缩`,
           });
         }
-      } else {
+      } else if (isEligibleForAutoBuy(item)) {
         // Need to BUY
         const buyAmount = diffVal;
         let sharesToBuy =
           unitPriceInBase > 0 ? buyAmount / unitPriceInBase : 0;
-        if (item.currency === 'JPY' || item.ticker.includes('.T')) {
+        if (isIntegerLot) {
           sharesToBuy = Math.max(1, Math.round(sharesToBuy));
         } else {
           sharesToBuy = Number(sharesToBuy.toFixed(2));

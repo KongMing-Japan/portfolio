@@ -15,8 +15,22 @@ import {
   recalculateBaseValues,
   suggestBaseCurrency,
 } from './lib/portfolio';
-import { clearSnapshot, loadSnapshot, saveSnapshot } from './lib/storage';
+import {
+  clearSnapshot,
+  isOwnerSessionUnlocked,
+  loadOwnerSnapshot,
+  loadSnapshot,
+  saveOwnerSnapshot,
+  saveSnapshot,
+  setOwnerSessionUnlocked,
+} from './lib/storage';
 import { INITIAL_SAMPLE_HOLDINGS, INITIAL_FX, INITIAL_UPDATED_AT } from './lib/initialData';
+import {
+  REAL_PORTFOLIO_FX,
+  REAL_PORTFOLIO_HOLDINGS,
+  REAL_PORTFOLIO_SNAPSHOT,
+  REAL_PORTFOLIO_UPDATED_AT,
+} from './lib/realPortfolioData';
 import { ProcessingScreen } from './components/ProcessingScreen';
 import { FinanceReportScreen } from './components/FinanceReportScreen';
 import { ReviewScreen } from './components/ReviewScreen';
@@ -44,10 +58,21 @@ const INITIAL_STATUS: ProcessingStatus = {
 
 function App() {
   const [step, setStep] = useState<AppStep>('report');
-  const [holdings, setHoldings] = useState<Holding[]>(() => INITIAL_SAMPLE_HOLDINGS);
-  const [baseCurrency, setBaseCurrency] = useState<BaseCurrency>('USD');
-  const [fx, setFx] = useState<Record<string, number>>(() => INITIAL_FX);
-  const [quoteUpdatedAt, setQuoteUpdatedAt] = useState<string | null>(() => INITIAL_UPDATED_AT);
+  const [isOwnerUnlocked, setIsOwnerUnlocked] = useState<boolean>(() =>
+    isOwnerSessionUnlocked(),
+  );
+  const [holdings, setHoldings] = useState<Holding[]>(() =>
+    isOwnerSessionUnlocked() ? REAL_PORTFOLIO_HOLDINGS : INITIAL_SAMPLE_HOLDINGS,
+  );
+  const [baseCurrency, setBaseCurrency] = useState<BaseCurrency>(() =>
+    isOwnerSessionUnlocked() ? 'JPY' : 'USD',
+  );
+  const [fx, setFx] = useState<Record<string, number>>(() =>
+    isOwnerSessionUnlocked() ? REAL_PORTFOLIO_FX : INITIAL_FX,
+  );
+  const [quoteUpdatedAt, setQuoteUpdatedAt] = useState<string | null>(() =>
+    isOwnerSessionUnlocked() ? REAL_PORTFOLIO_UPDATED_AT : INITIAL_UPDATED_AT,
+  );
   const [processing, setProcessing] =
     useState<ProcessingStatus>(INITIAL_STATUS);
   const [error, setError] = useState<string | null>(null);
@@ -84,6 +109,7 @@ function App() {
       nextCurrency = baseCurrency,
       nextFx = fx,
       nextUpdatedAt = quoteUpdatedAt,
+      ownerMode = isOwnerUnlocked,
     ) => {
       const snapshot: PortfolioSnapshot = {
         version: 1,
@@ -93,10 +119,14 @@ function App() {
         quoteUpdatedAt: nextUpdatedAt,
         savedAt: new Date().toISOString(),
       };
-      await saveSnapshot(snapshot);
-      setHasSavedPortfolio(true);
+      if (ownerMode) {
+        await saveOwnerSnapshot(snapshot);
+      } else {
+        await saveSnapshot(snapshot);
+        setHasSavedPortfolio(true);
+      }
     },
-    [baseCurrency, fx, quoteUpdatedAt],
+    [baseCurrency, fx, isOwnerUnlocked, quoteUpdatedAt],
   );
 
   const finishImport = useCallback(
@@ -189,32 +219,132 @@ function App() {
 
   const handleSample = useCallback(async () => {
     setError(null);
+    setOwnerSessionUnlocked(false);
+    setIsOwnerUnlocked(false);
     setHoldings(INITIAL_SAMPLE_HOLDINGS);
     setBaseCurrency('USD');
     setFx(INITIAL_FX);
     const now = new Date().toISOString();
     setQuoteUpdatedAt(now);
     setStep('report');
-    await persist(INITIAL_SAMPLE_HOLDINGS, 'USD', INITIAL_FX, now);
+    await persist(INITIAL_SAMPLE_HOLDINGS, 'USD', INITIAL_FX, now, false);
   }, [persist]);
+
+  const handleUnlockOwner = useCallback(async () => {
+    setError(null);
+    setOwnerSessionUnlocked(true);
+    setIsOwnerUnlocked(true);
+    try {
+      const savedOwner = await loadOwnerSnapshot();
+      if (savedOwner?.holdings?.length) {
+        // Ensure values are recalculated with saved FX & baseCurrency
+        const recalculated = recalculateBaseValues(
+          savedOwner.holdings,
+          savedOwner.fx,
+          savedOwner.baseCurrency,
+        );
+        setHoldings(recalculated);
+        setBaseCurrency(savedOwner.baseCurrency);
+        setFx(savedOwner.fx);
+        setQuoteUpdatedAt(savedOwner.quoteUpdatedAt);
+      } else {
+        await saveOwnerSnapshot(REAL_PORTFOLIO_SNAPSHOT);
+        setHoldings(REAL_PORTFOLIO_HOLDINGS);
+        setBaseCurrency('JPY');
+        setFx(REAL_PORTFOLIO_FX);
+        setQuoteUpdatedAt(REAL_PORTFOLIO_UPDATED_AT);
+      }
+    } catch {
+      setHoldings(REAL_PORTFOLIO_HOLDINGS);
+      setBaseCurrency('JPY');
+      setFx(REAL_PORTFOLIO_FX);
+      setQuoteUpdatedAt(REAL_PORTFOLIO_UPDATED_AT);
+    }
+    setStep('report');
+  }, []);
+
+  const handleLockOwner = useCallback(async () => {
+    setError(null);
+    setOwnerSessionUnlocked(false);
+    setIsOwnerUnlocked(false);
+    try {
+      const guestSnapshot = await loadSnapshot();
+      if (guestSnapshot?.holdings?.length) {
+        setHoldings(guestSnapshot.holdings);
+        setBaseCurrency(guestSnapshot.baseCurrency);
+        setFx(guestSnapshot.fx);
+        setQuoteUpdatedAt(guestSnapshot.quoteUpdatedAt);
+      } else {
+        setHoldings(INITIAL_SAMPLE_HOLDINGS);
+        setBaseCurrency('USD');
+        setFx(INITIAL_FX);
+        setQuoteUpdatedAt(INITIAL_UPDATED_AT);
+      }
+    } catch {
+      setHoldings(INITIAL_SAMPLE_HOLDINGS);
+      setBaseCurrency('USD');
+      setFx(INITIAL_FX);
+      setQuoteUpdatedAt(INITIAL_UPDATED_AT);
+    }
+    setStep('report');
+  }, []);
+
+  const handleResetOwnerBaseline = useCallback(async () => {
+    setError(null);
+    setOwnerSessionUnlocked(true);
+    setIsOwnerUnlocked(true);
+    await saveOwnerSnapshot(REAL_PORTFOLIO_SNAPSHOT).catch(() => {});
+    setHoldings(REAL_PORTFOLIO_HOLDINGS);
+    setBaseCurrency('JPY');
+    setFx(REAL_PORTFOLIO_FX);
+    setQuoteUpdatedAt(REAL_PORTFOLIO_UPDATED_AT);
+    setStep('report');
+  }, []);
 
   useEffect(() => {
     let active = true;
-    loadSnapshot()
-      .then((snapshot) => {
-        if (!active) return;
-        if (snapshot?.holdings?.length) {
-          setHasSavedPortfolio(true);
-          setHoldings(snapshot.holdings);
-          setBaseCurrency(snapshot.baseCurrency);
-          setFx(snapshot.fx);
-          setQuoteUpdatedAt(snapshot.quoteUpdatedAt);
+    if (isOwnerSessionUnlocked()) {
+      loadOwnerSnapshot()
+        .then((snapshot) => {
+          if (!active) return;
+          if (snapshot?.holdings?.length) {
+            setHoldings(
+              recalculateBaseValues(
+                snapshot.holdings,
+                snapshot.fx,
+                snapshot.baseCurrency,
+              ),
+            );
+            setBaseCurrency(snapshot.baseCurrency);
+            setFx(snapshot.fx);
+            setQuoteUpdatedAt(snapshot.quoteUpdatedAt);
+          } else {
+            void saveOwnerSnapshot(REAL_PORTFOLIO_SNAPSHOT);
+            setHoldings(REAL_PORTFOLIO_HOLDINGS);
+            setBaseCurrency('JPY');
+            setFx(REAL_PORTFOLIO_FX);
+            setQuoteUpdatedAt(REAL_PORTFOLIO_UPDATED_AT);
+          }
           setStep('report');
-        }
-      })
-      .catch(() => {
-        // Keep initial sample state if storage lookup fails
-      });
+        })
+        .catch(() => {});
+    } else {
+      loadSnapshot()
+        .then((snapshot) => {
+          if (!active) return;
+          if (snapshot?.holdings?.length) {
+            setHasSavedPortfolio(true);
+            setHoldings(snapshot.holdings);
+            setBaseCurrency(snapshot.baseCurrency);
+            setFx(snapshot.fx);
+            setQuoteUpdatedAt(snapshot.quoteUpdatedAt);
+            setStep('report');
+          }
+        })
+        .catch(() => {
+          // Keep initial sample state if storage lookup fails
+        });
+    }
     return () => {
       active = false;
     };
@@ -469,6 +599,10 @@ function App() {
         fx={fx}
         quoteUpdatedAt={quoteUpdatedAt}
         hasSavedPortfolio={hasSavedPortfolio}
+        isOwnerUnlocked={isOwnerUnlocked}
+        onUnlockOwner={handleUnlockOwner}
+        onLockOwner={handleLockOwner}
+        onResetOwnerBaseline={handleResetOwnerBaseline}
         onClear={clearAll}
         onCurrencyChange={handleCurrencyChange}
         onAddHolding={addManualHolding}
@@ -491,11 +625,15 @@ function App() {
     handleCurrencyChange,
     handleFiles,
     handleJsonImport,
+    handleLockOwner,
     handleManualImport,
+    handleResetOwnerBaseline,
     handleRestoreSnapshot,
     handleSample,
+    handleUnlockOwner,
     hasSavedPortfolio,
     holdings,
+    isOwnerUnlocked,
     addManualHolding,
     processing,
     quoteUpdatedAt,

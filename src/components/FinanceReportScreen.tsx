@@ -18,17 +18,21 @@ import {
   FileImage,
   FileSpreadsheet,
   FileText,
+  Globe,
   History,
   Landmark,
   Layers3,
   LayoutGrid,
+  Lock,
   PieChart,
   Plus,
   RefreshCcw,
   Scale,
   Search,
   ShieldCheck,
+  SlidersHorizontal,
   Trash2,
+  Unlock,
   Upload,
 } from 'lucide-react';
 import {
@@ -43,8 +47,11 @@ import {
   concentrationLabel,
   concentrationScore,
   formatDateTime,
+  formatExactMoney,
   formatMoney,
   formatPercent,
+  isJpyHedgedAsset,
+  isTacticalHedgeHolding,
   LAYER_META,
   POPULAR_BROKERS,
   suggestCurrencyFromTicker,
@@ -55,6 +62,7 @@ import { PortfolioPanorama } from './PortfolioPanorama';
 import { NovaRebalanceAdviceCard } from './NovaRebalanceAdviceCard';
 import { RebalanceCockpitModal } from './RebalanceCockpitModal';
 import { ReviewTimelineModal } from './ReviewTimelineModal';
+import { OwnerPinModal } from './OwnerPinModal';
 import type {
   AggregatedHolding,
   BaseCurrency,
@@ -79,6 +87,10 @@ interface FinanceReportScreenProps {
   fx: Record<string, number>;
   quoteUpdatedAt: string | null;
   hasSavedPortfolio: boolean;
+  isOwnerUnlocked?: boolean;
+  onUnlockOwner?: () => void;
+  onLockOwner?: () => void;
+  onResetOwnerBaseline?: () => void;
   onClear: () => void;
   onCurrencyChange?: (currency: BaseCurrency) => void;
   onAddHolding: (input: ManualHoldingInput) => Promise<void>;
@@ -347,6 +359,10 @@ export function FinanceReportScreen({
   fx,
   quoteUpdatedAt,
   hasSavedPortfolio,
+  isOwnerUnlocked = false,
+  onUnlockOwner,
+  onLockOwner,
+  onResetOwnerBaseline,
   onClear,
   onCurrencyChange,
   onAddHolding,
@@ -365,6 +381,10 @@ export function FinanceReportScreen({
   const [expandedTicker, setExpandedTicker] = useState<string | null>(null);
   const [rebalanceOpen, setRebalanceOpen] = useState(false);
   const [timelineOpen, setTimelineOpen] = useState(false);
+  const [pinModalOpen, setPinModalOpen] = useState(false);
+  const [mergeEquivalent, setMergeEquivalent] = useState(true);
+  const [layerFilter, setLayerFilter] = useState<'ALL' | Layer>('ALL');
+  const [holdingSearch, setHoldingSearch] = useState('');
   const [addOpen, setAddOpen] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
@@ -453,7 +473,14 @@ export function FinanceReportScreen({
     return () => window.removeEventListener('hashchange', syncHash);
   }, []);
 
-  const aggregated = useMemo(() => aggregateHoldings(holdings), [holdings]);
+  const aggregated = useMemo(
+    () => aggregateHoldings(holdings, { mergeEquivalent }),
+    [holdings, mergeEquivalent],
+  );
+  const rawAggregated = useMemo(
+    () => aggregateHoldings(holdings, { mergeEquivalent: false }),
+    [holdings],
+  );
   const total = useMemo(
     () => aggregated.reduce((sum, holding) => sum + holding.marketValueBase, 0),
     [aggregated],
@@ -479,6 +506,60 @@ export function FinanceReportScreen({
       }),
     [aggregated, total],
   );
+
+  // Multi-currency native ledger subtotals (JPY / CNY / HKD / USD)
+  const currencyLedgerRows = useMemo(() => {
+    const map = new Map<
+      string,
+      { nativeTotal: number; baseTotal: number; count: number; brokers: Set<string> }
+    >();
+    for (const h of holdings) {
+      const cur = (h.currency || baseCurrency).toUpperCase();
+      const localVal = h.marketValue ?? h.importedMarketValue ?? 0;
+      const baseVal = h.valueInBase ?? 0;
+      const existing = map.get(cur) ?? {
+        nativeTotal: 0,
+        baseTotal: 0,
+        count: 0,
+        brokers: new Set<string>(),
+      };
+      existing.nativeTotal += localVal;
+      existing.baseTotal += baseVal;
+      existing.count += 1;
+      existing.brokers.add(h.broker || '未分类');
+      map.set(cur, existing);
+    }
+    return [...map.entries()]
+      .map(([currency, d]) => ({
+        currency,
+        nativeTotal: d.nativeTotal,
+        baseTotal: d.baseTotal,
+        weight: total > 0 ? d.baseTotal / total : 0,
+        count: d.count,
+        lotCount: d.count,
+        accountCount: d.brokers.size,
+      }))
+      .sort((a, b) => b.baseTotal - a.baseTotal);
+  }, [baseCurrency, holdings, total]);
+
+  // Filtered holdings for the table
+  const filteredHoldings = useMemo(() => {
+    const q = holdingSearch.trim().toLowerCase();
+    return aggregated.filter((item) => {
+      if (layerFilter !== 'ALL' && item.layer !== layerFilter) return false;
+      if (!q) return true;
+      const matchSelf = `${item.ticker} ${item.name} ${item.theme}`
+        .toLowerCase()
+        .includes(q);
+      if (matchSelf) return true;
+      return item.accounts.some((acc) =>
+        `${acc.ticker} ${acc.name} ${acc.broker} ${acc.account} ${acc.theme} ${acc.investmentThesis ?? ''}`
+          .toLowerCase()
+          .includes(q),
+      );
+    });
+  }, [aggregated, holdingSearch, layerFilter]);
+
   const themeRows = useMemo(
     () => groupExposure(holdings, 'theme', total),
     [holdings, total],
@@ -512,18 +593,40 @@ export function FinanceReportScreen({
     }
 
     const coreLayer = layerRows.find((r) => r.layer === 'Core');
+    const cashLayer = layerRows.find((r) => r.layer === 'Cash');
     const coreWeight = coreLayer?.weight ?? 0;
+    const cashWeight = cashLayer?.weight ?? 0;
+
     if (coreWeight < 0.40) {
       list.push({
         type: 'warning',
         title: `大盘基石偏低: Core 核心仓 (${(coreWeight * 100).toFixed(1)}%)`,
-        detail: '机构标准宽基指数（如 S&P 500/VTI）建议占 50%-60%。抗波动能力偏弱。',
+        detail: '机构标准宽基与核心资产建议占 50%-60%，当前抗波动基石偏弱。',
+      });
+    } else if (coreWeight < 0.50 && cashWeight > 0.14) {
+      const gapVal = (0.50 - coreWeight) * total;
+      list.push({
+        type: 'info',
+        title: `零卖出补齐路径: 核心仓距 50% 走廊差 ${formatPercent(0.50 - coreWeight)} (${formatMoney(gapVal, baseCurrency)})`,
+        detail: `当前现金储备充裕 (${formatPercent(cashWeight)})，可直接动用券商交易子弹或银证联动资金逢回调分批增配核心算力/科技标的。`,
       });
     } else {
       list.push({
         type: 'success',
         title: `核心资产结构稳健 (Core ${(coreWeight * 100).toFixed(1)}%)`,
         detail: '符合长期机构大盘配比基准，基石仓位充足。',
+      });
+    }
+
+    // Check JPY-hedged ETF carry exposure
+    const hedgedVal = holdings
+      .filter((h) => isJpyHedgedAsset(h))
+      .reduce((sum, h) => sum + (h.valueInBase ?? 0), 0);
+    if (hedgedVal > 0 && total > 0 && hedgedVal / total > 0.12) {
+      list.push({
+        type: 'warning',
+        title: `為替ヘッジ利差成本关注: 日元对冲型美股/美债占 ${formatPercent(hedgedVal / total)} (${formatMoney(hedgedVal, baseCurrency)})`,
+        detail: '1482.T / 2563.T / 2845.T 承担约 3.5%~4.5% 年化日美利差对冲损耗；新增定投建议优先无对冲的 eMAXIS Slim 或 513500。',
       });
     }
 
@@ -538,7 +641,7 @@ export function FinanceReportScreen({
     }
 
     return list;
-  }, [aggregated, holdings, layerRows, total]);
+  }, [aggregated, baseCurrency, holdings, layerRows, total]);
 
   const submitManualHolding = async (event: FormEvent) => {
     event.preventDefault();
@@ -639,7 +742,7 @@ export function FinanceReportScreen({
               onClick={() => openWorkspace('portfolio')}
             >
               <Briefcase size={14} />
-              <span>我的投资组合</span>
+              <span>{isOwnerUnlocked ? '我的私享组合' : '公开组合示例'}</span>
             </button>
             <button
               className={`gf-nav-tab ${workspaceView === 'superinvestors' ? 'is-active' : ''}`}
@@ -647,6 +750,32 @@ export function FinanceReportScreen({
             >
               <Landmark size={14} />
               <span>投资大师</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setPinModalOpen(true)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px',
+                padding: '5px 11px',
+                borderRadius: '999px',
+                fontSize: '0.76rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                border: isOwnerUnlocked ? '1px solid #86efac' : '1px solid #cbd5e1',
+                background: isOwnerUnlocked ? '#f0fdf4' : '#f8fafc',
+                color: isOwnerUnlocked ? '#15803d' : '#334155',
+                marginLeft: '4px',
+              }}
+              title={
+                isOwnerUnlocked
+                  ? '主人私享空间已解锁，点击管理或锁定退出'
+                  : '输入 4 位 PIN 码进入个人真实持仓管理'
+              }
+            >
+              {isOwnerUnlocked ? <Unlock size={13} /> : <Lock size={13} />}
+              <span>{isOwnerUnlocked ? '主人私享仓 (已解锁)' : '我的持仓 (PIN登录)'}</span>
             </button>
           </nav>
         </div>
@@ -675,17 +804,20 @@ export function FinanceReportScreen({
             <div className="nova-page-header">
               <div className="nova-header-main">
                 <div>
-                  <h1 className="nova-page-title">资产总览与驾驶舱</h1>
+                  <h1 className="nova-page-title">
+                    {isOwnerUnlocked ? '我的私享资产总览与再平衡驾驶舱' : '资产总览与驾驶舱'}
+                  </h1>
                   <p className="nova-page-desc">
                     {quoteUpdatedAt ? `行情更新于 ${formatDateTime(quoteUpdatedAt)}` : '行情未更新'} · 基准币种 {baseCurrency}
+                    {isOwnerUnlocked ? ' · 法国央行参考汇率完整精度' : ''}
                   </p>
                 </div>
                 <div className="nova-page-badges">
                   <span className="nova-meta-badge">
-                    <strong>{aggregated.length}</strong> 只标的
+                    <strong>{aggregated.length}</strong> 项归并标的 ({holdings.length}笔明细)
                   </span>
                   <span className="nova-meta-badge">
-                    <strong>{brokers}</strong> 个券商账户
+                    <strong>{brokers}</strong> 个机构账户
                   </span>
                   <span
                     className={`nova-meta-badge ${
@@ -699,16 +831,8 @@ export function FinanceReportScreen({
 
               {/* Action Toolbar */}
               <div className="nova-header-actions">
-                {/* Currency Switcher: USD vs JPY */}
+                {/* Currency Switcher: JPY vs CNY vs USD */}
                 <div className="nova-currency-toggle" role="group" aria-label="基准币种切换">
-                  <button
-                    type="button"
-                    className={`nova-currency-btn ${baseCurrency === 'USD' ? 'is-active' : ''}`}
-                    onClick={() => onCurrencyChange?.('USD')}
-                    title="切换为美元 (USD) 计价"
-                  >
-                    USD $
-                  </button>
                   <button
                     type="button"
                     className={`nova-currency-btn ${baseCurrency === 'JPY' ? 'is-active' : ''}`}
@@ -716,6 +840,22 @@ export function FinanceReportScreen({
                     title="切换为日元 (JPY) 计价"
                   >
                     JPY ¥
+                  </button>
+                  <button
+                    type="button"
+                    className={`nova-currency-btn ${baseCurrency === 'CNY' ? 'is-active' : ''}`}
+                    onClick={() => onCurrencyChange?.('CNY')}
+                    title="切换为人民币 (CNY) 计价"
+                  >
+                    CNY ¥
+                  </button>
+                  <button
+                    type="button"
+                    className={`nova-currency-btn ${baseCurrency === 'USD' ? 'is-active' : ''}`}
+                    onClick={() => onCurrencyChange?.('USD')}
+                    title="切换为美元 (USD) 计价"
+                  >
+                    USD $
                   </button>
                 </div>
 
@@ -817,19 +957,21 @@ export function FinanceReportScreen({
                     <Landmark size={14} />
                     组合总资产 (Net Worth)
                   </span>
-                  <span className="nova-kpi-chip">估值基准</span>
+                  <span className="nova-kpi-chip">{isOwnerUnlocked ? '精确核对' : '估值基准'}</span>
                 </div>
                 <div className="nova-kpi-value">{formatMoney(total, baseCurrency)}</div>
                 <div className="nova-kpi-desc">
-                  <span>全量资产汇总</span>
-                  <span>{aggregated.length} 只标的 · {brokers} 个账户</span>
+                  <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 500 }}>
+                    {formatExactMoney(total, baseCurrency)}
+                  </span>
+                  <span>{brokers} 个账户 · {holdings.length} 笔</span>
                 </div>
               </div>
 
               {/* Card 2: Core Layer */}
               {(() => {
                 const row = layerRows.find((r) => r.layer === 'Core') || { weight: 0, value: 0, rows: [] };
-                const isOver = row.weight > 0.60;
+                const isOver = row.weight > 0.65;
                 const isUnder = row.weight < 0.50;
                 return (
                   <div className="nova-kpi-card">
@@ -844,8 +986,8 @@ export function FinanceReportScreen({
                     </div>
                     <div className="nova-kpi-value">{formatPercent(row.weight)}</div>
                     <div className="nova-kpi-desc">
-                      <span>目标 50-60%</span>
-                      <span>{formatMoney(row.value, baseCurrency)} ({row.rows.length}只)</span>
+                      <span>目标 50-65%</span>
+                      <span>{formatMoney(row.value, baseCurrency)} ({row.rows.length}项)</span>
                     </div>
                   </div>
                 );
@@ -854,8 +996,8 @@ export function FinanceReportScreen({
               {/* Card 3: Satellite Layer */}
               {(() => {
                 const row = layerRows.find((r) => r.layer === 'Satellite') || { weight: 0, value: 0, rows: [] };
-                const isOver = row.weight > 0.30;
-                const isUnder = row.weight < 0.20;
+                const isOver = row.weight > 0.25;
+                const isUnder = row.weight < 0.15;
                 return (
                   <div className="nova-kpi-card">
                     <div className="nova-kpi-header">
@@ -869,8 +1011,8 @@ export function FinanceReportScreen({
                     </div>
                     <div className="nova-kpi-value">{formatPercent(row.weight)}</div>
                     <div className="nova-kpi-desc">
-                      <span>目标 20-30%</span>
-                      <span>{formatMoney(row.value, baseCurrency)} ({row.rows.length}只)</span>
+                      <span>目标 15-20%</span>
+                      <span>{formatMoney(row.value, baseCurrency)} ({row.rows.length}项)</span>
                     </div>
                   </div>
                 );
@@ -882,24 +1024,23 @@ export function FinanceReportScreen({
                 const cashRow = layerRows.find((r) => r.layer === 'Cash') || { weight: 0, value: 0, rows: [] };
                 const combinedWeight = defRow.weight + cashRow.weight;
                 const combinedValue = defRow.value + cashRow.value;
-                const combinedCount = defRow.rows.length + cashRow.rows.length;
-                const isOver = combinedWeight > 0.25;
+                const isOver = combinedWeight > 0.30;
                 const isUnder = combinedWeight < 0.15;
                 return (
                   <div className="nova-kpi-card">
                     <div className="nova-kpi-header">
                       <span className="nova-kpi-title">
                         <span className="nova-dot" style={{ background: LAYER_META.Defensive.color }} />
-                        防守与现金 (Defensive)
+                        防守与现金 (Def + Cash)
                       </span>
                       <span className={`nova-status-badge ${isOver ? 'is-over' : isUnder ? 'is-under' : 'is-ok'}`}>
-                        {isOver ? '偏高' : isUnder ? '偏低' : '稳健'}
+                        {isOver ? '现金充裕' : isUnder ? '偏低' : '稳健'}
                       </span>
                     </div>
                     <div className="nova-kpi-value">{formatPercent(combinedWeight)}</div>
                     <div className="nova-kpi-desc">
-                      <span>目标 15-25%</span>
-                      <span>{formatMoney(combinedValue, baseCurrency)} ({combinedCount}只)</span>
+                      <span>防守 {formatPercent(defRow.weight, 0)} · 现金 {formatPercent(cashRow.weight, 0)}</span>
+                      <span>{formatMoney(combinedValue, baseCurrency)}</span>
                     </div>
                   </div>
                 );
@@ -922,6 +1063,38 @@ export function FinanceReportScreen({
                 ) : null,
               )}
             </div>
+
+            {/* Multi-Currency Native Ledger Strip (4-Currency Reconciliation) */}
+            {currencyLedgerRows.length > 1 && (
+              <div className="nova-currency-ledger-strip">
+                <div className="nova-currency-ledger-head">
+                  <span className="nova-currency-ledger-title">
+                    <Globe size={13} />
+                    多币种原币台账对账 (Native Currency Ledger)
+                  </span>
+                  <span className="nova-currency-ledger-fx">
+                    参考汇率基准：1 USD ≈ 157.9764 JPY · 1 HKD ≈ 20.1312 JPY · 1 CNY ≈ 23.6102 JPY
+                  </span>
+                </div>
+                <div className="nova-currency-ledger-grid">
+                  {currencyLedgerRows.map((item) => (
+                    <div key={item.currency} className="nova-currency-ledger-cell">
+                      <div className="nova-currency-ledger-top">
+                        <span className="nova-currency-badge">{item.currency}</span>
+                        <span className="nova-currency-weight">{formatPercent(item.weight)}</span>
+                      </div>
+                      <div className="nova-currency-native">
+                        {formatExactMoney(item.nativeTotal, item.currency as BaseCurrency)}
+                      </div>
+                      <div className="nova-currency-sub">
+                        <span>折合 {formatMoney(item.baseTotal, baseCurrency)}</span>
+                        <span>{item.accountCount} 账户 · {item.lotCount} 笔</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {aggregated.length > 0 && (
               <div className="nova-grid-2">
@@ -947,19 +1120,19 @@ export function FinanceReportScreen({
             )}
 
             {aggregated.length > 0 && (
-              <PortfolioAreaChart
-                totalValue={total}
-                baseCurrency={baseCurrency}
-                layerRows={layerRows}
-              />
-            )}
-
-            {aggregated.length > 0 && (
               <PortfolioPanorama
                 holdings={holdings}
                 aggregated={aggregated}
                 totalValue={total}
                 baseCurrency={baseCurrency}
+              />
+            )}
+
+            {aggregated.length > 0 && (
+              <PortfolioAreaChart
+                totalValue={total}
+                baseCurrency={baseCurrency}
+                layerRows={layerRows}
               />
             )}
 
@@ -970,10 +1143,25 @@ export function FinanceReportScreen({
                     {t.yourPortfolio}
                   </h2>
                   <p className="text-sm text-muted-foreground" style={{ margin: '4px 0 0' }}>
-                    全量多券商持仓明细与资产分层管理
+                    {mergeEquivalent
+                      ? '已开启「同源穿透归并」：标普500跨三地合并 (2563+eMAXIS+513500)，现金按三级流动性池聚合（点击任意行展开账户明细）'
+                      : '当前为「逐笔代码模式」：按原始标的代码展示各账户独立仓位'}
                   </p>
                 </div>
-                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    className="gf-text-action text-xs font-medium"
+                    onClick={() => setMergeEquivalent((prev) => !prev)}
+                    style={{
+                      background: mergeEquivalent ? '#eff6ff' : undefined,
+                      borderColor: mergeEquivalent ? '#bfdbfe' : undefined,
+                      color: mergeEquivalent ? '#1d4ed8' : undefined,
+                    }}
+                  >
+                    <Layers3 size={13} />
+                    <span>{mergeEquivalent ? '同源穿透归并: 开' : '同源穿透归并: 关'}</span>
+                  </button>
                   <button className="gf-text-action text-xs font-medium" onClick={() => setEditorOpen(true)}>
                     {t.manageAccounts}
                   </button>
@@ -981,6 +1169,55 @@ export function FinanceReportScreen({
                     <Plus size={13} />
                     <span>{t.addStock}</span>
                   </button>
+                </div>
+              </div>
+
+              {/* Layer Filter Pills & Search Toolbar */}
+              <div className="nova-holdings-toolbar">
+                <div className="nova-filter-pills" role="tablist" aria-label="按资产层级筛选">
+                  <button
+                    type="button"
+                    className={`nova-filter-pill ${layerFilter === 'ALL' ? 'is-active' : ''}`}
+                    onClick={() => setLayerFilter('ALL')}
+                  >
+                    <span>全部标的</span>
+                    <span className="nova-filter-count">{aggregated.length}</span>
+                  </button>
+                  {LAYERS.map((layer) => {
+                    const count = aggregated.filter((item) => item.layer === layer).length;
+                    return (
+                      <button
+                        key={layer}
+                        type="button"
+                        className={`nova-filter-pill ${layerFilter === layer ? 'is-active' : ''}`}
+                        onClick={() => setLayerFilter(layer)}
+                      >
+                        <span className="nova-dot" style={{ background: LAYER_META[layer].color }} />
+                        <span>{LAYER_META[layer].label}</span>
+                        <span className="nova-filter-count">{count}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="nova-search-box">
+                  <Search size={13} className="nova-search-icon" />
+                  <input
+                    type="search"
+                    value={holdingSearch}
+                    onChange={(event) => setHoldingSearch(event.target.value)}
+                    placeholder="搜索代码、名称、券商或主题..."
+                    className="nova-search-input"
+                  />
+                  {holdingSearch && (
+                    <button
+                      type="button"
+                      className="nova-search-clear"
+                      onClick={() => setHoldingSearch('')}
+                      aria-label="清空搜索"
+                    >
+                      ×
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -997,8 +1234,8 @@ export function FinanceReportScreen({
                     </tr>
                   </thead>
                   <tbody>
-                    {aggregated.length ? (
-                      aggregated.map((holding) => (
+                    {filteredHoldings.length ? (
+                      filteredHoldings.map((holding) => (
                         <FinanceHoldingRow
                           key={holding.ticker}
                           holding={holding}
@@ -1009,18 +1246,35 @@ export function FinanceReportScreen({
                               current === holding.ticker ? null : holding.ticker,
                             )
                           }
+                          onEditAccounts={() => setEditorOpen(true)}
                         />
                       ))
                     ) : (
                       <tr>
                         <td colSpan={6}>
                           <div className="gf-empty-state">
-                            <strong>{t.emptyTitle}</strong>
-                            <span>{t.emptyBody}</span>
-                            <button onClick={() => setImportOpen(true)}>
-                              <Upload size={16} />
-                              {t.importPositions}
-                            </button>
+                            <strong>{holdingSearch || layerFilter !== 'ALL' ? '未找到匹配的持仓标的' : t.emptyTitle}</strong>
+                            <span>
+                              {holdingSearch || layerFilter !== 'ALL'
+                                ? '请尝试切换资产层级筛选或清空搜索关键词。'
+                                : t.emptyBody}
+                            </span>
+                            {holdingSearch || layerFilter !== 'ALL' ? (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setLayerFilter('ALL');
+                                  setHoldingSearch('');
+                                }}
+                              >
+                                重置筛选条件
+                              </button>
+                            ) : (
+                              <button onClick={() => setImportOpen(true)}>
+                                <Upload size={16} />
+                                {t.importPositions}
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -1060,7 +1314,7 @@ export function FinanceReportScreen({
                     HHI 集中度指数说明
                   </h3>
                   <p className="text-xs text-muted-foreground leading-relaxed" style={{ margin: 0 }}>
-                    HHI 衡量持仓分散程度。分数越低越分散（&lt; 15 优秀），越高越集中（&gt; 25 高风险），帮助量化组合健康度。
+                    HHI 衡量持仓分散程度。分数越低越分散（&lt; 15 优秀），越高越高集中（&gt; 25 高风险），帮助量化组合健康度。
                   </p>
                 </div>
               </div>
@@ -1211,6 +1465,25 @@ export function FinanceReportScreen({
             )}
 
             <div className="gf-import-actions">
+              <button
+                type="button"
+                onClick={() => {
+                  setImportOpen(false);
+                  setPinModalOpen(true);
+                }}
+                style={{
+                  background: '#eef2ff',
+                  color: '#4338ca',
+                  borderColor: '#c7d2fe',
+                  fontWeight: 700,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                }}
+              >
+                <Lock size={13} />
+                我的持仓 (PIN登录)
+              </button>
               <button type="button" onClick={onSample}>{t.sample}</button>
               <button type="button" onClick={() => jsonInputRef.current?.click()}>
                 {t.json}
@@ -1453,7 +1726,7 @@ export function FinanceReportScreen({
       <RebalanceCockpitModal
         isOpen={rebalanceOpen}
         onClose={() => setRebalanceOpen(false)}
-        holdings={aggregated}
+        holdings={rawAggregated}
         totalValue={total}
         baseCurrency={baseCurrency}
       />
@@ -1466,6 +1739,21 @@ export function FinanceReportScreen({
         totalValue={total}
         baseCurrency={baseCurrency}
         onRestoreSnapshot={onRestoreSnapshot}
+      />
+
+      <OwnerPinModal
+        isOpen={pinModalOpen}
+        isUnlocked={isOwnerUnlocked}
+        onClose={() => setPinModalOpen(false)}
+        onUnlockSuccess={() => {
+          onUnlockOwner?.();
+        }}
+        onLockVault={() => {
+          onLockOwner?.();
+        }}
+        onResetToVerifiedBaseline={() => {
+          onResetOwnerBaseline?.();
+        }}
       />
 
       <datalist id="popular-brokers-list">
@@ -1482,13 +1770,23 @@ function FinanceHoldingRow({
   baseCurrency,
   expanded,
   onToggle,
+  onEditAccounts,
 }: {
   holding: AggregatedHolding;
   baseCurrency: BaseCurrency;
   expanded: boolean;
   onToggle: () => void;
+  onEditAccounts?: () => void;
 }) {
   const firstAccount = holding.accounts[0];
+  const isMergedGroup = holding.ticker.includes('·') || holding.accounts.length > 1;
+  const isCashOrLumpSum =
+    holding.layer === 'Cash' ||
+    holding.ticker.startsWith('Cash') ||
+    ['EMAXIS_SP500', 'ANT_YUEBAO', 'ANT_VN_QDII', 'CMB_ASSET', 'ANT_BANK_HKD', 'WLD_EARN', 'BITGET_WALLET'].includes(holding.ticker);
+  const isJpyHedged = ['1482.T', '2563.T', '2845.T'].includes(holding.ticker);
+  const isInverse = holding.ticker === '1571.T';
+
   return (
     <>
       <tr className="gf-symbol-row" onClick={onToggle}>
@@ -1499,8 +1797,55 @@ function FinanceHoldingRow({
             </span>
             <span className="gf-symbol-logo">{holding.ticker.slice(0, 1)}</span>
             <div className="gf-symbol-meta">
-              <div className="gf-symbol-title-row">
+              <div className="gf-symbol-title-row" style={{ flexWrap: 'wrap', gap: '4px' }}>
                 <span className="gf-symbol-ticker">{holding.ticker}</span>
+                {holding.accounts.length > 1 && (
+                  <span
+                    style={{
+                      fontSize: '0.66rem',
+                      padding: '1px 6px',
+                      borderRadius: '999px',
+                      background: '#eff6ff',
+                      color: '#1d4ed8',
+                      border: '1px solid #bfdbfe',
+                      fontWeight: 600,
+                    }}
+                  >
+                    跨 {holding.accounts.length} 笔
+                  </span>
+                )}
+                {isJpyHedged && (
+                  <span
+                    style={{
+                      fontSize: '0.66rem',
+                      padding: '1px 6px',
+                      borderRadius: '999px',
+                      background: '#fffbeb',
+                      color: '#b45309',
+                      border: '1px solid #fde68a',
+                      fontWeight: 600,
+                    }}
+                    title="日美利差对冲损耗提示 (JPY Hedged)"
+                  >
+                    日元对冲
+                  </span>
+                )}
+                {isInverse && (
+                  <span
+                    style={{
+                      fontSize: '0.66rem',
+                      padding: '1px 6px',
+                      borderRadius: '999px',
+                      background: '#fef2f2',
+                      color: '#b91c1c',
+                      border: '1px solid #fecaca',
+                      fontWeight: 600,
+                    }}
+                    title="反向杠杆/对冲工具，不宜长期死拿"
+                  >
+                    战术空头
+                  </span>
+                )}
                 {holding.weight > 0.20 && (
                   <span className="gf-risk-tag" title="单一标的过重 (高于 20% 机构风控线)">
                     <AlertTriangle size={11} style={{ display: 'inline', marginRight: '3px', verticalAlign: '-1px' }} />
@@ -1528,28 +1873,113 @@ function FinanceHoldingRow({
             {LAYER_META[holding.layer].label}
           </span>
         </td>
-        <td className="numeric secondary-num">{holding.quantity.toLocaleString('en-US')}</td>
         <td className="numeric secondary-num">
-          {firstAccount?.marketPrice == null
-            ? '—'
-            : formatMoney(firstAccount.marketPrice, holding.currency)}
+          {isCashOrLumpSum
+            ? holding.accounts.length > 1
+              ? `${holding.accounts.length} 个账户`
+              : '金额计价'
+            : isMergedGroup && holding.ticker === 'S&P500·合并'
+              ? `${holding.accounts.length} 笔跨市场`
+              : holding.quantity.toLocaleString('en-US')}
+        </td>
+        <td className="numeric secondary-num">
+          {isCashOrLumpSum
+            ? holding.currency
+            : isMergedGroup && holding.ticker === 'S&P500·合并'
+              ? '多币种净值'
+              : firstAccount?.marketPrice == null
+                ? '—'
+                : formatExactMoney(firstAccount.marketPrice, holding.currency as BaseCurrency)}
         </td>
       </tr>
       {expanded
-        ? holding.accounts.map((account) => (
-            <tr className="gf-account-row" key={account.id}>
-              <td colSpan={2}>
-                {account.broker}
-                {account.account ? ` · ${account.account}` : ''}
-              </td>
-              <td className="numeric">{formatPercent((account.valueInBase ?? 0) / Math.max(holding.marketValueBase, 1))}</td>
-              <td>{account.theme || 'Uncategorized'}</td>
-              <td className="numeric">{account.quantity.toLocaleString('en-US')}</td>
-              <td className="numeric">
-                {formatMoney(account.valueInBase ?? 0, baseCurrency)}
-              </td>
-            </tr>
-          ))
+        ? holding.accounts.map((account) => {
+            const nativeTotal = account.quantity * (account.marketPrice ?? account.costPerUnit ?? 0);
+            const accountIsLumpSum =
+              account.layer === 'Cash' ||
+              account.ticker.startsWith('Cash') ||
+              ['EMAXIS_SP500', 'ANT_YUEBAO', 'ANT_VN_QDII', 'CMB_ASSET', 'ANT_BANK_HKD', 'WLD_EARN', 'BITGET_WALLET'].includes(account.ticker);
+            return (
+              <tr className="gf-account-row" key={account.id}>
+                <td colSpan={2}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                      <strong style={{ color: 'var(--foreground)', fontSize: '0.78rem' }}>
+                        {account.broker}
+                      </strong>
+                      {account.account ? (
+                        <span style={{ color: 'var(--muted-foreground)', fontSize: '0.72rem' }}>
+                          · {account.account}
+                        </span>
+                      ) : null}
+                      <span
+                        style={{
+                          fontSize: '0.66rem',
+                          padding: '0px 5px',
+                          borderRadius: '4px',
+                          background: 'var(--secondary)',
+                          color: 'var(--foreground)',
+                          fontWeight: 600,
+                        }}
+                      >
+                        {account.ticker} ({account.currency})
+                      </span>
+                    </div>
+                    {account.investmentThesis && (
+                      <span style={{ fontSize: '0.71rem', color: 'var(--muted-foreground)' }}>
+                        备注：{account.investmentThesis}
+                      </span>
+                    )}
+                  </div>
+                </td>
+                <td className="numeric">
+                  {formatPercent((account.valueInBase ?? 0) / Math.max(holding.marketValueBase, 1))}
+                </td>
+                <td className="text-center">
+                  <span style={{ fontSize: '0.74rem', color: 'var(--muted-foreground)' }}>
+                    {account.theme || 'Uncategorized'}
+                  </span>
+                </td>
+                <td className="numeric" style={{ fontSize: '0.75rem' }}>
+                  {accountIsLumpSum
+                    ? `原币 ${formatExactMoney(nativeTotal, account.currency as BaseCurrency)}`
+                    : `${account.quantity.toLocaleString('en-US')} 股/份 × ${formatExactMoney(account.marketPrice ?? account.costPerUnit ?? 0, account.currency as BaseCurrency)}`}
+                </td>
+                <td className="numeric">
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
+                    <strong style={{ color: 'var(--foreground)', fontSize: '0.78rem' }}>
+                      {formatMoney(account.valueInBase ?? 0, baseCurrency)}
+                    </strong>
+                    {account.currency !== baseCurrency && (
+                      <span style={{ fontSize: '0.68rem', color: 'var(--muted-foreground)' }}>
+                        {formatExactMoney(nativeTotal, account.currency as BaseCurrency)}
+                      </span>
+                    )}
+                    {onEditAccounts && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onEditAccounts();
+                        }}
+                        style={{
+                          fontSize: '0.66rem',
+                          color: 'var(--primary)',
+                          background: 'transparent',
+                          border: 'none',
+                          padding: 0,
+                          cursor: 'pointer',
+                          textDecoration: 'underline',
+                        }}
+                      >
+                        编辑仓位
+                      </button>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            );
+          })
         : null}
     </>
   );

@@ -1,0 +1,40 @@
+ticker,name,currency,quantity,averagePrice,marketPrice,broker,layer,theme
+1482.T,iShares 美国国债7-10年ETF（日元对冲）,JPY,100,1479,1479,乐天证券,Defensive,美国国债 (日元对冲)
+1482.T,iShares 美国国债7-10年ETF（日元对冲）,JPY,3200,1479,1479,乐天证券,Defensive,美国国债 (日元对冲)
+1571.T,NEXT FUNDS 日经平均反向指数ETF,JPY,8000,297,297,乐天证券,Satellite,战术空头对冲 (反向ETF)
+2563.T,iShares S&P 500 指数ETF（日元对冲）,JPY,3000,405.4,405.4,乐天证券,Defensive,美股宽基 S&P 500 (日元对冲)
+2563.T,iShares S&P 500 指数ETF（日元对冲）,JPY,12500,405.4,405.4,乐天证券,Defensive,美股宽基 S&P 500 (日元对冲)
+2845.T,NEXT FUNDS Nasdaq-100 指数ETF（日元对冲）,JPY,922,3560,3560,乐天证券,Core,美国科技成长 (日元对冲)
+2845.T,NEXT FUNDS Nasdaq-100 指数ETF（日元对冲）,JPY,2500,3560,3560,乐天证券,Core,美国科技成长 (日元对冲)
+7581.T,萨莉亚 (Saizeriya),JPY,700,6960,6960,乐天证券,Satellite,日本餐饮消费
+9616.T,共立Maintenance (Dormy Inn / 酒店),JPY,1400,3312,3312,乐天证券,Satellite,日本旅宿与旅游复苏
+2845.T,NEXT FUNDS Nasdaq-100 指数ETF（日元对冲）,JPY,2000,3557,3557,moomoo证券,Core,美国科技成长 (日元对冲)
+3905.T,DataSection (AI数据中心与算力),JPY,2000,1320,1320,moomoo证券,Core,日本AI算力基础设施
+9023.T,东京地铁 (Tokyo Metro),JPY,5300,1453,1453,moomoo证券,Defensive,日本公共基建与高股息
+EMAXIS_SP500,eMAXIS Slim 美国股票（S&P 500）,JPY,1,3320941.19,3320941.19,moomoo证券,Defensive,美股宽基 S&P 500 (无对冲)
+CASH_JPY_MOOMOO,moomoo证券 日元现金,JPY,912626,1,1,moomoo证券,Cash,券商交易子弹 (Brokerage Cash)
+CRCL,Circle Internet Group,USD,400,75.49,75.49,Tiger证券,Satellite,金融科技与稳定币
+NVDA,英伟达 (NVIDIA),USD,100,216.69,216.69,Tiger证券,Core,美国AI半导体核心
+SMR,NuScale Power (小型模块化核电),USD,2000,5.56,5.56,Tiger证券,Core,AI核能电力基建
+CASH_USD_TIGER,Tiger证券 美元现金,USD,13938.18,1,1,Tiger证券,Cash,券商交易子弹 (Brokerage Cash)
+00700.HK,腾讯控股 (Tencent),HKD,800,417.8,417.8,Tiger证券,Core,中国互联网生态核心
+01810.HK,小米集团-W (Xiaomi),HKD,19600,27.08,27.08,Tiger证券,Core,中国智能硬件与智能电车
+CASH_HKD_TIGER,Tiger证券 港币现金,HKD,193491.7,1,1,Tiger证券,Cash,券商交易子弹 (Brokerage Cash)
+513130.SS,恒生科技ETF华泰柏瑞,CNY,951400,0.5015,0.51,微信证券,Core,中国科技互联网核心 (QDII ETF)
+513500.SS,标普500ETF博时,CNY,90000,2.634,2.679,微信证券,Defensive,美股宽基 S&P 500 (无对冲)
+300750.SZ,宁德时代 (CATL),CNY,200,268.5,276.08,微信证券,Core,中国新能源电池核心
+CASH_CNY_WECHAT_SEC,微信证券 可用资金,CNY,31.7,1,1,微信证券,Cash,券商交易子弹 (Brokerage Cash)
+CASH_JPY_SMBC,三井住友银行（六本木支店·2038）,JPY,2009016,1,1,三井住友银行,Cash,日常银行与支付钱包
+CASH_JPY_MIZUHO,瑞穗银行（东京营业部·2639）,JPY,43249,1,1,瑞穗银行,Cash,日常银行与支付钱包
+CASH_JPY_RAKUTEN_BANK,乐天银行（アリア支店·0985）,JPY,9664482,1,1,乐天银行,Cash,银证联动与理财储备
+CASH_JPY_SONY_BANK,Sony银行（本店营业部·8705）,JPY,1416603,1,1,Sony银行,Cash,银证联动与理财储备
+CASH_JPY_WISE,Wise 多币种账户（日元余额）,JPY,547891,1,1,Wise,Cash,日常银行与支付钱包
+CASH_JPY_PAYPAL,PayPal 日元余额,JPY,9797,1,1,PayPal,Cash,日常银行与支付钱包
+CASH_CNY_YUEBAO,余额宝（蚂蚁财富货币基金）,CNY,75590.61,1,1,蚂蚁财富,Cash,银证联动与理财储备
+CN_QDII_VN,天弘越南市场股票QDII C,CNY,1,93652.36,93652.36,蚂蚁财富,Satellite,新兴市场 (越南股票QDII)
+CASH_CNY_CMB,招商银行 账户总资产（含闲置资金62,155.49元）,CNY,62159.96,1,1,招商银行,Cash,日常银行与支付钱包
+WLD_WALLET,Worldcoin 数字钱包（Earn 7,058 + Trade 9）,JPY,1,7067,7067,Worldcoin,Satellite,Web3 数字资产钱包
+CASH_JPY_REVOLUT,Revolut 支付余额,JPY,53324,1,1,Revolut,Cash,日常银行与支付钱包
+BITGET_WALLET,Bitget Wallet 数字钱包资产,USD,1,74.98,74.98,Bitget Wallet,Satellite,Web3 数字资产钱包
+CASH_HKD_ANTBANK,ANT BANK 综合理财资产,HKD,2937.18,1,1,ANT BANK,Cash,银证联动与理财储备
+CASH_CNY_WECHAT,微信支付 零钱余额,CNY,10000,1,1,微信支付,Cash,日常银行与支付钱包

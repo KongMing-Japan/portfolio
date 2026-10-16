@@ -7,6 +7,7 @@ import {
   applyQuotes,
   concentrationScore,
 } from '../lib/portfolio';
+import { REAL_PORTFOLIO_SNAPSHOT } from '../lib/realPortfolioData';
 
 const samplePath = resolve(process.cwd(), 'public/sample-positions.csv');
 
@@ -61,5 +62,20 @@ describe('portfolio import and analysis', () => {
     expect(holdings[0].sourceType).toBe('manual');
     expect(holdings[0].ticker).toBe('AAPL');
     expect(holdings[1].layer).toBe('Cash');
+  });
+
+  it('reconciles the 17-account real portfolio to ~128,355,955 JPY and merges cross-market S&P 500', () => {
+    const holdings = REAL_PORTFOLIO_SNAPSHOT.holdings;
+    const brokers = new Set(holdings.map((h) => h.broker));
+    expect(brokers.size).toBe(17);
+
+    const totalJpy = holdings.reduce((sum, h) => sum + (h.valueInBase ?? 0), 0);
+    expect(totalJpy).toBeCloseTo(128_355_955, -1);
+
+    const merged = aggregateHoldings(holdings, { mergeEquivalent: true });
+    const sp500 = merged.find((item) => item.ticker === 'S&P500·合并');
+    expect(sp500).toBeDefined();
+    expect(sp500?.accounts.length).toBe(4); // 2563.T x2 + eMAXIS Slim + 513500.SS
+    expect(sp500?.marketValueBase ?? 0).toBeCloseTo(15_297_300, -1);
   });
 });

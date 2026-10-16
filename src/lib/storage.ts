@@ -11,7 +11,11 @@ import type {
 const DB_NAME = 'portfolio-generator';
 const STORE_NAME = 'portfolio';
 const SNAPSHOT_KEY = 'latest';
+const OWNER_SNAPSHOT_KEY = 'owner_vault_v1';
 const STORE_REVIEW_SNAPSHOTS = 'review_snapshots';
+const OWNER_PIN_STORAGE_KEY = 'portfolio-owner-pin-v1';
+const OWNER_SESSION_KEY = 'portfolio-owner-unlocked-session';
+export const DEFAULT_OWNER_PIN = '8888';
 
 let dbInstance: Promise<any> | null = null;
 
@@ -49,6 +53,63 @@ export async function loadSnapshot() {
 export async function clearSnapshot() {
   const db = await getDb();
   await db.delete(STORE_NAME, SNAPSHOT_KEY);
+}
+
+export async function saveOwnerSnapshot(snapshot: PortfolioSnapshot) {
+  const db = await getDb();
+  await db.put(STORE_NAME, snapshot, OWNER_SNAPSHOT_KEY);
+}
+
+export async function loadOwnerSnapshot() {
+  const db = await getDb();
+  return (await db.get(STORE_NAME, OWNER_SNAPSHOT_KEY)) as
+    | PortfolioSnapshot
+    | undefined;
+}
+
+export async function clearOwnerSnapshot() {
+  const db = await getDb();
+  await db.delete(STORE_NAME, OWNER_SNAPSHOT_KEY);
+}
+
+export function getOwnerPin(): string {
+  try {
+    const saved = localStorage.getItem(OWNER_PIN_STORAGE_KEY);
+    if (saved && /^\d{4}$/.test(saved)) return saved;
+  } catch {}
+  return DEFAULT_OWNER_PIN;
+}
+
+export function setOwnerPin(newPin: string): boolean {
+  if (!/^\d{4}$/.test(newPin)) return false;
+  try {
+    localStorage.setItem(OWNER_PIN_STORAGE_KEY, newPin);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function verifyOwnerPin(inputPin: string): boolean {
+  return inputPin === getOwnerPin();
+}
+
+export function isOwnerSessionUnlocked(): boolean {
+  try {
+    return sessionStorage.getItem(OWNER_SESSION_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+export function setOwnerSessionUnlocked(unlocked: boolean): void {
+  try {
+    if (unlocked) {
+      sessionStorage.setItem(OWNER_SESSION_KEY, '1');
+    } else {
+      sessionStorage.removeItem(OWNER_SESSION_KEY);
+    }
+  } catch {}
 }
 
 export async function saveReviewSnapshot(reviewSnapshot: ReviewSnapshot) {

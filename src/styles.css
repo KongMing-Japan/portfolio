@@ -1110,6 +1110,192 @@
 }
 
 /* ==========================================================================
+   Multi-Currency Native Ledger Strip & Holdings Filter Toolbar
+   ========================================================================== */
+.nova-currency-ledger-strip {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.85rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.02);
+}
+
+.nova-currency-ledger-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.nova-currency-ledger-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--foreground);
+}
+
+.nova-currency-ledger-fx {
+  font-size: 0.7rem;
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+}
+
+.nova-currency-ledger-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 0.65rem;
+}
+
+.nova-currency-ledger-cell {
+  background: var(--secondary);
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) * 0.75);
+  padding: 0.6rem 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.nova-currency-ledger-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.nova-currency-badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--foreground);
+}
+
+.nova-currency-weight {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.nova-currency-native {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--foreground);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.015em;
+}
+
+.nova-currency-sub {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+}
+
+.nova-holdings-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 0.6rem 0 0.75rem;
+}
+
+.nova-filter-pills {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.nova-filter-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.nova-filter-pill:hover {
+  border-color: var(--foreground);
+  color: var(--foreground);
+}
+
+.nova-filter-pill.is-active {
+  background: var(--foreground);
+  color: var(--background);
+  border-color: var(--foreground);
+}
+
+.nova-filter-count {
+  font-size: 0.68rem;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: color-mix(in oklch, currentColor 14%, transparent);
+  font-variant-numeric: tabular-nums;
+}
+
+.nova-search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 240px;
+  flex: 0 1 280px;
+}
+
+.nova-search-icon {
+  position: absolute;
+  left: 10px;
+  color: var(--muted-foreground);
+  pointer-events: none;
+}
+
+.nova-search-input {
+  width: 100%;
+  padding: 6px 28px 6px 30px;
+  border-radius: calc(var(--radius) * 0.8);
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--foreground);
+  font-size: 0.78rem;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.nova-search-input:focus {
+  border-color: var(--primary);
+}
+
+.nova-search-clear {
+  position: absolute;
+  right: 8px;
+  background: transparent;
+  border: none;
+  color: var(--muted-foreground);
+  font-size: 0.95rem;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+}
+
+/* ==========================================================================
    Modals
    ========================================================================== */
 .gf-modal-backdrop {
@@ -1122,6 +1308,8 @@
   align-items: center;
   justify-content: center;
   padding: 1.5rem;
+  overflow: auto;
+  overscroll-behavior: contain;
 }
 
 .gf-import-modal,
@@ -1137,6 +1325,7 @@
   width: 100%;
   max-height: 90vh;
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 1.5rem;
   display: flex;
   flex-direction: column;

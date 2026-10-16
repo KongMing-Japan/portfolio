@@ -1,5 +1,5 @@
 import { History, Layers3, Scale, ShieldAlert, ShieldCheck } from 'lucide-react';
-import { formatPercent, LAYER_META } from '../lib/portfolio';
+import { formatMoney, formatPercent, LAYER_META } from '../lib/portfolio';
 import type { AggregatedHolding, BaseCurrency, Layer } from '../types';
 
 interface NovaRebalanceAdviceCardProps {
@@ -24,6 +24,7 @@ interface NovaRebalanceAdviceCardProps {
 
 export function NovaRebalanceAdviceCard({
   layerRows,
+  baseCurrency,
   aggregated,
   rebalancingSignals,
   hhi,
@@ -43,14 +44,27 @@ export function NovaRebalanceAdviceCard({
           </h3>
           <p>四层资产配置偏离度评估 · 智能风控信号与再平衡建议</p>
         </div>
-        <button
-          className="gf-primary-action"
-          onClick={onOpenRebalance}
-          style={{ fontSize: '12px', padding: '5px 12px' }}
-        >
-          <Scale size={13} color="#ffffff" />
-          <span>再平衡试算</span>
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <button
+            type="button"
+            className="gf-text-action"
+            onClick={onOpenTimeline}
+            style={{ fontSize: '12px', padding: '5px 10px' }}
+            title="保存或对比季度持仓复盘快照"
+          >
+            <History size={13} />
+            <span>复盘快照</span>
+          </button>
+          <button
+            type="button"
+            className="gf-primary-action"
+            onClick={onOpenRebalance}
+            style={{ fontSize: '12px', padding: '5px 12px' }}
+          >
+            <Scale size={13} color="#ffffff" />
+            <span>再平衡试算</span>
+          </button>
+        </div>
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -60,20 +74,20 @@ export function NovaRebalanceAdviceCard({
             let status: 'ok' | 'under' | 'over' = 'ok';
             let minTarget = 0.50;
             let maxTarget = 0.60;
-            let targetText = '50-60%';
+            let targetText = '目标 50-60%';
 
             if (row.layer === 'Satellite') {
-              minTarget = 0.20;
-              maxTarget = 0.30;
-              targetText = '20-30%';
+              minTarget = 0.15;
+              maxTarget = 0.25;
+              targetText = '目标 15-25%';
             } else if (row.layer === 'Defensive') {
               minTarget = 0.10;
-              maxTarget = 0.15;
-              targetText = '10-15%';
+              maxTarget = 0.22;
+              targetText = '目标 10-22%';
             } else if (row.layer === 'Cash') {
               minTarget = 0.05;
-              maxTarget = 0.10;
-              targetText = '5-10%';
+              maxTarget = 0.15;
+              targetText = '目标 5-15%';
             }
 
             if (row.weight > maxTarget) status = 'over';
@@ -87,8 +101,13 @@ export function NovaRebalanceAdviceCard({
                     <strong style={{ color: 'var(--foreground)' }}>{LAYER_META[row.layer].label}</strong>
                     <span style={{ fontSize: '0.72rem', color: 'var(--muted-foreground)' }}>({targetText})</span>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                    <strong style={{ color: 'var(--foreground)' }}>{formatPercent(row.weight)}</strong>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                    <span style={{ fontSize: '0.73rem', color: 'var(--muted-foreground)', fontVariantNumeric: 'tabular-nums' }}>
+                      {formatMoney(row.value, baseCurrency)}
+                    </span>
+                    <strong style={{ color: 'var(--foreground)', fontVariantNumeric: 'tabular-nums' }}>
+                      {formatPercent(row.weight)}
+                    </strong>
                     {status === 'over' ? (
                       <span
                         style={{

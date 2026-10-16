@@ -94,16 +94,45 @@ export function HoldingsCompositionCard({
   onSelectTicker,
 }: HoldingsCompositionCardProps) {
   const [hoveredTicker, setHoveredTicker] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'top' | 'layers'>('top');
 
   const { chartData, topFiveWeight } = useMemo(() => {
     if (!aggregated.length) return { chartData: [], topFiveWeight: 0 };
 
-    const topCount = 5;
+    const topFive = aggregated.slice(0, 5).reduce((sum, h) => sum + h.weight, 0);
+
+    if (viewMode === 'layers') {
+      const layerOrder: Layer[] = ['Core', 'Defensive', 'Cash', 'Satellite'];
+      const layerRows: PieHoldingRow[] = layerOrder
+        .map((layer) => {
+          const items = aggregated.filter((h) => h.layer === layer);
+          const value = items.reduce((sum, h) => sum + h.marketValueBase, 0);
+          const weight = totalValue > 0 ? value / totalValue : 0;
+          return {
+            ticker: LAYER_META[layer].label,
+            name: `${items.length} 项归并标的 · ${LAYER_META[layer].description}`,
+            layer,
+            broker: '',
+            value,
+            weight,
+            color: LAYER_META[layer].color,
+            isOther: true,
+          };
+        })
+        .filter((r) => r.value > 0);
+      return { chartData: layerRows, topFiveWeight: topFive };
+    }
+
+    const topCount = 7;
     const top = aggregated.slice(0, topCount);
     const others = aggregated.slice(topCount);
 
     const topRows: PieHoldingRow[] = top.map((h, index) => {
-      const broker = h.accounts?.length ? h.accounts[0].broker : '';
+      const brokerSet = new Set(h.accounts?.map((a) => a.broker).filter(Boolean));
+      const broker =
+        brokerSet.size > 1
+          ? `跨 ${brokerSet.size} 个账户`
+          : h.accounts?.[0]?.broker ?? '';
       return {
         ticker: h.ticker || h.name,
         name: h.name,
@@ -111,7 +140,7 @@ export function HoldingsCompositionCard({
         broker,
         value: h.marketValueBase,
         weight: h.weight,
-        color: HOLDING_PIE_COLORS[index % HOLDING_PIE_COLORS.length],
+        color: HOLDING_PIE_COLORS[index % (HOLDING_PIE_COLORS.length - 1)],
       };
     });
 
@@ -121,7 +150,7 @@ export function HoldingsCompositionCard({
     if (othersValue > 0) {
       topRows.push({
         ticker: '其他标的',
-        name: `其余 ${others.length} 只标的`,
+        name: `其余 ${others.length} 项归并标的`,
         layer: 'Defensive',
         broker: '',
         value: othersValue,
@@ -131,14 +160,11 @@ export function HoldingsCompositionCard({
       });
     }
 
-    const topFive = aggregated.slice(0, 5).reduce((sum, h) => sum + h.weight, 0);
-
     return { chartData: topRows, topFiveWeight: topFive };
-  }, [aggregated, totalValue]);
+  }, [aggregated, totalValue, viewMode]);
 
   if (!aggregated.length) return null;
 
-  const topHolding = aggregated[0];
   const activeHolding = chartData.find((d) => d.ticker === hoveredTicker) || chartData[0];
 
   return (
@@ -150,27 +176,77 @@ export function HoldingsCompositionCard({
             <span>持仓配置构成</span>
           </h3>
           <p>
-            核心重仓标的与资产组合配置 · 前五大集中度 {formatPercent(topFiveWeight)}
+            核心重仓与四层金字塔分布 · 前五大集中度 {formatPercent(topFiveWeight)}
           </p>
         </div>
-        <div style={{ fontSize: '12px', color: 'var(--muted-foreground)', fontWeight: 500 }}>
-          共 {aggregated.length} 只标的
+        <div
+          style={{
+            display: 'inline-flex',
+            background: 'var(--muted)',
+            borderRadius: 'calc(var(--radius) * 0.7)',
+            padding: '2px',
+            border: '1px solid var(--border)',
+            gap: '2px',
+          }}
+          role="tablist"
+          aria-label="构成图模式切换"
+        >
+          <button
+            type="button"
+            onClick={() => {
+              setViewMode('top');
+              setHoveredTicker(null);
+            }}
+            style={{
+              padding: '3px 9px',
+              borderRadius: 'calc(var(--radius) * 0.5)',
+              fontSize: '0.73rem',
+              fontWeight: viewMode === 'top' ? 600 : 500,
+              background: viewMode === 'top' ? 'var(--background)' : 'transparent',
+              color: viewMode === 'top' ? 'var(--foreground)' : 'var(--muted-foreground)',
+              border: 'none',
+              cursor: 'pointer',
+              boxShadow: viewMode === 'top' ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+            }}
+          >
+            前七重仓
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setViewMode('layers');
+              setHoveredTicker(null);
+            }}
+            style={{
+              padding: '3px 9px',
+              borderRadius: 'calc(var(--radius) * 0.5)',
+              fontSize: '0.73rem',
+              fontWeight: viewMode === 'layers' ? 600 : 500,
+              background: viewMode === 'layers' ? 'var(--background)' : 'transparent',
+              color: viewMode === 'layers' ? 'var(--foreground)' : 'var(--muted-foreground)',
+              border: 'none',
+              cursor: 'pointer',
+              boxShadow: viewMode === 'layers' ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+            }}
+          >
+            四层金字塔
+          </button>
         </div>
       </div>
 
       <div className="gf-chart-card-body">
         <div className="gf-composition-donut-panel">
           {/* Left: Donut Chart with center text */}
-          <div style={{ position: 'relative', width: '220px', height: '220px', margin: '0 auto', flexShrink: 0 }}>
-            <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 220, height: 220 }}>
-              <PieChart width={220} height={220}>
+          <div style={{ position: 'relative', width: '210px', height: '210px', margin: '0 auto', flexShrink: 0 }}>
+            <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 210, height: 210 }}>
+              <PieChart width={210} height={210}>
                 <Tooltip content={<HoldingPieTooltip baseCurrency={baseCurrency} />} />
                 <Pie
                   data={chartData}
                   dataKey="value"
                   nameKey="ticker"
-                  innerRadius={62}
-                  outerRadius={90}
+                  innerRadius={60}
+                  outerRadius={88}
                   paddingAngle={2}
                   stroke="none"
                   isAnimationActive={false}
@@ -202,17 +278,17 @@ export function HoldingsCompositionCard({
                 pointerEvents: 'none',
               }}
             >
-              <span style={{ fontSize: '0.75rem', color: 'var(--muted-foreground)', fontWeight: 500, display: 'block', letterSpacing: '-0.01em' }}>
-                {hoveredTicker ? '聚焦标的' : '第一大重仓'}
+              <span style={{ fontSize: '0.72rem', color: 'var(--muted-foreground)', fontWeight: 500, display: 'block', letterSpacing: '-0.01em' }}>
+                {hoveredTicker ? '聚焦项' : viewMode === 'layers' ? '最大分层' : '第一大重仓'}
               </span>
               <strong
                 style={{
-                  fontSize: '1rem',
+                  fontSize: '0.92rem',
                   color: 'var(--foreground)',
                   fontWeight: 700,
                   display: 'block',
                   marginTop: '2px',
-                  maxWidth: '110px',
+                  maxWidth: '108px',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                   whiteSpace: 'nowrap',
@@ -227,8 +303,8 @@ export function HoldingsCompositionCard({
             </div>
           </div>
 
-          {/* Right: Legend list matching Superinvestors */}
-          <div className="gf-holdings-legend-list">
+          {/* Right: Legend list */}
+          <div className="gf-holdings-legend-list" style={{ gap: '0.35rem' }}>
             {chartData.map((row) => {
               const isHovered = hoveredTicker === row.ticker;
               return (
@@ -237,11 +313,12 @@ export function HoldingsCompositionCard({
                   className="gf-holdings-legend-row"
                   style={{
                     background: isHovered ? 'var(--muted)' : 'transparent',
+                    padding: '5px 8px',
                   }}
                   onMouseEnter={() => setHoveredTicker(row.ticker)}
                   onMouseLeave={() => setHoveredTicker(null)}
                   onClick={() => !row.isOther && onSelectTicker?.(row.ticker)}
-                  title={row.isOther ? '其余标的合计' : `点击定位标的: ${row.ticker}`}
+                  title={row.isOther ? row.name : `点击在下表展开: ${row.ticker}`}
                 >
                   <span className="gf-legend-dot" style={{ background: row.color }} />
                   <div className="gf-legend-title">

@@ -19,7 +19,7 @@ import {
   DEFAULT_TARGET_CONFIG,
   TARGET_PRESETS,
 } from '../lib/rebalance';
-import { formatMoney, formatPercent, LAYER_META } from '../lib/portfolio';
+import { formatExactMoney, formatMoney, formatPercent, LAYER_META } from '../lib/portfolio';
 import type {
   AggregatedHolding,
   BaseCurrency,
@@ -58,10 +58,9 @@ export function RebalanceCockpitModal({
   const [selectedPreset, setSelectedPreset] = useState<string>('institutional');
   const [mode, setMode] = useState<RebalanceMode>('inflow');
   const [inflowInput, setInflowInput] = useState<string>(() => {
-    // Default inflow suggestion based on currency
-    if (baseCurrency === 'JPY') return '500000';
-    if (baseCurrency === 'CNY') return '20000';
-    return '3000';
+    if (baseCurrency === 'JPY') return '1000000';
+    if (baseCurrency === 'CNY') return '50000';
+    return '5000';
   });
   const [copied, setCopied] = useState(false);
   const [showConfig, setShowConfig] = useState(false);
@@ -100,6 +99,47 @@ export function RebalanceCockpitModal({
     [holdings, totalValue, targets],
   );
 
+  // Calculate available brokerage cash & core deficit for one-click presets
+  const cashQuickPresets = useMemo(() => {
+    const brokerageCash = holdings
+      .filter(
+        (h) =>
+          h.layer === 'Cash' &&
+          /brokerage|券商|moomoo|tiger|wechatsec|微信证券/i.test(
+            `${h.ticker} ${h.name} ${h.theme}`,
+          ),
+      )
+      .reduce((sum, h) => sum + h.marketValueBase, 0);
+
+    const coreDrift = layerDrifts.find((d) => d.layer === 'Core');
+    const coreDeficit = coreDrift && coreDrift.valueDelta > 0 ? coreDrift.valueDelta : 0;
+
+    const list: Array<{ label: string; amount: number }> = [];
+    if (brokerageCash > 0) {
+      list.push({
+        label: `50% 券商子弹 (${formatMoney(brokerageCash * 0.5, baseCurrency)})`,
+        amount: Math.round(brokerageCash * 0.5),
+      });
+      list.push({
+        label: `全额券商子弹 (${formatMoney(brokerageCash, baseCurrency)})`,
+        amount: Math.round(brokerageCash),
+      });
+    }
+    if (coreDeficit > 0) {
+      list.push({
+        label: `补齐核心仓目标 (${formatMoney(coreDeficit, baseCurrency)})`,
+        amount: Math.round(coreDeficit),
+      });
+    }
+    const dcaDefault =
+      baseCurrency === 'JPY' ? 1_000_000 : baseCurrency === 'CNY' ? 50_000 : 5_000;
+    list.push({
+      label: `定投基准 (${formatMoney(dcaDefault, baseCurrency)})`,
+      amount: dcaDefault,
+    });
+    return list;
+  }, [baseCurrency, holdings, layerDrifts]);
+
   const numericInflow = useMemo(() => {
     const val = parseFloat(inflowInput.replace(/,/g, ''));
     return Number.isFinite(val) && val > 0 ? val : 0;
@@ -127,7 +167,7 @@ export function RebalanceCockpitModal({
     const text = trades
       .map(
         (t) =>
-          `[${t.action}] ${t.ticker} (${t.name}) | 券商: ${t.broker} | 建议数量: ${t.suggestedShares}股 | 预估金额: ${formatMoney(t.amountInBase, baseCurrency)} | 原因: ${t.reason}`,
+          `[${t.layer === 'Cash' && t.action === 'SELL' ? 'DEPLOY' : t.action}] ${t.ticker} (${t.name}) | 机构: ${t.broker} | 数量: ${t.layer === 'Cash' ? '现金调配' : `${t.suggestedShares}股`} | 预估金额: ${formatMoney(t.amountInBase, baseCurrency)} | 原因: ${t.reason}`,
       )
       .join('\n');
     navigator.clipboard.writeText(text);
@@ -602,51 +642,99 @@ export function RebalanceCockpitModal({
                   padding: '1.2rem',
                   marginBottom: '1.2rem',
                   display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  flexWrap: 'wrap',
-                  gap: '1rem',
+                  flexDirection: 'column',
+                  gap: '0.85rem',
                 }}
               >
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-                    <Info size={15} color="#2563eb" />
-                    <strong style={{ fontSize: '0.85rem', color: '#0f172a' }}>
-                      季度现金流补仓法则 (Inflow Rebalancing)
-                    </strong>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: '1rem',
+                  }}
+                >
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                      <Info size={15} color="#2563eb" />
+                      <strong style={{ fontSize: '0.85rem', color: '#0f172a' }}>
+                        季度现金流与闲置子弹补仓法则 (Inflow Rebalancing)
+                      </strong>
+                    </div>
+                    <p style={{ margin: 0, fontSize: '0.78rem', color: '#64748b', maxWidth: '580px', lineHeight: 1.5 }}>
+                      通过新增入金、券商现有交易子弹或银证联动资金，优先注入低配幅度最大的核心/卫星资产。全过程 0 笔卖出，零资本利得税与换汇摩擦。
+                    </p>
                   </div>
-                  <p style={{ margin: 0, fontSize: '0.78rem', color: '#64748b', maxWidth: '580px', lineHeight: 1.5 }}>
-                    通过定投入金、股息回流或闲置现金，优先注入低配幅度最大的资产。全过程 0 笔卖出，零资本利得税和滑点手续费，最小化组合偏离。
-                  </p>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                    <label style={{ fontSize: '0.8rem', color: '#0f172a', fontWeight: 500 }}>
+                      计划动用/注入资金:
+                    </label>
+                    <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+                      <input
+                        type="text"
+                        value={inflowInput}
+                        onChange={(e) => setInflowInput(e.target.value)}
+                        style={{
+                          padding: '6px 10px',
+                          border: '1px solid #cbd5e1',
+                          borderRadius: '6px',
+                          fontSize: '0.9rem',
+                          fontWeight: 600,
+                          width: '135px',
+                          textAlign: 'right',
+                          fontVariantNumeric: 'tabular-nums',
+                          background: '#ffffff',
+                          color: '#0f172a',
+                        }}
+                      />
+                      <span style={{ marginLeft: '6px', fontSize: '0.8rem', color: '#64748b', fontWeight: 600 }}>
+                        {baseCurrency}
+                      </span>
+                    </div>
+                  </div>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                  <label style={{ fontSize: '0.8rem', color: '#0f172a', fontWeight: 500 }}>
-                    计划注入现金:
-                  </label>
-                  <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
-                    <input
-                      type="text"
-                      value={inflowInput}
-                      onChange={(e) => setInflowInput(e.target.value)}
-                      style={{
-                        padding: '6px 10px',
-                        border: '1px solid #e2e8f0',
-                        borderRadius: '6px',
-                        fontSize: '0.9rem',
-                        fontWeight: 600,
-                        width: '130px',
-                        textAlign: 'right',
-                        fontVariantNumeric: 'tabular-nums',
-                        background: '#ffffff',
-                        color: '#0f172a',
-                      }}
-                    />
-                    <span style={{ marginLeft: '6px', fontSize: '0.8rem', color: '#64748b', fontWeight: 500 }}>
-                      {baseCurrency}
+                {/* One-click Cash Pool Deployment Presets */}
+                {cashQuickPresets.length > 0 && (
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      flexWrap: 'wrap',
+                      paddingTop: '0.65rem',
+                      borderTop: '1px dashed #e2e8f0',
+                    }}
+                  >
+                    <span style={{ fontSize: '0.73rem', color: '#64748b', fontWeight: 500 }}>
+                      快捷调配预设:
                     </span>
+                    {cashQuickPresets.map((preset) => {
+                      const isActive = Math.abs(numericInflow - preset.amount) < 5;
+                      return (
+                        <button
+                          key={preset.label}
+                          type="button"
+                          onClick={() => setInflowInput(String(preset.amount))}
+                          style={{
+                            padding: '3px 9px',
+                            fontSize: '0.72rem',
+                            borderRadius: '999px',
+                            border: isActive ? '1px solid #2563eb' : '1px solid #cbd5e1',
+                            background: isActive ? '#eff6ff' : '#ffffff',
+                            color: isActive ? '#1d4ed8' : '#334155',
+                            fontWeight: isActive ? 600 : 500,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          {preset.label}
+                        </button>
+                      );
+                    })}
                   </div>
-                </div>
+                )}
               </div>
 
               {/* Inflow Action Table */}
@@ -701,60 +789,71 @@ export function RebalanceCockpitModal({
                     </thead>
                     <tbody>
                       {inflowResult.trades.length > 0 ? (
-                        inflowResult.trades.map((trade) => (
-                          <tr
-                            key={trade.ticker}
-                            style={{
-                              borderBottom: '1px solid #f1f5f9',
-                              color: '#0f172a',
-                            }}
-                          >
-                            <td style={{ padding: '10px 12px' }}>
-                              <span
-                                style={{
-                                  background: '#dcfce7',
-                                  color: '#166534',
-                                  padding: '2px 8px',
-                                  borderRadius: '4px',
-                                  fontWeight: 600,
-                                  fontSize: '0.72rem',
-                                }}
-                              >
-                                BUY 买入
-                              </span>
-                            </td>
-                            <td style={{ padding: '10px 12px' }}>
-                              <strong style={{ display: 'block', color: '#0f172a' }}>{trade.ticker}</strong>
-                              <span style={{ fontSize: '0.72rem', color: '#64748b' }}>{trade.name}</span>
-                            </td>
-                            <td style={{ padding: '10px 12px' }}>
-                              <span
-                                style={{
-                                  fontSize: '0.72rem',
-                                  fontWeight: 600,
-                                  color: LAYER_META[trade.layer]?.color ?? '#64748b',
-                                }}
-                              >
-                                {trade.layer}
-                              </span>
-                            </td>
-                            <td style={{ padding: '10px 12px', color: '#64748b' }}>{trade.broker}</td>
-                            <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
-                              +{trade.suggestedShares} 股
-                            </td>
-                            <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 600, color: '#166534', fontVariantNumeric: 'tabular-nums' }}>
-                              {formatMoney(trade.amountInBase, baseCurrency)}
-                            </td>
-                            <td style={{ padding: '10px 12px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                              <span style={{ color: '#64748b' }}>{formatPercent(trade.currentWeight)}</span>
-                              <span style={{ margin: '0 4px', color: '#cbd5e1' }}>→</span>
-                              <strong style={{ color: '#166534' }}>{formatPercent(trade.projectedWeight)}</strong>
-                            </td>
-                            <td style={{ padding: '10px 12px', fontSize: '0.75rem', color: '#64748b' }}>
-                              {trade.reason}
-                            </td>
-                          </tr>
-                        ))
+                        inflowResult.trades.map((trade) => {
+                          const isLumpFund =
+                            trade.currentShares === 1 && trade.priceInBase > 50000;
+                          return (
+                            <tr
+                              key={trade.ticker}
+                              style={{
+                                borderBottom: '1px solid #f1f5f9',
+                                color: '#0f172a',
+                              }}
+                            >
+                              <td style={{ padding: '10px 12px' }}>
+                                <span
+                                  style={{
+                                    background: '#dcfce7',
+                                    color: '#166534',
+                                    padding: '2px 8px',
+                                    borderRadius: '4px',
+                                    fontWeight: 600,
+                                    fontSize: '0.72rem',
+                                  }}
+                                >
+                                  BUY 买入
+                                </span>
+                              </td>
+                              <td style={{ padding: '10px 12px' }}>
+                                <strong style={{ display: 'block', color: '#0f172a' }}>{trade.ticker}</strong>
+                                <span style={{ fontSize: '0.72rem', color: '#64748b' }}>{trade.name}</span>
+                              </td>
+                              <td style={{ padding: '10px 12px' }}>
+                                <span
+                                  style={{
+                                    fontSize: '0.72rem',
+                                    fontWeight: 600,
+                                    color: LAYER_META[trade.layer]?.color ?? '#64748b',
+                                  }}
+                                >
+                                  {LAYER_META[trade.layer]?.label ?? trade.layer}
+                                </span>
+                              </td>
+                              <td style={{ padding: '10px 12px', color: '#64748b' }}>{trade.broker}</td>
+                              <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
+                                {isLumpFund || trade.layer === 'Cash'
+                                  ? '按金额申购'
+                                  : `+${trade.suggestedShares.toLocaleString('en-US')} 股`}
+                              </td>
+                              <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 600, color: '#166534', fontVariantNumeric: 'tabular-nums' }}>
+                                <div>{formatMoney(trade.amountInBase, baseCurrency)}</div>
+                                {trade.priceInCurrency != null && !isLumpFund && trade.layer !== 'Cash' && (
+                                  <div style={{ fontSize: '0.68rem', color: '#64748b', fontWeight: 500 }}>
+                                    单价 {formatExactMoney(trade.priceInCurrency, trade.currency)}
+                                  </div>
+                                )}
+                              </td>
+                              <td style={{ padding: '10px 12px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                                <span style={{ color: '#64748b' }}>{formatPercent(trade.currentWeight)}</span>
+                                <span style={{ margin: '0 4px', color: '#cbd5e1' }}>→</span>
+                                <strong style={{ color: '#166534' }}>{formatPercent(trade.projectedWeight)}</strong>
+                              </td>
+                              <td style={{ padding: '10px 12px', fontSize: '0.75rem', color: '#64748b' }}>
+                                {trade.reason}
+                              </td>
+                            </tr>
+                          );
+                        })
                       ) : (
                         <tr>
                           <td colSpan={8} style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>
@@ -790,17 +889,17 @@ export function RebalanceCockpitModal({
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
                     <AlertTriangle size={15} color="#b45309" />
                     <strong style={{ fontSize: '0.85rem', color: '#92400e' }}>
-                      完全目标调仓 (Full Rebalancing - 卖出超配 & 买入低配)
+                      完全目标调仓 (Full Rebalancing - 动用超配现金/卖出超配 & 买入低配)
                     </strong>
                   </div>
                   <p style={{ margin: 0, fontSize: '0.78rem', color: '#92400e', maxWidth: '600px', lineHeight: 1.5 }}>
-                    当某单一标的狂飙打破机构风控上限（如单票突破 15%），或组合严重失衡时，需通过卖出超配标的回收资金，并重新注入低配标的以强制恢复目标比例。
+                    当某单一标的突破机构风控上限（如单票突破 15%），或现金/防守层偏离目标走廊时，通过划转富余现金或减配超标仓位，强制恢复四层目标比例。
                   </p>
                 </div>
 
                 <div style={{ display: 'flex', gap: '1.2rem', alignItems: 'center' }}>
                   <div style={{ textAlign: 'right' }}>
-                    <span style={{ fontSize: '0.72rem', color: '#92400e', display: 'block' }}>卖出总额</span>
+                    <span style={{ fontSize: '0.72rem', color: '#92400e', display: 'block' }}>调出/卖出总额</span>
                     <strong style={{ fontSize: '1rem', color: '#b91c1c' }}>
                       {formatMoney(fullResult.totalSellAmount, baseCurrency)}
                     </strong>
@@ -863,8 +962,8 @@ export function RebalanceCockpitModal({
                         <th style={{ padding: '8px 12px' }}>动作</th>
                         <th style={{ padding: '8px 12px' }}>标的 / 名称</th>
                         <th style={{ padding: '8px 12px' }}>分层</th>
-                        <th style={{ padding: '8px 12px' }}>执行券商</th>
-                        <th style={{ padding: '8px 12px', textAlign: 'right' }}>操作股数</th>
+                        <th style={{ padding: '8px 12px' }}>执行机构</th>
+                        <th style={{ padding: '8px 12px', textAlign: 'right' }}>操作数量</th>
                         <th style={{ padding: '8px 12px', textAlign: 'right' }}>预估金额</th>
                         <th style={{ padding: '8px 12px', textAlign: 'right' }}>权重变化</th>
                         <th style={{ padding: '8px 12px' }}>风控与规则依据</th>
@@ -874,26 +973,45 @@ export function RebalanceCockpitModal({
                       {fullResult.trades.length > 0 ? (
                         fullResult.trades.map((trade) => {
                           const isSell = trade.action === 'SELL';
+                          const isCashDeploy = trade.layer === 'Cash' && isSell;
+                          const isLumpFund =
+                            trade.currentShares === 1 && trade.priceInBase > 50000;
                           return (
                             <tr
                               key={`${trade.ticker}-${trade.action}`}
                               style={{
                                 borderBottom: '1px solid #f1f5f9',
-                                background: isSell ? '#fef2f2' : '#ffffff',
+                                background: isCashDeploy
+                                  ? '#eff6ff'
+                                  : isSell
+                                    ? '#fef2f2'
+                                    : '#ffffff',
                               }}
                             >
                               <td style={{ padding: '10px 12px' }}>
                                 <span
                                   style={{
-                                    background: isSell ? '#fee2e2' : '#dcfce7',
-                                    color: isSell ? '#991b1b' : '#166534',
+                                    background: isCashDeploy
+                                      ? '#dbeafe'
+                                      : isSell
+                                        ? '#fee2e2'
+                                        : '#dcfce7',
+                                    color: isCashDeploy
+                                      ? '#1e40af'
+                                      : isSell
+                                        ? '#991b1b'
+                                        : '#166534',
                                     padding: '2px 8px',
                                     borderRadius: '4px',
                                     fontWeight: 600,
                                     fontSize: '0.72rem',
                                   }}
                                 >
-                                  {isSell ? 'SELL 卖出' : 'BUY 买入'}
+                                  {isCashDeploy
+                                    ? 'DEPLOY 动用现金'
+                                    : isSell
+                                      ? 'SELL 卖出'
+                                      : 'BUY 买入'}
                                 </span>
                               </td>
                               <td style={{ padding: '10px 12px' }}>
@@ -908,7 +1026,7 @@ export function RebalanceCockpitModal({
                                     color: LAYER_META[trade.layer]?.color ?? '#64748b',
                                   }}
                                 >
-                                  {trade.layer}
+                                  {LAYER_META[trade.layer]?.label ?? trade.layer}
                                 </span>
                               </td>
                               <td style={{ padding: '10px 12px', color: '#64748b' }}>{trade.broker}</td>
@@ -917,23 +1035,41 @@ export function RebalanceCockpitModal({
                                   padding: '10px 12px',
                                   textAlign: 'right',
                                   fontWeight: 600,
-                                  color: isSell ? '#b91c1c' : '#166534',
+                                  color: isCashDeploy
+                                    ? '#1e40af'
+                                    : isSell
+                                      ? '#b91c1c'
+                                      : '#166534',
                                   fontVariantNumeric: 'tabular-nums',
                                 }}
                               >
-                                {isSell ? '-' : '+'}
-                                {trade.suggestedShares} 股
+                                {trade.layer === 'Cash'
+                                  ? '现金划转'
+                                  : isLumpFund
+                                    ? isSell
+                                      ? '按金额赎回'
+                                      : '按金额申购'
+                                    : `${isSell ? '-' : '+'}${trade.suggestedShares.toLocaleString('en-US')} 股`}
                               </td>
                               <td
                                 style={{
                                   padding: '10px 12px',
                                   textAlign: 'right',
                                   fontWeight: 600,
-                                  color: isSell ? '#b91c1c' : '#166534',
+                                  color: isCashDeploy
+                                    ? '#1e40af'
+                                    : isSell
+                                      ? '#b91c1c'
+                                      : '#166534',
                                   fontVariantNumeric: 'tabular-nums',
                                 }}
                               >
-                                {formatMoney(trade.amountInBase, baseCurrency)}
+                                <div>{formatMoney(trade.amountInBase, baseCurrency)}</div>
+                                {trade.priceInCurrency != null && !isLumpFund && trade.layer !== 'Cash' && (
+                                  <div style={{ fontSize: '0.68rem', color: '#64748b', fontWeight: 500 }}>
+                                    单价 {formatExactMoney(trade.priceInCurrency, trade.currency)}
+                                  </div>
+                                )}
                               </td>
                               <td style={{ padding: '10px 12px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
                                 <span style={{ color: '#64748b' }}>{formatPercent(trade.currentWeight)}</span>
