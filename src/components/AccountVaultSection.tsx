@@ -1,17 +1,15 @@
 import * as React from 'react';
 import {
-  Briefcase,
   Building2,
   Check,
   CreditCard,
-  Edit3,
-  Landmark,
+  Edit2,
   NotebookPen,
-  ShieldCheck,
+  Save,
   Wallet,
+  X,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
@@ -20,14 +18,6 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import {
-  Item,
-  ItemContent,
-  ItemDescription,
-  ItemGroup,
-  ItemTitle,
-} from '@/components/ui/item';
 import {
   Table,
   TableBody,
@@ -36,11 +26,12 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import {
   classifyAccountRole,
   formatExactMoney,
   formatMoney,
+  getCleanSecurityName,
+  isDailyMemoAccount,
   type AccountRole,
 } from '../lib/portfolio';
 import type { BaseCurrency, Holding } from '../types';
@@ -54,435 +45,282 @@ interface AccountVaultSectionProps {
   onOpenFullEditor: () => void;
 }
 
-type VaultTab = 'daily' | 'brokerage' | 'all';
+// 2026-10-15 standard cross-rates to JPY
+const FX_RATES_TO_JPY: Record<string, number> = {
+  JPY: 1,
+  USD: 157.9764,
+  HKD: 20.1312,
+  CNY: 23.6102,
+};
 
 export function AccountVaultSection({
   allHoldings,
-  baseCurrency,
   excludeDailyAccounts,
   onToggleExcludeDaily,
   onUpdateHolding,
-  onOpenFullEditor,
 }: AccountVaultSectionProps) {
-  const [activeTab, setActiveTab] = React.useState<VaultTab>('daily');
   const [editingId, setEditingId] = React.useState<string | null>(null);
-  const [draftBalance, setDraftBalance] = React.useState<string>('');
-  const [draftMemo, setDraftMemo] = React.useState<string>('');
+  const [draftAmount, setDraftAmount] = React.useState<string>('');
+  const [isSaving, setIsSaving] = React.useState(false);
 
-  // Group all holdings into Daily (Banking + Wallet) vs Brokerage summary
-  const { dailyItems, brokerageAccounts, stats } = React.useMemo(() => {
-    const daily: Array<Holding & { role: AccountRole }> = [];
-    const brokerMap = new Map<
-      string,
-      {
-        broker: string;
-        totalBase: number;
-        equityBase: number;
-        cashBase: number;
-        lotCount: number;
-        currencies: Set<string>;
-        sampleItems: string[];
-      }
-    >();
-
-    let bankingTotal = 0;
-    let walletTotal = 0;
-    let brokerageTotal = 0;
+  // Filter daily living accounts only (exclude Rakuten Bank and investment accounts)
+  const dailyItems = React.useMemo(() => {
+    const list: Array<Holding & { role: AccountRole; jpyValue: number; nativeValue: number }> = [];
 
     for (const h of allHoldings) {
-      const role = classifyAccountRole(h);
-      const val = h.valueInBase ?? 0;
+      if (isDailyMemoAccount(h)) {
+        const role = classifyAccountRole(h);
+        const nativeValue =
+          h.marketValue ??
+          h.importedMarketValue ??
+          h.quantity * (h.marketPrice ?? h.costPerUnit ?? 1);
+        const rate = FX_RATES_TO_JPY[h.currency] ?? 1;
+        const jpyValue = nativeValue * rate;
 
-      if (role === 'banking' || role === 'wallet') {
-        daily.push({ ...h, role });
-        if (role === 'banking') bankingTotal += val;
-        else walletTotal += val;
-      } else {
-        brokerageTotal += val;
-        const bName = h.broker || '证券账户';
-        const cur = brokerMap.get(bName) ?? {
-          broker: bName,
-          totalBase: 0,
-          equityBase: 0,
-          cashBase: 0,
-          lotCount: 0,
-          currencies: new Set<string>(),
-          sampleItems: [],
-        };
-        cur.totalBase += val;
-        if (h.layer === 'Cash') cur.cashBase += val;
-        else cur.equityBase += val;
-        cur.lotCount += 1;
-        cur.currencies.add(h.currency);
-        if (!cur.sampleItems.includes(h.name || h.ticker)) {
-          cur.sampleItems.push(h.name || h.ticker);
-        }
-        brokerMap.set(bName, cur);
+        list.push({
+          ...h,
+          role,
+          nativeValue,
+          jpyValue,
+        });
       }
     }
 
-    daily.sort((a, b) => (b.valueInBase ?? 0) - (a.valueInBase ?? 0));
-    const brokers = [...brokerMap.values()].sort((a, b) => b.totalBase - a.totalBase);
-
-    return {
-      dailyItems: daily,
-      brokerageAccounts: brokers,
-      stats: {
-        bankingTotal,
-        walletTotal,
-        dailyTotal: bankingTotal + walletTotal,
-        brokerageTotal,
-        grandTotal: bankingTotal + walletTotal + brokerageTotal,
-        bankingCount: daily.filter((d) => d.role === 'banking').length,
-        walletCount: daily.filter((d) => d.role === 'wallet').length,
-        brokerCount: brokers.length,
-      },
-    };
+    return list.sort((a, b) => b.jpyValue - a.jpyValue);
   }, [allHoldings]);
 
-  const startEdit = (item: Holding) => {
-    const nativeVal =
-      item.marketValue ?? item.importedMarketValue ?? item.quantity * (item.marketPrice ?? 1);
+  const totalJpy = React.useMemo(
+    () => dailyItems.reduce((sum, item) => sum + item.jpyValue, 0),
+    [dailyItems],
+  );
+
+  const startEdit = (item: (typeof dailyItems)[0]) => {
     setEditingId(item.id);
-    setDraftBalance(String(nativeVal));
-    setDraftMemo(item.investmentThesis || '');
+    setDraftAmount(String(item.nativeValue));
   };
 
-  const saveEdit = async (item: Holding) => {
-    const num = Number(draftBalance);
-    if (Number.isFinite(num) && num >= 0) {
+  const cancelEdit = () => {
+    setEditingId(null);
+    setDraftAmount('');
+  };
+
+  const saveEdit = async (item: (typeof dailyItems)[0]) => {
+    const num = Number(draftAmount);
+    if (!Number.isFinite(num) || num < 0) return;
+
+    setIsSaving(true);
+    try {
       await onUpdateHolding(item.id, {
         quantity: num,
         costPerUnit: 1,
         marketPrice: 1,
         importedMarketValue: num,
         marketValue: num,
-        investmentThesis: draftMemo.trim(),
       });
+      setEditingId(null);
+    } finally {
+      setIsSaving(false);
     }
-    setEditingId(null);
   };
 
-  if (dailyItems.length === 0 && brokerageAccounts.length <= 1) {
-    return null;
-  }
+  if (dailyItems.length === 0) return null;
 
   return (
     <section id="account-vault" className="mt-2">
       <Card>
         <CardHeader>
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <NotebookPen className="size-4 text-primary" />
                 <CardTitle className="text-base">
-                  日常生活账户与钱包备忘
+                  日常生活账户与钱包备忘清单
                 </CardTitle>
-                <Badge variant="outline">
-                  {dailyItems.length} 个日常备忘户 + {brokerageAccounts.length} 个投资户
+                <Badge variant="outline" className="text-xs">
+                  {dailyItems.length} 个备忘账户 · 统一日元计价
                 </Badge>
               </div>
               <CardDescription className="mt-1">
-                日常生活银行卡、支付钱包与闲置资金独立备忘，不干扰核心投资调仓分析
+                日常生活银行存款、支付钱包与防遗忘闲置资金汇总，直接在行内点击修改更新
               </CardDescription>
             </div>
 
-            <div className="flex items-center gap-2 flex-wrap">
-              <ToggleGroup
-                value={[activeTab]}
-                onValueChange={(val) => {
-                  if (val[0]) setActiveTab(val[0] as VaultTab);
-                }}
-                variant="outline"
-                spacing={1}
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">调仓隔离：</span>
+              <button
+                type="button"
+                onClick={() => onToggleExcludeDaily(!excludeDailyAccounts)}
+                className={`px-2.5 py-1 rounded-full text-xs font-semibold border cursor-pointer transition-colors ${
+                  excludeDailyAccounts
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                    : 'bg-blue-50 text-blue-700 border-blue-300'
+                }`}
+                title="控制是否将日常生活账户并入上方投资调仓资产池"
               >
-                <ToggleGroupItem value="daily" className="text-xs px-2.5 h-7">
-                  日常银行与钱包 ({dailyItems.length})
-                </ToggleGroupItem>
-                <ToggleGroupItem value="brokerage" className="text-xs px-2.5 h-7">
-                  证券与投资账户 ({brokerageAccounts.length})
-                </ToggleGroupItem>
-                <ToggleGroupItem value="all" className="text-xs px-2.5 h-7">
-                  全部账户汇总 ({dailyItems.length + brokerageAccounts.length})
-                </ToggleGroupItem>
-              </ToggleGroup>
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onOpenFullEditor}
-                className="text-xs h-7"
-              >
-                批量编辑全部明细
-              </Button>
+                {excludeDailyAccounts
+                  ? '已隔离（不参与投资调仓）'
+                  : '已并入全量总资产'}
+              </button>
             </div>
           </div>
         </CardHeader>
 
-        <CardContent className="flex flex-col gap-5">
-          {/* 3 Summary KPI Cards for Account Categories */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
-            <Item variant="muted" className="py-3 px-4 flex-col items-stretch">
-              <ItemContent className="gap-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-                    <Building2 className="size-3.5 text-primary" />
-                    日常银行储蓄备忘 ({stats.bankingCount} 户)
-                  </span>
-                  <Badge variant="secondary" className="text-[10px]">
-                    生活安全垫
-                  </Badge>
-                </div>
-                <span className="text-xl font-bold tabular-nums text-foreground">
-                  {formatMoney(stats.bankingTotal, baseCurrency)}
+        <CardContent className="flex flex-col gap-4">
+          <div className="rounded-xl border overflow-hidden">
+            <div className="bg-muted/50 px-4 py-2.5 border-b flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <CreditCard className="size-4 text-primary" />
+                <span className="text-xs font-semibold text-foreground">
+                  备忘账户汇总明细
                 </span>
-                <span className="text-[11px] text-muted-foreground">
-                  乐天(0985) · 三井住友(2038) · 招行 · Sony(8705) · 瑞穗(2639) · ANT BANK
-                </span>
-              </ItemContent>
-            </Item>
-
-            <Item variant="muted" className="py-3 px-4 flex-col items-stretch">
-              <ItemContent className="gap-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-                    <Wallet className="size-3.5 text-teal-600" />
-                    跨境支付与数字钱包 ({stats.walletCount} 户)
-                  </span>
-                  <Badge variant="secondary" className="text-[10px]">
-                    零钱防遗忘
-                  </Badge>
-                </div>
-                <span className="text-xl font-bold tabular-nums text-foreground">
-                  {formatMoney(stats.walletTotal, baseCurrency)}
-                </span>
-                <span className="text-[11px] text-muted-foreground">
-                  Wise · 微信支付 · Revolut · Bitget Wallet · PayPal · Worldcoin
-                </span>
-              </ItemContent>
-            </Item>
-
-            <Item variant="muted" className="py-3 px-4 flex-col items-stretch">
-              <ItemContent className="gap-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-                    <Briefcase className="size-3.5 text-blue-600" />
-                    核心证券与基金投资户 ({stats.brokerCount} 户)
-                  </span>
-                  <Badge variant="outline" className="text-[10px] border-blue-200 text-blue-700 bg-blue-50">
-                    调仓主力池
-                  </Badge>
-                </div>
-                <span className="text-xl font-bold tabular-nums text-blue-600">
-                  {formatMoney(stats.brokerageTotal, baseCurrency)}
-                </span>
-                <span className="text-[11px] text-muted-foreground">
-                  乐天证券 · Tiger证券 · 微信证券 · moomoo证券 · 蚂蚁财富
-                </span>
-              </ItemContent>
-            </Item>
-          </div>
-
-          {/* Daily Banking & Payment Wallets Table */}
-          {(activeTab === 'daily' || activeTab === 'all') && dailyItems.length > 0 && (
-            <div className="rounded-xl border overflow-hidden">
-              <div className="bg-muted/50 px-4 py-2.5 border-b flex items-center justify-between flex-wrap gap-2">
-                <div className="flex items-center gap-2">
-                  <CreditCard className="size-4 text-primary" />
-                  <span className="text-xs font-semibold text-foreground">
-                    日常生活银行与支付钱包备忘清单（共 {dailyItems.length} 个账户 · 合计 {formatMoney(stats.dailyTotal, baseCurrency)}）
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 text-xs">
-                  <span className="text-muted-foreground">上方投资图表与调仓口径：</span>
-                  <button
-                    type="button"
-                    onClick={() => onToggleExcludeDaily(!excludeDailyAccounts)}
-                    className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold border cursor-pointer transition-colors ${
-                      excludeDailyAccounts
-                        ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
-                        : 'bg-blue-50 text-blue-700 border-blue-300'
-                    }`}
-                  >
-                    {excludeDailyAccounts
-                      ? '已隔离：仅作日常备忘，不掺入证券调仓'
-                      : '已并入：纳入全量家庭总资产调仓'}
-                  </button>
-                </div>
               </div>
+              <div className="text-xs font-bold text-foreground">
+                日元总额折合：
+                <span className="text-sm font-extrabold text-primary ml-1 tabular-nums">
+                  {formatMoney(totalJpy, 'JPY')}
+                </span>
+                <span className="text-muted-foreground font-normal ml-1">
+                  ({Math.round(totalJpy).toLocaleString('en-US')} JPY)
+                </span>
+              </div>
+            </div>
 
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>账户机构与支店/尾号</TableHead>
-                    <TableHead>类别</TableHead>
-                    <TableHead className="text-right">原币精确余额</TableHead>
-                    <TableHead className="text-right">折合 {baseCurrency}</TableHead>
-                    <TableHead>账户用途与防遗忘备忘</TableHead>
-                    <TableHead className="text-right">快速更新</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {dailyItems.map((item) => {
-                    const isEditing = editingId === item.id;
-                    const nativeVal =
-                      item.marketValue ??
-                      item.importedMarketValue ??
-                      item.quantity * (item.marketPrice ?? 1);
-                    return (
-                      <TableRow key={item.id}>
-                        <TableCell>
-                          <div className="flex flex-col">
-                            <span className="font-semibold text-xs text-foreground">
-                              {item.broker}
-                            </span>
-                            <span className="text-[11px] text-muted-foreground">
-                              {item.account || item.name}
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[180px]">账户/机构</TableHead>
+                  <TableHead className="w-[110px]">类别</TableHead>
+                  <TableHead className="text-right w-[160px]">原币余额</TableHead>
+                  <TableHead className="text-right w-[170px]">日元估值 (JPY)</TableHead>
+                  <TableHead>账户说明与用途</TableHead>
+                  <TableHead className="text-center w-[120px]">操作</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {dailyItems.map((item) => {
+                  const isEditing = editingId === item.id;
+                  const cleanName = getCleanSecurityName(item.ticker, item.name);
+
+                  return (
+                    <TableRow key={item.id} className="hover:bg-muted/30">
+                      <TableCell>
+                        <div className="flex flex-col">
+                          <span className="font-semibold text-xs text-foreground">
+                            {item.broker}
+                          </span>
+                          <span className="text-[11px] text-muted-foreground truncate max-w-[160px]" title={item.name}>
+                            {item.account || cleanName}
+                          </span>
+                        </div>
+                      </TableCell>
+
+                      <TableCell>
+                        <Badge
+                          variant="secondary"
+                          className={
+                            item.role === 'banking'
+                              ? 'bg-blue-50 text-blue-700 text-[10px] font-semibold'
+                              : 'bg-teal-50 text-teal-800 text-[10px] font-semibold'
+                          }
+                        >
+                          {item.role === 'banking' ? '日常银行' : '支付/钱包'}
+                        </Badge>
+                      </TableCell>
+
+                      {/* Native Amount & Inline Edit */}
+                      <TableCell className="text-right">
+                        {isEditing ? (
+                          <div className="flex items-center justify-end gap-1">
+                            <input
+                              type="number"
+                              step="any"
+                              value={draftAmount}
+                              onChange={(e) => setDraftAmount(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') void saveEdit(item);
+                                if (e.key === 'Escape') cancelEdit();
+                              }}
+                              className="w-24 h-7 px-2 text-right text-xs font-mono rounded border border-primary bg-background focus:outline-none"
+                              autoFocus
+                            />
+                            <span className="text-[11px] text-muted-foreground font-mono">
+                              {item.currency}
                             </span>
                           </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            variant="secondary"
-                            className={
-                              item.role === 'banking'
-                                ? 'bg-blue-50 text-blue-700 text-[10px]'
-                                : 'bg-teal-50 text-teal-800 text-[10px]'
-                            }
+                        ) : (
+                          <div
+                            onClick={() => startEdit(item)}
+                            className="cursor-pointer group flex items-center justify-end gap-1 font-mono text-xs tabular-nums text-foreground"
+                            title="点击直接在行内修改余额"
                           >
-                            {item.role === 'banking' ? '银行储蓄' : '支付/数字钱包'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right font-mono text-xs font-semibold tabular-nums">
-                          {isEditing ? (
-                            <div className="inline-flex items-center gap-1 justify-end">
-                              <Input
-                                type="number"
-                                step="any"
-                                value={draftBalance}
-                                onChange={(e) => setDraftBalance(e.target.value)}
-                                className="h-7 w-28 text-right text-xs"
-                              />
-                              <span className="text-[11px] text-muted-foreground">
-                                {item.currency}
-                              </span>
-                            </div>
-                          ) : (
-                            formatExactMoney(nativeVal, item.currency)
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right font-mono text-xs text-muted-foreground tabular-nums">
-                          {formatMoney(item.valueInBase ?? 0, baseCurrency)}
-                        </TableCell>
-                        <TableCell className="max-w-[280px]">
-                          {isEditing ? (
-                            <Input
-                              value={draftMemo}
-                              onChange={(e) => setDraftMemo(e.target.value)}
-                              placeholder="输入账户用途或防遗忘备注..."
-                              className="h-7 text-xs"
-                            />
-                          ) : (
-                            <span className="text-xs text-muted-foreground">
-                              {item.investmentThesis || '日常资金与账户留存备忘'}
-                            </span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {isEditing ? (
-                            <div className="inline-flex items-center gap-1">
-                              <Button
-                                size="sm"
-                                className="h-6 px-2 text-[11px]"
-                                onClick={() => void saveEdit(item)}
-                              >
-                                <Check className="size-3" />
-                                保存
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-6 px-2 text-[11px]"
-                                onClick={() => setEditingId(null)}
-                              >
-                                取消
-                              </Button>
-                            </div>
-                          ) : (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
-                              onClick={() => startEdit(item)}
-                            >
-                              <Edit3 className="size-3.5 mr-1" />
-                              记账更新
-                            </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          )}
+                            <span>{formatExactMoney(item.nativeValue, item.currency as BaseCurrency)}</span>
+                            <Edit2 size={11} className="text-muted-foreground/0 group-hover:text-muted-foreground transition-opacity" />
+                          </div>
+                        )}
+                      </TableCell>
 
-          {/* Core Investment Brokerage Accounts Summary */}
-          {(activeTab === 'brokerage' || activeTab === 'all') && (
-            <div className="rounded-xl border overflow-hidden">
-              <div className="bg-muted/50 px-4 py-2.5 border-b flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Landmark className="size-4 text-primary" />
-                  <span className="text-xs font-semibold text-foreground">
-                    核心证券与基金投资平台汇总（共 {brokerageAccounts.length} 家机构 · 合计 {formatMoney(stats.brokerageTotal, baseCurrency)}）
-                  </span>
-                </div>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 p-3.5">
-                {brokerageAccounts.map((b) => (
-                  <div
-                    key={b.broker}
-                    className="rounded-lg border bg-card p-3 flex flex-col justify-between gap-2"
-                  >
-                    <div>
-                      <div className="flex items-center justify-between gap-1">
-                        <strong className="text-xs font-bold text-foreground">{b.broker}</strong>
-                        <Badge variant="secondary" className="text-[10px]">
-                          {b.lotCount} 笔
-                        </Badge>
-                      </div>
-                      <div className="text-base font-bold tabular-nums text-primary mt-1">
-                        {formatMoney(b.totalBase, baseCurrency)}
-                      </div>
-                    </div>
-                    <div className="text-[11px] text-muted-foreground flex flex-col gap-0.5 border-t pt-1.5">
-                      <div className="flex justify-between">
-                        <span>证券持仓:</span>
-                        <span className="font-medium text-foreground tabular-nums">
-                          {formatMoney(b.equityBase, baseCurrency)}
+                      {/* JPY Value (Always in JPY) */}
+                      <TableCell className="text-right font-mono text-xs tabular-nums font-semibold text-foreground">
+                        {formatMoney(item.jpyValue, 'JPY')}
+                        <span className="block text-[10px] font-normal text-muted-foreground">
+                          ¥{Math.round(item.jpyValue).toLocaleString('en-US')}
                         </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>可用子弹:</span>
-                        <span className="font-medium text-emerald-600 tabular-nums">
-                          {formatMoney(b.cashBase, baseCurrency)}
+                      </TableCell>
+
+                      {/* Memo */}
+                      <TableCell>
+                        <span className="text-xs text-muted-foreground">
+                          {item.investmentThesis || '日常生活与消费备忘'}
                         </span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+                      </TableCell>
+
+                      {/* Action buttons */}
+                      <TableCell className="text-center">
+                        {isEditing ? (
+                          <div className="inline-flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => void saveEdit(item)}
+                              disabled={isSaving}
+                              className="p-1 rounded bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                              title="保存"
+                            >
+                              <Check size={13} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={cancelEdit}
+                              className="p-1 rounded border border-input bg-background hover:bg-muted transition-colors"
+                              title="取消"
+                            >
+                              <X size={13} />
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => startEdit(item)}
+                            className="text-xs text-muted-foreground hover:text-foreground font-medium px-2 py-0.5 rounded border border-transparent hover:border-border transition-colors cursor-pointer"
+                          >
+                            修改
+                          </button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
 
         <CardFooter className="text-xs text-muted-foreground border-t pt-3 flex items-center justify-between flex-wrap gap-2">
-          <span className="flex items-center gap-1.5">
-            <ShieldCheck className="size-3.5 text-emerald-600" />
-            全口径家庭总资产 = 证券投资组合 ({formatMoney(stats.brokerageTotal, baseCurrency)}) + 日常银行与钱包备忘 ({formatMoney(stats.dailyTotal, baseCurrency)}) = <strong>{formatMoney(stats.grandTotal, baseCurrency)}</strong>
+          <span>
+            三井住友 · Sony银行 · 招商银行 · 瑞穗银行 · SBI新生银行 · Wise · PayPal · Revolut · 支付宝余额宝 · 微信支付 · ANT BANK · 数字钱包
           </span>
-          <span>点击任意日常账户右侧「记账更新」可直接修改最新余额与备注</span>
+          <span className="font-semibold text-foreground">
+            总备忘规模：{formatMoney(totalJpy, 'JPY')}
+          </span>
         </CardFooter>
       </Card>
     </section>

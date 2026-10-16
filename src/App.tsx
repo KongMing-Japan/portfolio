@@ -102,7 +102,7 @@ function App() {
 
   useEffect(() => {
     document.documentElement.lang = 'zh-CN';
-    document.title = 'AssetLog · 资产配置与量化再平衡系统';
+    document.title = 'Portfolio';
   }, []);
 
   const persist = useCallback(

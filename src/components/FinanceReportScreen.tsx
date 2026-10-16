@@ -61,6 +61,7 @@ import {
 } from '../lib/portfolio';
 import { getAuthenticatedUsername } from '../lib/auth';
 import { PortfolioAreaChart } from './PortfolioAreaChart';
+import { BrokerAccountsCard } from './BrokerAccountsCard';
 import { HoldingsCompositionCard } from './HoldingsCompositionCard';
 import { PortfolioPanorama } from './PortfolioPanorama';
 import { NovaRebalanceAdviceCard } from './NovaRebalanceAdviceCard';
@@ -771,7 +772,7 @@ export function FinanceReportScreen({
               openWorkspace('portfolio');
             }}
           >
-            AssetLog
+            Portfolio
           </button>
           <nav className="gf-nav-tabs" aria-label="视图导航">
             {!isOwnerUnlocked ? (
@@ -1182,6 +1183,15 @@ export function FinanceReportScreen({
               )}
             </div>
 
+            {/* Broker Accounts Distribution Dimension */}
+            {activeHoldings.length > 0 && (
+              <BrokerAccountsCard
+                holdings={activeHoldings}
+                totalValue={total}
+                baseCurrency={baseCurrency}
+              />
+            )}
+
             {aggregated.length > 0 && (
               <div className="nova-grid-2">
                 <HoldingsCompositionCard
@@ -1472,7 +1482,7 @@ export function FinanceReportScreen({
       )}
 
       <footer className="gf-footer">
-        <p style={{ margin: '0 0 0.35rem', fontWeight: 600, color: 'var(--foreground)' }}>AssetLog · 资产配置与量化再平衡系统</p>
+        <p style={{ margin: '0 0 0.35rem', fontWeight: 600, color: 'var(--foreground)' }}>Portfolio</p>
         <p style={{ margin: '0 0 0.45rem', fontSize: '0.75rem', color: 'var(--muted-foreground)', lineHeight: 1.6 }}>
           {quoteUpdatedAt ? `行情更新于 ${formatDateTime(quoteUpdatedAt)}` : '行情未更新'} · 基准币种 {baseCurrency} · 法国央行参考汇率折算 · 仅用于资产结构偏离度分析与再平衡试算，不构成买卖投资建议
         </p>
