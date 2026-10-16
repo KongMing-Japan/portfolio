@@ -533,12 +533,12 @@
 
 .gf-allocation-strip {
   width: 100%;
-  height: 6px;
+  height: 8px;
   border-radius: 9999px;
   overflow: hidden;
   display: flex;
   background: var(--muted);
-  border: 1px solid var(--border);
+  border: none;
 }
 
 .gf-allocation-segment {
@@ -1045,10 +1045,15 @@
 }
 
 .gf-account-row td {
-  background: color-mix(in oklch, var(--muted) 40%, transparent);
+  background: color-mix(in oklch, var(--muted) 35%, transparent);
   font-size: 0.75rem;
   color: var(--muted-foreground);
   padding: 8px 14px 8px 3rem;
+  border-bottom: 1px solid color-mix(in oklch, var(--border) 60%, transparent);
+}
+
+.gf-holdings-table tr:last-child td {
+  border-bottom: none;
 }
 
 .gf-empty-state {

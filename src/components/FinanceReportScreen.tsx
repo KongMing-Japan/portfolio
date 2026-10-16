@@ -52,12 +52,14 @@ import {
   formatMoney,
   formatPercent,
   isDailyMemoAccount,
+  getCleanSecurityName,
   isJpyHedgedAsset,
   isTacticalHedgeHolding,
   LAYER_META,
   POPULAR_BROKERS,
   suggestCurrencyFromTicker,
 } from '../lib/portfolio';
+import { getAuthenticatedUsername } from '../lib/auth';
 import { PortfolioAreaChart } from './PortfolioAreaChart';
 import { HoldingsCompositionCard } from './HoldingsCompositionCard';
 import { PortfolioPanorama } from './PortfolioPanorama';
@@ -66,7 +68,7 @@ import { ClassicRebalanceAnalytics } from './ClassicRebalanceAnalytics';
 import { AccountVaultSection } from './AccountVaultSection';
 import { RebalanceCockpitModal } from './RebalanceCockpitModal';
 import { ReviewTimelineModal } from './ReviewTimelineModal';
-import { OwnerPinModal } from './OwnerPinModal';
+import { UserAuthModal } from './UserAuthModal';
 import type {
   AggregatedHolding,
   BaseCurrency,
@@ -387,7 +389,7 @@ export function FinanceReportScreen({
   const [expandedTicker, setExpandedTicker] = useState<string | null>(null);
   const [rebalanceOpen, setRebalanceOpen] = useState(false);
   const [timelineOpen, setTimelineOpen] = useState(false);
-  const [pinModalOpen, setPinModalOpen] = useState(false);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
   const [mergeEquivalent, setMergeEquivalent] = useState(true);
   const [excludeDailyAccounts, setExcludeDailyAccounts] = useState(true);
   const [layerFilter, setLayerFilter] = useState<'ALL' | Layer>('ALL');
@@ -773,11 +775,30 @@ export function FinanceReportScreen({
           </button>
           <nav className="gf-nav-tabs" aria-label="视图导航">
             <button
-              className={`gf-nav-tab ${workspaceView === 'portfolio' ? 'is-active' : ''}`}
-              onClick={() => openWorkspace('portfolio')}
+              className={`gf-nav-tab ${workspaceView === 'portfolio' && !isOwnerUnlocked ? 'is-active' : ''}`}
+              onClick={() => {
+                if (isOwnerUnlocked) {
+                  onLockOwner?.();
+                } else {
+                  openWorkspace('portfolio');
+                }
+              }}
             >
               <Briefcase size={14} />
-              <span>{isOwnerUnlocked ? '我的私享组合' : '公开组合示例'}</span>
+              <span>公开示例</span>
+            </button>
+            <button
+              className={`gf-nav-tab ${workspaceView === 'portfolio' && isOwnerUnlocked ? 'is-active' : ''}`}
+              onClick={() => {
+                if (isOwnerUnlocked) {
+                  openWorkspace('portfolio');
+                } else {
+                  setAuthModalOpen(true);
+                }
+              }}
+            >
+              {isOwnerUnlocked ? <Briefcase size={14} /> : <Lock size={13} />}
+              <span>我的私享组合</span>
             </button>
             <button
               className={`gf-nav-tab ${workspaceView === 'superinvestors' ? 'is-active' : ''}`}
@@ -786,33 +807,57 @@ export function FinanceReportScreen({
               <Landmark size={14} />
               <span>投资大师</span>
             </button>
-            <button
-              type="button"
-              onClick={() => setPinModalOpen(true)}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '5px',
-                padding: '5px 11px',
-                borderRadius: '999px',
-                fontSize: '0.76rem',
-                fontWeight: 600,
-                cursor: 'pointer',
-                border: isOwnerUnlocked ? '1px solid #86efac' : '1px solid #cbd5e1',
-                background: isOwnerUnlocked ? '#f0fdf4' : '#f8fafc',
-                color: isOwnerUnlocked ? '#15803d' : '#334155',
-                marginLeft: '4px',
-              }}
-              title={
-                isOwnerUnlocked
-                  ? '主人私享空间已解锁，点击管理或锁定退出'
-                  : '输入 4 位 PIN 码进入个人真实持仓管理'
-              }
-            >
-              {isOwnerUnlocked ? <Unlock size={13} /> : <Lock size={13} />}
-              <span>{isOwnerUnlocked ? '主人私享仓 (已解锁)' : '我的持仓 (PIN登录)'}</span>
-            </button>
           </nav>
+          <div className="gf-topbar-user-area" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {isOwnerUnlocked ? (
+              <button
+                type="button"
+                onClick={() => setAuthModalOpen(true)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '4px 10px',
+                  borderRadius: 'calc(var(--radius) * 0.8)',
+                  fontSize: '0.75rem',
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  border: '1px solid var(--border)',
+                  background: 'var(--card)',
+                  color: 'var(--foreground)',
+                  transition: 'background 0.15s ease',
+                }}
+                title="账户管理 / 密码设置 / 锁定退出"
+              >
+                <span
+                  style={{
+                    width: '6px',
+                    height: '6px',
+                    borderRadius: '50%',
+                    background: '#10b981',
+                    display: 'inline-block',
+                  }}
+                />
+                <span>{getAuthenticatedUsername() || 'owner'}</span>
+                <Unlock size={12} style={{ color: '#10b981' }} />
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="gf-text-action"
+                onClick={() => setAuthModalOpen(true)}
+                style={{
+                  fontSize: '0.75rem',
+                  padding: '4px 10px',
+                  gap: '5px',
+                }}
+                title="登录解锁个人真实持仓"
+              >
+                <Lock size={12} />
+                <span>私享登录</span>
+              </button>
+            )}
+          </div>
         </div>
       </header>
 
@@ -1560,7 +1605,7 @@ export function FinanceReportScreen({
                 type="button"
                 onClick={() => {
                   setImportOpen(false);
-                  setPinModalOpen(true);
+                  setAuthModalOpen(true);
                 }}
                 style={{
                   background: '#eef2ff',
@@ -1832,10 +1877,10 @@ export function FinanceReportScreen({
         onRestoreSnapshot={onRestoreSnapshot}
       />
 
-      <OwnerPinModal
-        isOpen={pinModalOpen}
-        isUnlocked={isOwnerUnlocked}
-        onClose={() => setPinModalOpen(false)}
+      <UserAuthModal
+        isOpen={authModalOpen}
+        isUnlocked={Boolean(isOwnerUnlocked)}
+        onClose={() => setAuthModalOpen(false)}
         onUnlockSuccess={() => {
           onUnlockOwner?.();
         }}
@@ -1972,7 +2017,7 @@ function FinanceHoldingRow({
                 )}
               </div>
               <span className="gf-symbol-name" title={holding.name}>
-                {holding.name}
+                {getCleanSecurityName(holding.ticker, holding.name)}
               </span>
             </div>
           </div>
@@ -2120,8 +2165,8 @@ function EditableHoldingRow({
     <tr className="gf-editor-row">
       <td>
         <div className="gf-editor-security">
-          <strong>{holding.ticker || holding.name}</strong>
-          <span>{holding.name || holding.ticker}</span>
+          <strong>{holding.ticker}</strong>
+          <span>{getCleanSecurityName(holding.ticker, holding.name)}</span>
         </div>
       </td>
       <td>

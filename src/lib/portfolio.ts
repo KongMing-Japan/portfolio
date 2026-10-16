@@ -173,6 +173,9 @@ export const POPULAR_BROKERS = [
   '乐天银行',
   '三井住友银行',
   '招商银行',
+  'SBI新生银行',
+  'Sony银行',
+  '瑞穗银行',
   'SBI証券',
   'Interactive Brokers',
   '富途牛牛',
@@ -451,15 +454,21 @@ export function formatMoney(value: number, currency: string) {
             : `${safeCur} `;
   const absolute = Math.abs(value);
 
-  if (safeCur === 'JPY' || safeCur === 'CNY') {
-    if (absolute >= 100_000_000) {
-      return `${prefix}${(value / 100_000_000).toFixed(3).replace(/\.?0+$/, '')}亿`;
+  if (safeCur === 'JPY') {
+    if (absolute >= 10_000) {
+      const wan = Math.round(value / 10_000);
+      return `${prefix}${wan.toLocaleString('en-US')}万`;
     }
-    if (absolute >= 1_000_000) {
-      const wan = value / 10_000;
-      return `${prefix}${wan.toLocaleString('en-US', {
-        maximumFractionDigits: wan >= 100 ? 1 : 2,
-      })}万`;
+    return `${prefix}${Math.round(value).toLocaleString('en-US')}`;
+  }
+
+  if (safeCur === 'CNY') {
+    if (absolute >= 100_000_000) {
+      return `${prefix}${(value / 100_000_000).toFixed(2).replace(/\.?0+$/, '')}亿`;
+    }
+    if (absolute >= 10_000) {
+      const wan = Math.round(value / 10_000);
+      return `${prefix}${wan.toLocaleString('en-US')}万`;
     }
   } else {
     if (absolute >= 1_000_000_000) {
@@ -487,6 +496,53 @@ export function formatPercent(value: number, digits = 1) {
   return `${(value * 100).toFixed(digits)}%`;
 }
 
+export function getCleanSecurityName(ticker: string, originalName = ''): string {
+  const t = (ticker || '').trim().toUpperCase();
+  const n = (originalName || '').trim();
+
+  if (t === '1482' || t === '1482.T') return '美债 7-10年 (对冲)';
+  if (t === '1571' || t === '1571.T') return '日经反向';
+  if (t === '2563' || t === '2563.T') return 'S&P 500 (对冲)';
+  if (t === '2845' || t === '2845.T') return '纳斯达克 100 (对冲)';
+  if (t === '7581' || t === '7581.T' || /萨莉亚|サイゼリヤ/i.test(n)) return '萨莉亚';
+  if (t === '9616' || t === '9616.T' || /共立/i.test(n)) return '共立维护';
+  if (t === '3905' || t === '3905.T' || /DataSection/i.test(n)) return 'DataSection';
+  if (t === '9023' || t === '9023.T' || /东京地铁|東京メトロ/i.test(n)) return '东京地铁';
+  if (t === 'EMAXIS_SP500' || /eMAXIS.*S&P/i.test(n) || t === '513500' || t === '513500.SS' || /标普\s*500/i.test(n)) return 'S&P 500';
+  if (t === '513130' || t === '513130.SS' || /恒生科技/i.test(n)) return '恒生科技';
+  if (t === '300750' || t === '300750.SZ' || /宁德时代/i.test(n)) return '宁德时代';
+  if (t === 'CN_QDII_VN' || /越南|VN30/i.test(n)) return '越南 VN30';
+  if (t === 'CRCL' || /Circle/i.test(n)) return 'Circle';
+  if (t === 'NVDA' || /英伟达/i.test(n)) return '英伟达';
+  if (t === 'SMR' || /NuScale/i.test(n)) return 'NuScale Power';
+  if (t === '00700' || t === '00700.HK' || /腾讯/i.test(n)) return '腾讯';
+  if (t === '01810' || t === '01810.HK' || /小米/i.test(n)) return '小米';
+  if (t === 'TSLA' || /特斯拉/i.test(n)) return '特斯拉';
+  if (t === 'AAPL' || /苹果/i.test(n)) return '苹果';
+  if (t === 'MSFT' || /微软/i.test(n)) return '微软';
+  if (t === 'GOOGL' || t === 'GOOG' || /谷歌/i.test(n)) return '谷歌';
+  if (/余额宝/i.test(n) || t.includes('YUEBAO')) return '余额宝';
+  if (/招商银行/i.test(n) || t.includes('CMB')) return '招商银行';
+  if (/微信支付/i.test(n) || t.includes('WECHAT')) return '微信支付';
+  if (/乐天银行/i.test(n) || t.includes('RAKUTENBANK')) return '乐天银行';
+  if (/三井住友/i.test(n) || t.includes('SMBC')) return '三井住友银行';
+  if (/瑞穗/i.test(n) || t.includes('MIZUHO')) return '瑞穗银行';
+  if (/Sony/i.test(n) || t.includes('SONY')) return 'Sony银行';
+  if (/新生|SBI新生/i.test(n) || t.includes('SHINSEI') || t.includes('SBI新生')) return 'SBI新生银行';
+  if (/Wise/i.test(n) || t.includes('WISE')) return 'Wise';
+  if (/PayPal/i.test(n) || t.includes('PAYPAL')) return 'PayPal';
+  if (/Revolut/i.test(n) || t.includes('REVOLUT')) return 'Revolut';
+  if (/Ant\s*Bank/i.test(n) || t.includes('ANTBANK')) return 'ANT BANK';
+  if (/Worldcoin/i.test(n) || t.includes('WORLDCOIN') || t.includes('WLD')) return 'Worldcoin';
+  if (/Bitget/i.test(n) || t.includes('BITGET')) return 'Bitget Wallet';
+
+  if (!n) return t || '未命名标的';
+  return n
+    .replace(/\s*\([^)]*\)/g, '')
+    .replace(/\s*（[^）]*）/g, '')
+    .trim() || n;
+}
+
 export function formatDateTime(value: string | null) {
   if (!value) return 'Not updated';
   return new Intl.DateTimeFormat('en-US', {
@@ -507,6 +563,8 @@ const DAILY_BANKING_BROKERS = new Set([
   '招商银行',
   '瑞穗银行',
   'ANT BANK',
+  'SBI新生银行',
+  '新生银行',
 ]);
 
 const DAILY_WALLET_BROKERS = new Set([

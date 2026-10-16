@@ -70,13 +70,13 @@ describe('portfolio import and analysis', () => {
     expect(holdings[1].layer).toBe('Cash');
   });
 
-  it('reconciles the 17-account real portfolio to ~128,355,955 JPY and merges cross-market S&P 500', () => {
+  it('reconciles the 18-account real portfolio to ~128,418,099 JPY and merges cross-market S&P 500', () => {
     const holdings = REAL_PORTFOLIO_SNAPSHOT.holdings;
     const brokers = new Set(holdings.map((h) => h.broker));
-    expect(brokers.size).toBe(17);
+    expect(brokers.size).toBe(18);
 
     const totalJpy = holdings.reduce((sum, h) => sum + (h.valueInBase ?? 0), 0);
-    expect(totalJpy).toBeCloseTo(128_355_955, -1);
+    expect(totalJpy).toBeCloseTo(128_418_099, -1);
 
     const merged = aggregateHoldings(holdings, { mergeEquivalent: true });
     const sp500 = merged.find((item) => item.ticker === 'S&P500·合并');
@@ -98,10 +98,12 @@ describe('portfolio import and analysis', () => {
     expect(dailyHoldings.some((h) => h.ticker === 'Cash_CNY_Yuebao')).toBe(true);
     // WeChat Pay is daily life cash
     expect(dailyHoldings.some((h) => h.broker === '微信支付')).toBe(true);
+    // SBI Shinsei Bank is daily life cash
+    expect(dailyHoldings.some((h) => h.broker === 'SBI新生银行')).toBe(true);
 
     const dailySum = dailyHoldings.reduce((sum, h) => sum + (h.valueInBase ?? 0), 0);
     const coreSum = coreHoldings.reduce((sum, h) => sum + (h.valueInBase ?? 0), 0);
-    expect(dailySum + coreSum).toBeCloseTo(128_355_955, -1);
+    expect(dailySum + coreSum).toBeCloseTo(128_418_099, -1);
 
     const mergedCore = aggregateHoldings(coreHoldings, { mergeEquivalent: true });
     for (const item of mergedCore) {
@@ -122,7 +124,11 @@ describe('portfolio import and analysis', () => {
     // Neither formatMoney nor formatExactMoney should ever throw RangeError
     expect(() => formatMoney(1234567, invalidCurrency)).not.toThrow();
     expect(() => formatExactMoney(1234567, invalidCurrency)).not.toThrow();
-    expect(formatMoney(109902889, invalidCurrency)).toContain('1.099亿');
+    // JPY rule: >= 10,000 uses integer 万 without decimals
+    expect(formatMoney(109902889, invalidCurrency)).toBe('¥10,990万');
+    expect(formatMoney(62144, 'JPY')).toBe('¥6万');
+    expect(formatMoney(4872000, 'JPY')).toBe('¥487万');
+    expect(formatMoney(7058, 'JPY')).toBe('¥7,058');
   });
 
   it('sanitizes loaded snapshots by filtering out corrupted commentary holdings', () => {
