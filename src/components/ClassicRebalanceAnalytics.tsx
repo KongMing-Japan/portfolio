@@ -1085,7 +1085,7 @@ export function ClassicRebalanceAnalytics({
                         ? '免税零摩擦调拨'
                         : order.ticker === 'EMAXIS_SP500' || order.ticker === 'CN_QDII_VN'
                           ? '按金额申购'
-                          : `约 ${order.suggestedShares.toLocaleString('en-US')} 股/份`}
+                          : `约 ${order.suggestedShares != null && Number.isFinite(order.suggestedShares) ? order.suggestedShares.toLocaleString('en-US') : '0'} 股/份`}
                     </div>
                   </div>
                 </Item>

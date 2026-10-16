@@ -270,13 +270,14 @@ export function recalculateBaseValues(
   fx: Record<string, number>,
   baseCurrency: BaseCurrency,
 ) {
-  const baseToJpy = fx[baseCurrency] ?? 1;
+  const safeFx = fx || { JPY: 1, USD: 157.97, HKD: 20.13, CNY: 23.61 };
+  const baseToJpy = safeFx[baseCurrency] ?? 1;
   return holdings.map((holding) => {
     const localValue =
       holding.marketPrice == null
         ? holding.importedMarketValue
         : holding.marketPrice * holding.quantity;
-    const rate = fx[holding.currency];
+    const rate = safeFx[holding.currency] ?? 1;
     return {
       ...holding,
       marketValue: localValue,

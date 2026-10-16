@@ -125,9 +125,11 @@ export function PortfolioAreaChart({
 
   useEffect(() => {
     let active = true;
-    void loadReviewSnapshots().then((list) => {
-      if (active) setSnapshots(list);
-    });
+    void loadReviewSnapshots()
+      .then((list) => {
+        if (active) setSnapshots(list);
+      })
+      .catch(() => {});
     return () => {
       active = false;
     };

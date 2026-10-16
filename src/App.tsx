@@ -94,8 +94,10 @@ function App() {
   }, []);
 
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'auto' });
-    sessionStorage.setItem('portfolio-current-step', step);
+    try {
+      window.scrollTo({ top: 0, behavior: 'auto' });
+      sessionStorage.setItem('portfolio-current-step', step);
+    } catch {}
   }, [step]);
 
   useEffect(() => {
