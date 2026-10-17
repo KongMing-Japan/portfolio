@@ -610,9 +610,6 @@ export function ClassicRebalanceAnalytics({
                   5/25 走廊 · 风险预算
                 </Badge>
               </div>
-              <CardDescription className="mt-1">
-                结合经典资产配置模型与波动率风险预算，推演最少摩擦的调仓路径
-              </CardDescription>
             </div>
 
             {/* Scope Toggle: Pure Investment Portfolio vs Full Household Assets */}

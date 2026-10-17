@@ -425,30 +425,26 @@ export function concentrationLabel(score: number) {
 
 export function formatExactMoney(value: number, currency: string) {
   const safeCur = sanitizeCurrencyCode(currency);
-  try {
-    return new Intl.NumberFormat('zh-CN', {
-      style: 'currency',
-      currency: safeCur,
-      maximumFractionDigits: safeCur === 'JPY' ? 0 : 2,
-    }).format(value);
-  } catch {
-    const symbol =
-      safeCur === 'JPY' ? '¥' : safeCur === 'USD' ? 'US$' : `${safeCur} `;
-    return `${symbol}${Number(value || 0).toLocaleString('zh-CN', {
-      maximumFractionDigits: safeCur === 'JPY' ? 0 : 2,
-    })}`;
-  }
+  const numStr = Number(value || 0).toLocaleString('en-US', {
+    minimumFractionDigits: safeCur === 'JPY' ? 0 : 2,
+    maximumFractionDigits: safeCur === 'JPY' ? 0 : 2,
+  });
+  if (safeCur === 'JPY') return `¥${numStr}`;
+  if (safeCur === 'USD') return `$${numStr}`;
+  if (safeCur === 'CNY') return `¥${numStr}`;
+  if (safeCur === 'HKD') return `HK$${numStr}`;
+  return `${safeCur} ${numStr}`;
 }
 
 export function formatMoney(value: number, currency: string) {
   const safeCur = sanitizeCurrencyCode(currency);
   const prefix =
     safeCur === 'USD'
-      ? 'US$'
+      ? '$'
       : safeCur === 'JPY'
         ? '¥'
         : safeCur === 'CNY'
-          ? 'CN¥'
+          ? '¥'
           : safeCur === 'HKD'
             ? 'HK$'
             : `${safeCur} `;

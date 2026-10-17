@@ -277,9 +277,6 @@ export function PortfolioPanorama({
               <Globe2 className="size-4 text-primary" />
               <span>国别与地区敞口</span>
             </CardTitle>
-            <CardDescription>
-              穿透 ETF 与基金至底层挂钩国家与经济体
-            </CardDescription>
             <CardAction>
               <Badge variant="outline">底层穿透</Badge>
             </CardAction>
@@ -372,9 +369,6 @@ export function PortfolioPanorama({
               <Layers className="size-4 text-primary" />
               <span>资产形态与分红现金流</span>
             </CardTitle>
-            <CardDescription>
-              ETF、个股与公募基金分布及预估年度分红
-            </CardDescription>
           </CardHeader>
 
           <CardContent className="flex flex-col gap-4">
@@ -442,9 +436,6 @@ export function PortfolioPanorama({
             <LayoutGrid className="size-4 text-primary" />
             <span>投资主题分布</span>
           </CardTitle>
-          <CardDescription>
-            按战略投资主题穿透细分权重构成与个股归集
-          </CardDescription>
           <CardAction>
             <Badge variant="secondary">{themeGroups.length} 个战略主题</Badge>
           </CardAction>

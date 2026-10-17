@@ -1257,11 +1257,6 @@ export function FinanceReportScreen({
                   <h2 className="text-base font-semibold tracking-tight text-foreground" style={{ margin: 0 }}>
                     {t.yourPortfolio}
                   </h2>
-                  <p className="text-sm text-muted-foreground" style={{ margin: '4px 0 0' }}>
-                    {mergeEquivalent
-                      ? '已开启「同源穿透归并」：标普500跨三地合并 (2563+eMAXIS+513500)，证券与货币基金现金按流动性池聚合（点击任意行展开账户明细）'
-                      : '当前为「逐笔代码模式」：按原始标的代码展示各投资账户独立仓位'}
-                  </p>
                 </div>
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                   <button
@@ -1409,74 +1404,40 @@ export function FinanceReportScreen({
               onOpenFullEditor={() => setEditorOpen(true)}
             />
 
-            {/* Methodology & FAQ Card */}
-            <section className="gf-methodology-card">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid var(--border)', paddingBottom: '0.75rem' }}>
-                <ShieldCheck size={16} color="var(--primary)" />
-                <h2 className="text-sm font-semibold tracking-tight text-foreground" style={{ margin: 0 }}>
-                  持仓分析方法论与风控说明
-                </h2>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem', marginTop: '0.25rem' }}>
-                <div>
-                  <h3 className="text-xs font-semibold text-foreground" style={{ margin: '0 0 4px' }}>
-                    四层资产金字塔原则
-                  </h3>
-                  <p className="text-xs text-muted-foreground leading-relaxed" style={{ margin: 0 }}>
-                    机构标准将资产划分为核心基石（Core 50-60%）、卫星进攻（Satellite 20-30%）、防守缓冲（Defensive 10-15%）与现金（Cash 5-10%），分散黑天鹅冲击。
-                  </p>
-                </div>
-                <div>
-                  <h3 className="text-xs font-semibold text-foreground" style={{ margin: '0 0 4px' }}>
-                    单一标的权重风控（20% 上限）
-                  </h3>
-                  <p className="text-xs text-muted-foreground leading-relaxed" style={{ margin: 0 }}>
-                    当单一持仓超过 20% 时，个股回调将大幅挤占组合整体收益。系统自动预警过重标的，提示分批减仓锁利。
-                  </p>
-                </div>
-                <div>
-                  <h3 className="text-xs font-semibold text-foreground" style={{ margin: '0 0 4px' }}>
-                    HHI 集中度指数说明
-                  </h3>
-                  <p className="text-xs text-muted-foreground leading-relaxed" style={{ margin: 0 }}>
-                    HHI 衡量持仓分散程度。分数越低越分散（&lt; 15 优秀），越高越高集中（&gt; 25 高风险），帮助量化组合健康度。
-                  </p>
-                </div>
-              </div>
-              <div style={{ marginTop: '0.5rem', paddingTop: '0.85rem', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', fontSize: '0.78rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-                  <a
-                    href="https://github.com/KongMing-Japan/portfolio/blob/main/docs/methodology.zh.md"
-                    target="_blank"
-                    rel="noreferrer"
-                    style={{ color: 'var(--primary)', fontWeight: 500, textDecoration: 'none' }}
-                  >
-                    详细方法论
-                  </a>
-                  <span style={{ color: 'var(--border)' }}>|</span>
-                  <span style={{ color: 'var(--muted-foreground)' }}>数据来源: Yahoo Finance · SEC EDGAR</span>
-                </div>
-                <button
-                  onClick={onClear}
-                  style={{
-                    fontSize: '0.75rem',
-                    padding: '4px 10px',
-                    border: '1px solid var(--border)',
-                    background: 'var(--background)',
-                    color: 'var(--muted-foreground)',
-                    borderRadius: 'calc(var(--radius) * 0.8)',
-                    cursor: 'pointer',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    fontWeight: 500,
-                  }}
+            {/* Quick Actions & Data Notes */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', fontSize: '0.78rem', padding: '0.5rem 0' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                <a
+                  href="https://github.com/KongMing-Japan/portfolio/blob/main/docs/methodology.zh.md"
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{ color: 'var(--primary)', fontWeight: 500, textDecoration: 'none' }}
                 >
-                  <Trash2 size={12} />
-                  {t.clear}
-                </button>
+                  详细方法论
+                </a>
+                <span style={{ color: 'var(--border)' }}>|</span>
+                <span style={{ color: 'var(--muted-foreground)' }}>数据来源: Yahoo Finance · SEC EDGAR</span>
               </div>
-            </section>
+              <button
+                onClick={onClear}
+                style={{
+                  fontSize: '0.75rem',
+                  padding: '4px 10px',
+                  border: '1px solid var(--border)',
+                  background: 'var(--background)',
+                  color: 'var(--muted-foreground)',
+                  borderRadius: 'calc(var(--radius) * 0.8)',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  fontWeight: 500,
+                }}
+              >
+                <Trash2 size={12} />
+                {t.clear}
+              </button>
+            </div>
           </div>
         </>
       )}
