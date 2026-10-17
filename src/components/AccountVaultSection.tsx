@@ -1,11 +1,13 @@
 import * as React from 'react';
-import {
-  Check,
-  NotebookPen,
-  Pencil,
-  X,
-} from 'lucide-react';
+import { Check, Pencil, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import {
   Table,
   TableBody,
@@ -26,13 +28,9 @@ interface AccountVaultSectionProps {
   allHoldings: Holding[];
   baseCurrency?: BaseCurrency;
   fx?: Record<string, number>;
-  excludeDailyAccounts?: boolean;
-  onToggleExcludeDaily?: (exclude: boolean) => void;
   onUpdateHolding: (id: string, patch: Partial<Holding>) => Promise<void>;
-  onOpenFullEditor?: () => void;
 }
 
-// Standard fallback cross-rates to JPY
 const FX_RATES_TO_JPY: Record<string, number> = {
   JPY: 1,
   USD: 157.9764,
@@ -40,7 +38,6 @@ const FX_RATES_TO_JPY: Record<string, number> = {
   CNY: 23.6102,
 };
 
-// Maximum 3 concise tags per daily account/wallet
 const ACCOUNT_TAGS: Record<string, string[]> = {
   '三井住友': ['日常结算', '生活缴费', '日本主力'],
   SMBC: ['日常结算', '生活缴费', '日本主力'],
@@ -87,7 +84,6 @@ export function AccountVaultSection({
   const [draftAmount, setDraftAmount] = React.useState<string>('');
   const [isSaving, setIsSaving] = React.useState(false);
 
-  // Filter daily living accounts only (excludes investment accounts and Rakuten Bank investment pool)
   const dailyItems = React.useMemo(() => {
     const fxRates = { ...FX_RATES_TO_JPY, ...(fx || {}) };
     const list: Array<Holding & { role: AccountRole; jpyValue: number; nativeValue: number }> = [];
@@ -151,149 +147,136 @@ export function AccountVaultSection({
   if (dailyItems.length === 0) return null;
 
   return (
-    <section id="account-vault" className="rounded-xl border bg-card overflow-hidden">
-      {/* Header bar: flat single container */}
-      <div className="px-4 py-3 border-b flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-2">
-          <NotebookPen className="size-4 text-primary" />
-          <h2 className="text-sm font-semibold tracking-tight text-foreground">
-            日常生活账户
-          </h2>
-          <span className="text-xs text-muted-foreground">
-            ({dailyItems.length} 户)
-          </span>
+    <Card id="account-vault">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div>
+            <CardTitle className="text-base">日常金融账户管理</CardTitle>
+            <CardDescription>
+              独立于上方投资组合，仅作日常银行存款与支付钱包台账备忘（共 {dailyItems.length} 户，点击金额可直接修改）
+            </CardDescription>
+          </div>
+          <div className="text-xs text-muted-foreground tabular-nums">
+            折合日元合计：
+            <span className="text-foreground font-semibold ml-1">
+              ¥{Math.round(totalJpy).toLocaleString('en-US')}
+            </span>
+          </div>
         </div>
-        <div className="text-xs font-semibold text-foreground tabular-nums">
-          日元合计：
-          <span className="text-primary font-bold ml-1">
-            ¥{Math.round(totalJpy).toLocaleString('en-US')}
-          </span>
-        </div>
-      </div>
+      </CardHeader>
+      <CardContent className="pt-0">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-[180px]">账户</TableHead>
+              <TableHead className="w-[110px]">类别</TableHead>
+              <TableHead className="text-right w-[190px]">原币余额</TableHead>
+              <TableHead className="text-right w-[170px]">日元折算 (JPY)</TableHead>
+              <TableHead>用途备注</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {dailyItems.map((item) => {
+              const isEditing = editingId === item.id;
+              const tags = getAccountTags(item);
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-[180px]">账户</TableHead>
-            <TableHead className="w-[110px]">类别</TableHead>
-            <TableHead className="text-right w-[190px]">原币余额</TableHead>
-            <TableHead className="text-right w-[170px]">日元估值 (JPY)</TableHead>
-            <TableHead>标签</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {dailyItems.map((item) => {
-            const isEditing = editingId === item.id;
-            const tags = getAccountTags(item);
-
-            return (
-              <TableRow key={item.id} className="hover:bg-muted/30">
-                {/* 账户 */}
-                <TableCell>
-                  <div className="flex flex-col">
-                    <span className="font-semibold text-xs text-foreground">
-                      {item.broker}
-                    </span>
-                    {item.account && item.account !== item.broker && (
-                      <span className="text-[11px] text-muted-foreground truncate max-w-[160px]">
-                        {item.account}
+              return (
+                <TableRow key={item.id}>
+                  <TableCell>
+                    <div className="flex flex-col">
+                      <span className="font-medium text-xs text-foreground">
+                        {item.broker}
                       </span>
+                      {item.account && item.account !== item.broker && (
+                        <span className="text-[11px] text-muted-foreground truncate max-w-[160px]">
+                          {item.account}
+                        </span>
+                      )}
+                    </div>
+                  </TableCell>
+
+                  <TableCell>
+                    <Badge variant="secondary" className="text-[10px] font-normal">
+                      {item.role === 'banking' ? '日常银行' : '支付/钱包'}
+                    </Badge>
+                  </TableCell>
+
+                  <TableCell className="text-right">
+                    {isEditing ? (
+                      <div className="flex items-center justify-end gap-1.5">
+                        <input
+                          type="number"
+                          step="any"
+                          value={draftAmount}
+                          onChange={(e) => setDraftAmount(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') void saveEdit(item);
+                            if (e.key === 'Escape') cancelEdit();
+                          }}
+                          className="w-24 h-6 px-1.5 text-right text-xs tabular-nums rounded-md border border-input bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+                          autoFocus
+                        />
+                        <span className="text-[11px] text-muted-foreground">
+                          {item.currency}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => void saveEdit(item)}
+                          disabled={isSaving}
+                          className="p-1 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer"
+                          title="保存"
+                        >
+                          <Check size={12} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={cancelEdit}
+                          className="p-1 rounded-md border border-border bg-background hover:bg-muted transition-colors cursor-pointer"
+                          title="取消"
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+                    ) : (
+                      <div
+                        onClick={() => startEdit(item)}
+                        className="cursor-pointer group inline-flex items-center justify-end gap-1.5 text-xs tabular-nums text-foreground hover:text-primary transition-colors"
+                        title="点击修改余额"
+                      >
+                        <span>
+                          {formatExactMoney(item.nativeValue, item.currency as BaseCurrency)}
+                        </span>
+                        <Pencil
+                          size={11}
+                          className="text-muted-foreground/40 group-hover:text-primary transition-colors shrink-0"
+                        />
+                      </div>
                     )}
-                  </div>
-                </TableCell>
+                  </TableCell>
 
-                {/* 类别 */}
-                <TableCell>
-                  <Badge
-                    variant="secondary"
-                    className={
-                      item.role === 'banking'
-                        ? 'bg-blue-50 text-blue-700 text-[10px] font-medium'
-                        : 'bg-teal-50 text-teal-800 text-[10px] font-medium'
-                    }
-                  >
-                    {item.role === 'banking' ? '日常银行' : '支付/钱包'}
-                  </Badge>
-                </TableCell>
+                  <TableCell className="text-right text-xs tabular-nums font-medium text-foreground">
+                    ¥{Math.round(item.jpyValue).toLocaleString('en-US')}
+                  </TableCell>
 
-                {/* 原币余额 & 直接行内修改 (附铅笔提示) */}
-                <TableCell className="text-right">
-                  {isEditing ? (
-                    <div className="flex items-center justify-end gap-1.5">
-                      <input
-                        type="number"
-                        step="any"
-                        value={draftAmount}
-                        onChange={(e) => setDraftAmount(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') void saveEdit(item);
-                          if (e.key === 'Escape') cancelEdit();
-                        }}
-                        className="w-24 h-6 px-1.5 text-right text-xs font-mono rounded border border-primary bg-background focus:outline-none"
-                        autoFocus
-                      />
-                      <span className="text-[11px] text-muted-foreground font-mono">
-                        {item.currency}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => void saveEdit(item)}
-                        disabled={isSaving}
-                        className="p-1 rounded bg-primary text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer"
-                        title="保存"
-                      >
-                        <Check size={12} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={cancelEdit}
-                        className="p-1 rounded border border-input bg-background hover:bg-muted transition-colors cursor-pointer"
-                        title="取消"
-                      >
-                        <X size={12} />
-                      </button>
+                  <TableCell>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {tags.map((tag) => (
+                        <Badge
+                          key={tag}
+                          variant="outline"
+                          className="text-[10px] font-normal px-1.5 py-0 text-muted-foreground"
+                        >
+                          {tag}
+                        </Badge>
+                      ))}
                     </div>
-                  ) : (
-                    <div
-                      onClick={() => startEdit(item)}
-                      className="cursor-pointer group inline-flex items-center justify-end gap-1.5 font-mono text-xs tabular-nums text-foreground hover:text-primary transition-colors"
-                      title="点击直接修改原币金额"
-                    >
-                      <span>
-                        {formatExactMoney(item.nativeValue, item.currency as BaseCurrency)}
-                      </span>
-                      <Pencil
-                        size={11}
-                        className="text-muted-foreground/40 group-hover:text-primary transition-colors shrink-0"
-                      />
-                    </div>
-                  )}
-                </TableCell>
-
-                {/* 日元估值 (仅用确切整数数字，不显示万) */}
-                <TableCell className="text-right font-mono text-xs tabular-nums font-semibold text-foreground">
-                  ¥{Math.round(item.jpyValue).toLocaleString('en-US')}
-                </TableCell>
-
-                {/* 标签 (最多3个tag) */}
-                <TableCell>
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    {tags.map((tag) => (
-                      <Badge
-                        key={tag}
-                        variant="outline"
-                        className="text-[10px] font-normal px-1.5 py-0 text-muted-foreground border-border"
-                      >
-                        {tag}
-                      </Badge>
-                    ))}
-                  </div>
-                </TableCell>
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
-    </section>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
   );
 }

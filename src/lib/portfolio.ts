@@ -19,20 +19,20 @@ export const LAYER_META: Record<
   Satellite: {
     label: '卫星仓',
     description: '高赔率成长主题与非线性阿尔法机会',
-    color: '#7c3aed',
-    pale: '#f5f3ff',
+    color: '#3b82f6',
+    pale: '#f0f7ff',
   },
   Defensive: {
     label: '防守仓',
     description: '低波动国债、宽基定投、高股息基建与抗风险资产',
-    color: '#0d9488',
-    pale: '#f0fdfa',
+    color: '#475569',
+    pale: '#f1f5f9',
   },
   Cash: {
     label: '现金储备',
     description: '高流动性资金缓冲池与再平衡交易子弹',
-    color: '#64748b',
-    pale: '#f1f5f9',
+    color: '#94a3b8',
+    pale: '#f8fafc',
   },
 };
 
@@ -494,6 +494,11 @@ export function formatMoney(value: number, currency: string) {
 
 export function formatPercent(value: number, digits = 1) {
   return `${(value * 100).toFixed(digits)}%`;
+}
+
+export function formatEditableNumber(value: number | null | undefined): string {
+  if (value == null || !Number.isFinite(value)) return '';
+  return Number(value.toFixed(4)).toString();
 }
 
 export function getCleanSecurityName(ticker: string, originalName = ''): string {

@@ -520,6 +520,11 @@ function App() {
         if (updated.marketPrice == null && updated.costPerUnit != null) {
           updated.marketPrice = updated.costPerUnit;
         }
+        if (patch.quantity != null || patch.marketPrice != null) {
+          const unitPrice = updated.marketPrice ?? updated.costPerUnit ?? 1;
+          updated.marketValue = updated.quantity * unitPrice;
+          updated.importedMarketValue = updated.marketValue;
+        }
         updated.market =
           patch.ticker != null ? marketFromTicker(updated.ticker) : updated.market;
         updated.layer = normalizeLayer(
@@ -534,6 +539,26 @@ function App() {
     },
     [holdings, saveReportHoldings],
   );
+
+  const handleRefreshQuotes = useCallback(async () => {
+    if (!holdings.length) return;
+    let quoteResponse: QuoteResponse;
+    try {
+      quoteResponse = await fetchQuotes(holdings);
+    } catch {
+      quoteResponse = await fetchBundledPrices().catch(() => ({
+        quotes: [],
+        fx,
+        fetchedAt: new Date().toISOString(),
+      }));
+    }
+    const nextFx = { JPY: 1, ...fx, ...quoteResponse.fx };
+    const enriched = applyQuotes(holdings, quoteResponse, baseCurrency);
+    setHoldings(enriched);
+    setFx(nextFx);
+    setQuoteUpdatedAt(quoteResponse.fetchedAt);
+    await persist(enriched, baseCurrency, nextFx, quoteResponse.fetchedAt);
+  }, [baseCurrency, fx, holdings, persist]);
 
   const removeReportHolding = useCallback(
     async (id: string) => {
@@ -622,6 +647,7 @@ function App() {
         onUpdateHolding={updateReportHolding}
         onRemoveHolding={removeReportHolding}
         onReplaceHoldings={saveReportHoldings}
+        onRefreshQuotes={handleRefreshQuotes}
         onSave={handleManualSave}
         onFiles={handleFiles}
         onJsonImport={handleJsonImport}
@@ -643,6 +669,7 @@ function App() {
     handleLockOwner,
     handleManualImport,
     handleManualSave,
+    handleRefreshQuotes,
     handleResetOwnerBaseline,
     handleRestoreSnapshot,
     handleSample,
