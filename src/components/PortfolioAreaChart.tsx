@@ -160,60 +160,77 @@ export function PortfolioAreaChart({
       return [...historicalPoints, currentPoint];
     }
 
-    // Quarterly trajectory based on actual share counts & historical price levels
+    // Honest Capital Structure & Rebalance Path Comparison when < 2 historical snapshots exist
     const baseCore = currentPoint.Core;
     const baseSat = currentPoint.Satellite;
     const baseDef = currentPoint.Defensive;
     const baseCash = currentPoint.Cash;
 
+    // Stage 2: Zero-Sell Cash Deployment (deploy excess cash above 10% into Core & Defensive)
+    const targetCash = Math.round(totalValue * 0.10);
+    const deployableCash = Math.max(0, baseCash - targetCash);
+    const coreDeficit = Math.max(0, totalValue * 0.55 - baseCore);
+    const defDeficit = Math.max(0, totalValue * 0.20 - baseDef);
+    const deficitSum = coreDeficit + defDeficit || 1;
+    const zeroSellCore = Math.round(baseCore + deployableCash * (coreDeficit / deficitSum));
+    const zeroSellDef = Math.round(baseDef + deployableCash * (defDeficit / deficitSum));
+    const zeroSellCash = Math.max(0, baseCash - deployableCash);
+
     return [
       {
-        label: '2025 Q4',
-        total: Math.round(baseCore * 0.84 + baseSat * 0.78 + baseDef * 0.94 + baseCash * 1.08),
-        Core: Math.round(baseCore * 0.84),
-        Satellite: Math.round(baseSat * 0.78),
-        Defensive: Math.round(baseDef * 0.94),
-        Cash: Math.round(baseCash * 1.08),
+        label: '当前实盘配置',
+        total: totalValue,
+        Core: Math.round(baseCore),
+        Satellite: Math.round(baseSat),
+        Defensive: Math.round(baseDef),
+        Cash: Math.round(baseCash),
       },
       {
-        label: '2026 Q1',
-        total: Math.round(baseCore * 0.89 + baseSat * 0.85 + baseDef * 0.96 + baseCash * 1.04),
-        Core: Math.round(baseCore * 0.89),
-        Satellite: Math.round(baseSat * 0.85),
-        Defensive: Math.round(baseDef * 0.96),
-        Cash: Math.round(baseCash * 1.04),
+        label: '零卖出现金补仓后',
+        total: totalValue,
+        Core: zeroSellCore,
+        Satellite: Math.round(baseSat),
+        Defensive: zeroSellDef,
+        Cash: zeroSellCash,
       },
       {
-        label: '2026 Q2',
-        total: Math.round(baseCore * 0.93 + baseSat * 0.90 + baseDef * 0.98 + baseCash * 1.02),
-        Core: Math.round(baseCore * 0.93),
-        Satellite: Math.round(baseSat * 0.90),
-        Defensive: Math.round(baseDef * 0.98),
-        Cash: Math.round(baseCash * 1.02),
+        label: '跨境双核目标 (55/15/20/10)',
+        total: totalValue,
+        Core: Math.round(totalValue * 0.55),
+        Satellite: Math.round(totalValue * 0.15),
+        Defensive: Math.round(totalValue * 0.20),
+        Cash: Math.round(totalValue * 0.10),
       },
       {
-        label: '2026 Q3',
-        total: Math.round(baseCore * 0.97 + baseSat * 0.95 + baseDef * 0.99 + baseCash * 1.01),
-        Core: Math.round(baseCore * 0.97),
-        Satellite: Math.round(baseSat * 0.95),
-        Defensive: Math.round(baseDef * 0.99),
-        Cash: Math.round(baseCash * 1.01),
+        label: '机构标准目标 (60/20/15/5)',
+        total: totalValue,
+        Core: Math.round(totalValue * 0.60),
+        Satellite: Math.round(totalValue * 0.20),
+        Defensive: Math.round(totalValue * 0.15),
+        Cash: Math.round(totalValue * 0.05),
       },
-      currentPoint,
     ];
   }, [layerRows, snapshots, totalValue]);
 
   if (totalValue <= 0) return null;
 
   return (
-    <div className="gf-chart-card">
+    <div className="gf-chart-card perf-contain-section">
       <div className="gf-chart-card-header">
         <div className="gf-chart-title-group">
           <h3>
             <AreaChartIcon size={18} color="var(--primary)" />
-            <span>资产演进与分层趋势</span>
+            <span>
+              {snapshots.length >= 2
+                ? '历史快照演进与分层趋势'
+                : '当前实盘 vs 零卖出调仓演进路径'}
+            </span>
           </h3>
-          <p>按持股股数与分层资产各季度历史收盘价动态推演</p>
+          <p>
+            {snapshots.length >= 2
+              ? `基于 ${snapshots.length} 个真实保存的复盘快照绘制`
+              : '真实对比：当前四层结构 → 零卖出动用现金补仓后 → 机构基准配置路径（保存 ≥2 个季度快照后自动切换为历史时间轴）'}
+          </p>
         </div>
         <div className="gf-chart-card-actions" role="tablist" aria-label="图表视角切换">
           <button
@@ -224,7 +241,7 @@ export function PortfolioAreaChart({
             aria-selected={mode === 'stacked'}
           >
             <Layers size={13} style={{ display: 'inline', marginRight: '4px', verticalAlign: '-1px' }} />
-            四层堆叠
+            四层堆叠对比
           </button>
           <button
             type="button"
@@ -234,7 +251,7 @@ export function PortfolioAreaChart({
             aria-selected={mode === 'valuation'}
           >
             <DollarSign size={13} style={{ display: 'inline', marginRight: '4px', verticalAlign: '-1px' }} />
-            资产净值
+            资产总净值
           </button>
         </div>
       </div>
@@ -244,20 +261,20 @@ export function PortfolioAreaChart({
           <AreaChart data={chartData} margin={{ top: 12, right: 18, left: 10, bottom: 8 }}>
             <defs>
               <linearGradient id="areaCore" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#2563eb" stopOpacity={0.75} />
-                <stop offset="95%" stopColor="#2563eb" stopOpacity={0.08} />
+                <stop offset="5%" stopColor={LAYER_META.Core.color} stopOpacity={0.75} />
+                <stop offset="95%" stopColor={LAYER_META.Core.color} stopOpacity={0.08} />
               </linearGradient>
               <linearGradient id="areaSatellite" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.75} />
-                <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.08} />
+                <stop offset="5%" stopColor={LAYER_META.Satellite.color} stopOpacity={0.75} />
+                <stop offset="95%" stopColor={LAYER_META.Satellite.color} stopOpacity={0.08} />
               </linearGradient>
               <linearGradient id="areaDefensive" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#10b981" stopOpacity={0.75} />
-                <stop offset="95%" stopColor="#10b981" stopOpacity={0.08} />
+                <stop offset="5%" stopColor={LAYER_META.Defensive.color} stopOpacity={0.75} />
+                <stop offset="95%" stopColor={LAYER_META.Defensive.color} stopOpacity={0.08} />
               </linearGradient>
               <linearGradient id="areaCash" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#64748b" stopOpacity={0.75} />
-                <stop offset="95%" stopColor="#64748b" stopOpacity={0.08} />
+                <stop offset="5%" stopColor={LAYER_META.Cash.color} stopOpacity={0.75} />
+                <stop offset="95%" stopColor={LAYER_META.Cash.color} stopOpacity={0.08} />
               </linearGradient>
               <linearGradient id="areaValuation" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="#2563eb" stopOpacity={0.8} />
@@ -302,7 +319,7 @@ export function PortfolioAreaChart({
                   stackId="1"
                   dataKey="Core"
                   name="Core"
-                  stroke="#2563eb"
+                  stroke={LAYER_META.Core.color}
                   strokeWidth={1.5}
                   fill="url(#areaCore)"
                   isAnimationActive={false}
@@ -312,7 +329,7 @@ export function PortfolioAreaChart({
                   stackId="1"
                   dataKey="Satellite"
                   name="Satellite"
-                  stroke="#f59e0b"
+                  stroke={LAYER_META.Satellite.color}
                   strokeWidth={1.5}
                   fill="url(#areaSatellite)"
                   isAnimationActive={false}
@@ -322,7 +339,7 @@ export function PortfolioAreaChart({
                   stackId="1"
                   dataKey="Defensive"
                   name="Defensive"
-                  stroke="#10b981"
+                  stroke={LAYER_META.Defensive.color}
                   strokeWidth={1.5}
                   fill="url(#areaDefensive)"
                   isAnimationActive={false}
@@ -332,7 +349,7 @@ export function PortfolioAreaChart({
                   stackId="1"
                   dataKey="Cash"
                   name="Cash"
-                  stroke="#64748b"
+                  stroke={LAYER_META.Cash.color}
                   strokeWidth={1.5}
                   fill="url(#areaCash)"
                   isAnimationActive={false}
@@ -346,7 +363,11 @@ export function PortfolioAreaChart({
       <div className="gf-chart-card-footer">
         <div className="gf-chart-trending-tag">
           <TrendingUp size={15} />
-          <span>资产结构持续处于稳健区间</span>
+          <span>
+            {snapshots.length >= 2
+              ? `已记录 ${snapshots.length} 期真实历史审视快照`
+              : '无虚构历史数据 · 展示真实实盘至目标走廊的结构收敛路径'}
+          </span>
         </div>
         <div style={{ fontSize: '11px', color: '#94a3b8' }}>
           基于本地季度审视快照与实时仓位 · 100% 浏览器本地运算

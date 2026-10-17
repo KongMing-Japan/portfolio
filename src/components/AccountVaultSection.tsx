@@ -25,13 +25,14 @@ import type { BaseCurrency, Holding } from '../types';
 interface AccountVaultSectionProps {
   allHoldings: Holding[];
   baseCurrency?: BaseCurrency;
+  fx?: Record<string, number>;
   excludeDailyAccounts?: boolean;
   onToggleExcludeDaily?: (exclude: boolean) => void;
   onUpdateHolding: (id: string, patch: Partial<Holding>) => Promise<void>;
   onOpenFullEditor?: () => void;
 }
 
-// Standard cross-rates to JPY
+// Standard fallback cross-rates to JPY
 const FX_RATES_TO_JPY: Record<string, number> = {
   JPY: 1,
   USD: 157.9764,
@@ -79,6 +80,7 @@ function getAccountTags(item: Holding): string[] {
 
 export function AccountVaultSection({
   allHoldings,
+  fx,
   onUpdateHolding,
 }: AccountVaultSectionProps) {
   const [editingId, setEditingId] = React.useState<string | null>(null);
@@ -87,6 +89,7 @@ export function AccountVaultSection({
 
   // Filter daily living accounts only (excludes investment accounts and Rakuten Bank investment pool)
   const dailyItems = React.useMemo(() => {
+    const fxRates = { ...FX_RATES_TO_JPY, ...(fx || {}) };
     const list: Array<Holding & { role: AccountRole; jpyValue: number; nativeValue: number }> = [];
 
     for (const h of allHoldings) {
@@ -96,7 +99,7 @@ export function AccountVaultSection({
           h.marketValue ??
           h.importedMarketValue ??
           h.quantity * (h.marketPrice ?? h.costPerUnit ?? 1);
-        const rate = FX_RATES_TO_JPY[h.currency] ?? 1;
+        const rate = fxRates[h.currency] ?? 1;
         const jpyValue = nativeValue * rate;
 
         list.push({
@@ -109,7 +112,7 @@ export function AccountVaultSection({
     }
 
     return list.sort((a, b) => b.jpyValue - a.jpyValue);
-  }, [allHoldings]);
+  }, [allHoldings, fx]);
 
   const totalJpy = React.useMemo(
     () => dailyItems.reduce((sum, item) => sum + item.jpyValue, 0),

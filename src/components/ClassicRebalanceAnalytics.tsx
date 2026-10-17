@@ -3,6 +3,7 @@ import {
   Activity,
   AlertTriangle,
   ArrowRight,
+  CheckCircle2,
   Compass,
   Crosshair,
   Gauge,
@@ -17,10 +18,6 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
-  PolarAngleAxis,
-  PolarGrid,
-  Radar,
-  RadarChart,
   ReferenceLine,
   Scatter,
   ScatterChart,
@@ -53,7 +50,6 @@ import {
   ItemGroup,
   ItemTitle,
 } from '@/components/ui/item';
-import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { Slider } from '@/components/ui/slider';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
@@ -61,11 +57,17 @@ import {
   estimateAssetVolatility,
   formatExactMoney,
   formatMoney,
-  formatPercent,
   isJpyHedgedAsset,
   LAYER_META,
 } from '../lib/portfolio';
-import type { AggregatedHolding, BaseCurrency, Holding, Layer } from '../types';
+import { SINGLE_SECURITY_CAP } from '../lib/rebalance';
+import type {
+  AggregatedHolding,
+  BaseCurrency,
+  Holding,
+  Layer,
+  RebalanceTradeItem,
+} from '../types';
 
 export type ClassicModelKey = 'coreSatellite' | 'swensen' | 'allWeather' | 'barbell';
 export type RebalanceAlgorithmKey = 'cashFlow' | 'corridor' | 'riskParity';
@@ -142,18 +144,8 @@ interface ClassicRebalanceAnalyticsProps {
   };
   onOpenRebalanceCockpit: () => void;
   onOpenAccountVault: () => void;
+  onApplyRebalanceTrades?: (trades: RebalanceTradeItem[]) => Promise<void> | void;
 }
-
-const radarChartConfig = {
-  actual: {
-    label: '当前实盘配置',
-    color: 'var(--chart-1)',
-  },
-  target: {
-    label: '经典模型目标',
-    color: 'var(--chart-2)',
-  },
-} satisfies ChartConfig;
 
 const riskBudgetChartConfig = {
   capitalPct: {
@@ -195,6 +187,7 @@ export function ClassicRebalanceAnalytics({
   dailyAccountsStats,
   onOpenRebalanceCockpit,
   onOpenAccountVault,
+  onApplyRebalanceTrades,
 }: ClassicRebalanceAnalyticsProps) {
   const [modelKey, setModelKey] = React.useState<ClassicModelKey>('swensen');
   const [algoKey, setAlgoKey] = React.useState<RebalanceAlgorithmKey>('cashFlow');
@@ -202,7 +195,7 @@ export function ClassicRebalanceAnalytics({
 
   const activeModel = CLASSIC_MODELS[modelKey];
 
-  // 1. Layer actuals vs targets + 5/25 Corridor Drift
+  // 1. Layer actuals vs targets + 5/25 Corridor Drift (Bullet Chart Data)
   const layerAnalysis = React.useMemo(() => {
     const layers: Layer[] = ['Core', 'Defensive', 'Satellite', 'Cash'];
     return layers.map((layer) => {
@@ -239,48 +232,6 @@ export function ClassicRebalanceAnalytics({
       };
     });
   }, [aggregated, totalValue, activeModel]);
-
-  // Radar Chart Data (5 quantitative dimensions)
-  const radarData = React.useMemo(() => {
-    const coreW = layerAnalysis.find((l) => l.layer === 'Core')?.actualPct ?? 0;
-    const defW = layerAnalysis.find((l) => l.layer === 'Defensive')?.actualPct ?? 0;
-    const satW = layerAnalysis.find((l) => l.layer === 'Satellite')?.actualPct ?? 0;
-    const cashW = layerAnalysis.find((l) => l.layer === 'Cash')?.actualPct ?? 0;
-
-    // Non-home currency diversification score
-    const nonJpyValue = holdings
-      .filter((h) => h.currency !== 'JPY' || isJpyHedgedAsset(h))
-      .reduce((s, h) => s + (h.valueInBase ?? 0), 0);
-    const globalRatio = totalValue > 0 ? Math.round((nonJpyValue / totalValue) * 1000) / 10 : 0;
-
-    return [
-      {
-        dimension: '核心宽基与龙头',
-        actual: coreW,
-        target: Math.round(activeModel.targets.Core * 100),
-      },
-      {
-        dimension: '固收与高息防守',
-        actual: defW,
-        target: Math.round(activeModel.targets.Defensive * 100),
-      },
-      {
-        dimension: '高赔率Alpha卫星',
-        actual: satW,
-        target: Math.round(activeModel.targets.Satellite * 100),
-      },
-      {
-        dimension: '机动交易子弹',
-        actual: cashW,
-        target: Math.round(activeModel.targets.Cash * 100),
-      },
-      {
-        dimension: '跨国别分散度',
-        actual: Math.min(100, globalRatio),
-        target: 65,
-      },
-    ];
-  }, [layerAnalysis, holdings, totalValue, activeModel]);
 
   // 2. Markowitz Risk Budgeting & Marginal Contribution to Risk (MCTR / PCR)
   const riskBudgetStats = React.useMemo(() => {
@@ -479,8 +430,8 @@ export function ClassicRebalanceAnalytics({
         for (const cand of candidates) {
           const wInLayer = candTotal > 0 ? cand.marketValueBase / candTotal : 0;
           const targetVal = totalValue * layerInfo.targetWeight * wInLayer;
-          // Also enforce 12% single-stock corridor cap
-          const cappedTargetVal = Math.min(targetVal, totalValue * 0.12);
+          // Enforce canonical 15% single-security cap
+          const cappedTargetVal = Math.min(targetVal, totalValue * SINGLE_SECURITY_CAP);
           const delta = cappedTargetVal - cand.marketValueBase;
           if (Math.abs(delta) < totalValue * 0.008) continue;
 
@@ -506,8 +457,8 @@ export function ClassicRebalanceAnalytics({
             reason:
               delta >= 0
                 ? '低于 5/25 走廊下限，均值回归增持'
-                : cand.weight > 0.12
-                  ? '触发单票 12% 机构上限，逢高锁利修剪'
+                : cand.weight > SINGLE_SECURITY_CAP
+                  ? `触发单票 ${(SINGLE_SECURITY_CAP * 100).toFixed(0)}% 机构上限，逢高锁利修剪`
                   : '高于走廊上限，均值回归减仓',
           });
         }
@@ -594,8 +545,32 @@ export function ClassicRebalanceAnalytics({
       });
   }, [aggregated]);
 
+  const handleApplySimulated = () => {
+    if (!onApplyRebalanceTrades) return;
+    const tradeItems: RebalanceTradeItem[] = rebalanceSimulation.allActions
+      .filter((a) => a.action === 'BUY' || a.action === 'SELL')
+      .map((a) => ({
+        ticker: a.ticker,
+        name: a.shortName,
+        layer: a.layer,
+        broker: a.broker,
+        action: a.action === 'SELL' ? 'SELL' : 'BUY',
+        currentShares: 0,
+        suggestedShares: a.suggestedShares,
+        currentWeight: a.currentWeight,
+        projectedWeight: a.targetWeight,
+        priceInBase: a.suggestedShares > 0 ? Math.abs(a.deltaAmount) / a.suggestedShares : 1,
+        amountInBase: Math.abs(a.deltaAmount),
+        currency: a.currency,
+        priceInCurrency: a.unitPrice,
+        urgency: 'medium',
+        reason: a.reason,
+      }));
+    void onApplyRebalanceTrades(tradeItems);
+  };
+
   return (
-    <section className="flex flex-col gap-6" id="classic-rebalance-analytics">
+    <section className="flex flex-col gap-6 perf-contain-section" id="classic-rebalance-analytics">
       {/* Top Control & Scope Header Card */}
       <Card>
         <CardHeader className="pb-3">
@@ -604,10 +579,10 @@ export function ClassicRebalanceAnalytics({
               <div className="flex items-center gap-2 flex-wrap">
                 <Compass className="size-4 text-primary" />
                 <CardTitle className="text-base">
-                  资产配置与量化再平衡
+                  资产配置与量化再平衡 (30% 策略风控引擎)
                 </CardTitle>
                 <Badge variant="secondary" className="font-mono text-[11px]">
-                  5/25 走廊 · 风险预算
+                  5/25 走廊子弹图 · 风险预算 · 零卖出调仓
                 </Badge>
               </div>
             </div>
@@ -649,7 +624,7 @@ export function ClassicRebalanceAnalytics({
                   onClick={onOpenAccountVault}
                   className="text-xs h-7"
                 >
-                  日常账户备忘 ({ formatMoney(dailyAccountsStats.totalValue, baseCurrency) })
+                  日常账户备忘 ({formatMoney(dailyAccountsStats.totalValue, baseCurrency)})
                 </Button>
               </div>
             )}
@@ -691,17 +666,17 @@ export function ClassicRebalanceAnalytics({
         </CardContent>
       </Card>
 
-      {/* Row 1: Classic Model Radar + Swensen 5/25 Corridor AND Markowitz Risk Budgeting */}
+      {/* Row 1: 5/25 Tolerance Corridor Bullet Chart AND Markowitz Risk Budgeting */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
-        {/* Card A: Model Radar & 5/25 Corridor */}
+        {/* Card A: 5/25 Tolerance Corridor Bullet Chart */}
         <Card className="flex flex-col justify-between">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <Scale className="size-4 text-primary" />
-              <span>模型拟合与 5/25 走廊</span>
+              <span>5/25 容忍走廊子弹图 (Tolerance Corridor Bullet Chart)</span>
             </CardTitle>
             <CardDescription>
-              偏离超过 ±5% 绝对阈值或目标权重的 ±25% 时触发调仓信号
+              阴影带为免交易容忍走廊 [下限–上限]，竖线为模型目标锚点，实心条为当前实盘权重
             </CardDescription>
             <CardAction>
               <Badge variant="outline">5/25 走廊</Badge>
@@ -709,96 +684,128 @@ export function ClassicRebalanceAnalytics({
           </CardHeader>
 
           <CardContent className="flex flex-col gap-4">
-            <ChartContainer config={radarChartConfig} className="mx-auto h-[230px] w-full max-w-[420px]">
-              <RadarChart data={radarData} margin={{ top: 10, right: 28, bottom: 10, left: 28 }}>
-                <PolarGrid stroke="var(--border)" />
-                <PolarAngleAxis
-                  dataKey="dimension"
-                  tick={{ fontSize: 11, fill: 'var(--foreground)', fontWeight: 500 }}
-                />
-                <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
-                <Radar
-                  name="target"
-                  dataKey="target"
-                  stroke="var(--color-target)"
-                  fill="var(--color-target)"
-                  fillOpacity={0.16}
-                  strokeWidth={2}
-                  strokeDasharray="4 3"
-                />
-                <Radar
-                  name="actual"
-                  dataKey="actual"
-                  stroke="var(--color-actual)"
-                  fill="var(--color-actual)"
-                  fillOpacity={0.32}
-                  strokeWidth={2.5}
-                />
-              </RadarChart>
-            </ChartContainer>
+            {/* Legend */}
+            <div className="flex items-center justify-between flex-wrap gap-2 rounded-lg bg-muted/40 px-3 py-2 text-[11px] text-muted-foreground">
+              <div className="flex items-center gap-4 flex-wrap">
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="inline-block h-2.5 w-5 rounded-xs bg-primary/15 border border-primary/30" />
+                  <span>免调仓容忍走廊</span>
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="inline-block h-3 w-0.5 bg-foreground" />
+                  <span>模型目标锚点</span>
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="inline-block h-2 w-4 rounded-full bg-primary" />
+                  <span>当前实盘占比</span>
+                </span>
+              </div>
+              <span className="font-mono">Scale: 0% – 80%</span>
+            </div>
 
-            <Separator />
+            {/* Swensen 5/25 Corridor Bullet Items */}
+            <ItemGroup className="gap-3">
+              {layerAnalysis.map((row) => {
+                // Scale bullet chart against max 80% width so bars are roomy and legible
+                const maxScale = 0.80;
+                const lowerLeftPct = Math.min(100, (row.lowerBound / maxScale) * 100);
+                const corridorWidthPct = Math.min(
+                  100 - lowerLeftPct,
+                  ((row.upperBound - row.lowerBound) / maxScale) * 100,
+                );
+                const targetLeftPct = Math.min(100, (row.targetWeight / maxScale) * 100);
+                const actualWidthPct = Math.min(100, (row.actualWeight / maxScale) * 100);
 
-            {/* Swensen 5/25 Corridor Progress Items (Shadcn savings-targets pattern) */}
-            <ItemGroup className="gap-2.5">
-              {layerAnalysis.map((row) => (
-                <Item key={row.layer} variant="muted" className="flex-col items-stretch py-2.5 px-3">
-                  <ItemContent className="gap-1.5">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span
-                          className="size-2.5 rounded-full shrink-0"
-                          style={{ background: row.color }}
-                        />
-                        <ItemTitle className="text-xs font-semibold">{row.fullLabel}</ItemTitle>
-                        <span className="text-[11px] text-muted-foreground font-mono">
-                          目标 {row.targetPct.toFixed(0)}% (走廊 {(row.lowerBound * 100).toFixed(1)}%–{(row.upperBound * 100).toFixed(1)}%)
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold tabular-nums">
-                          {row.actualPct.toFixed(1)}%
-                        </span>
-                        <Badge
-                          variant={row.status === 'ok' ? 'secondary' : 'outline'}
-                          className={
-                            row.status === 'over'
-                              ? 'border-amber-300 bg-amber-50 text-amber-800 text-[10px]'
+                return (
+                  <Item key={row.layer} variant="muted" className="flex-col items-stretch py-3 px-3.5">
+                    <ItemContent className="gap-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span
+                            className="size-2.5 rounded-full shrink-0"
+                            style={{ background: row.color }}
+                          />
+                          <ItemTitle className="text-xs font-bold">{row.fullLabel}</ItemTitle>
+                          <span className="text-[11px] text-muted-foreground font-mono">
+                            目标 {row.targetPct.toFixed(0)}% · 走廊 [{(row.lowerBound * 100).toFixed(1)}%–{(row.upperBound * 100).toFixed(1)}%]
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="text-xs font-extrabold font-mono tabular-nums">
+                            {row.actualPct.toFixed(1)}%
+                          </span>
+                          <Badge
+                            variant={row.status === 'ok' ? 'secondary' : 'outline'}
+                            className={
+                              row.status === 'over'
+                                ? 'border-amber-300 bg-amber-50 text-amber-800 text-[10px]'
+                                : row.status === 'under'
+                                  ? 'border-blue-300 bg-blue-50 text-blue-700 text-[10px]'
+                                  : 'bg-emerald-50 text-emerald-700 text-[10px]'
+                            }
+                          >
+                            {row.status === 'over'
+                              ? `超配 +${row.driftPct.toFixed(1)}%`
                               : row.status === 'under'
-                                ? 'border-blue-300 bg-blue-50 text-blue-700 text-[10px]'
-                                : 'bg-emerald-50 text-emerald-700 text-[10px]'
-                          }
-                        >
-                          {row.status === 'over'
-                            ? `超配 +${row.driftPct.toFixed(1)}%`
-                            : row.status === 'under'
-                              ? `低配 ${row.driftPct.toFixed(1)}%`
-                              : '走廊内稳健'}
-                        </Badge>
+                                ? `低配 ${row.driftPct.toFixed(1)}%`
+                                : '走廊内稳健'}
+                          </Badge>
+                        </div>
                       </div>
-                    </div>
-                    <Progress value={Math.min(100, row.actualPct)} className="h-2" />
-                  </ItemContent>
-                  <ItemFooter className="pt-1 text-[11px]">
-                    <span className="text-muted-foreground tabular-nums">
-                      当前市值: {formatMoney(row.value, baseCurrency)}
-                    </span>
-                    <span
-                      className={`font-semibold tabular-nums ${
-                        row.deltaValue > 0
-                          ? 'text-blue-600'
-                          : row.deltaValue < 0
-                            ? 'text-amber-700'
-                            : 'text-muted-foreground'
-                      }`}
-                    >
-                      {row.deltaValue >= 0
-                        ? `距目标需增配 +${formatMoney(row.deltaValue, baseCurrency)}`
-                        : `距目标需收敛/调拨 ${formatMoney(row.deltaValue, baseCurrency)}`}
-                    </span>
-                  </ItemFooter>
-                </Item>
-              ))}
+
+                      {/* Bullet Track */}
+                      <div className="relative h-5 w-full rounded-md bg-background border overflow-hidden">
+                        {/* Shaded Tolerance Corridor Zone */}
+                        <div
+                          className="absolute top-0 bottom-0 bg-primary/12 border-x border-primary/35"
+                          style={{
+                            left: `${lowerLeftPct}%`,
+                            width: `${corridorWidthPct}%`,
+                          }}
+                          title={`容忍走廊: ${(row.lowerBound * 100).toFixed(1)}% - ${(row.upperBound * 100).toFixed(1)}%`}
+                        />
+
+                        {/* Actual Weight Bullet Bar */}
+                        <div
+                          className="absolute top-1.5 bottom-1.5 left-0 rounded-r-full transition-all duration-300"
+                          style={{
+                            width: `${actualWidthPct}%`,
+                            background: row.color,
+                          }}
+                        />
+
+                        {/* Target Anchor Vertical Tick */}
+                        <div
+                          className="absolute top-0 bottom-0 w-0.5 bg-foreground z-10"
+                          style={{
+                            left: `${targetLeftPct}%`,
+                          }}
+                          title={`目标锚点: ${row.targetPct.toFixed(1)}%`}
+                        />
+                      </div>
+                    </ItemContent>
+
+                    <ItemFooter className="pt-1.5 text-[11px]">
+                      <span className="text-muted-foreground font-mono tabular-nums">
+                        当前市值: {formatMoney(row.value, baseCurrency)}
+                      </span>
+                      <span
+                        className={`font-semibold font-mono tabular-nums ${
+                          row.deltaValue > 0
+                            ? 'text-blue-600'
+                            : row.deltaValue < 0
+                              ? 'text-amber-700'
+                              : 'text-muted-foreground'
+                        }`}
+                      >
+                        {row.deltaValue >= 0
+                          ? `距目标需增配 +${formatMoney(row.deltaValue, baseCurrency)}`
+                          : `距目标需收敛/调拨 ${formatMoney(row.deltaValue, baseCurrency)}`}
+                      </span>
+                    </ItemFooter>
+                  </Item>
+                );
+              })}
             </ItemGroup>
           </CardContent>
 
@@ -927,13 +934,27 @@ export function ClassicRebalanceAnalytics({
                   <Sparkles className="size-4 text-primary" />
                   <span>调仓算法推演</span>
                 </CardTitle>
-                <Button size="sm" onClick={onOpenRebalanceCockpit} className="h-7 text-xs gap-1">
-                  <span>调仓执行单</span>
-                  <ArrowRight className="size-3.5" />
-                </Button>
+                <div className="flex items-center gap-2">
+                  {onApplyRebalanceTrades && rebalanceSimulation.allActions.length > 0 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleApplySimulated}
+                      className="h-7 text-xs gap-1 border-primary/40 text-primary hover:bg-primary/5"
+                      title="将当前算法推演出的买卖指令一键写入持仓并联动扣减券商现金"
+                    >
+                      <CheckCircle2 className="size-3.5" />
+                      <span>一键应用推演指令</span>
+                    </Button>
+                  )}
+                  <Button size="sm" onClick={onOpenRebalanceCockpit} className="h-7 text-xs gap-1">
+                    <span>调仓驾驶舱</span>
+                    <ArrowRight className="size-3.5" />
+                  </Button>
+                </div>
               </div>
               <CardDescription>
-                对比现金流补仓法、5/25 走廊回归与逆波动率风险平价
+                对比现金流补仓法、5/25 走廊回归与逆波动率风险平价，支持一键落盘执行
               </CardDescription>
             </div>
           </CardHeader>
@@ -1149,10 +1170,10 @@ export function ClassicRebalanceAnalytics({
                   label={{ value: '波动率分界 σ=28%', position: 'insideTopRight', fontSize: 10, fill: '#64748b' }}
                 />
                 <ReferenceLine
-                  y={10}
-                  stroke="#f59e0b"
+                  y={15}
+                  stroke="#e11d48"
                   strokeDasharray="4 4"
-                  label={{ value: '重仓线 10%', position: 'insideTopLeft', fontSize: 10, fill: '#b45309' }}
+                  label={{ value: '单票上限 15%', position: 'insideTopLeft', fontSize: 10, fill: '#be123c' }}
                 />
                 <ChartTooltip
                   cursor={{ strokeDasharray: '3 3' }}
@@ -1221,7 +1242,7 @@ export function ClassicRebalanceAnalytics({
                     <Activity className="size-3.5 text-amber-600" />
                   </div>
                   <ItemDescription className="text-[11px] leading-relaxed">
-                    小米 (01810.HK)、恒生科技 (513130)：港股科技弹性大，建议设置 12% 单一主题止盈阈值。
+                    小米 (01810.HK)、恒生科技 (513130)：港股科技弹性大，建议遵循 15% 单一证券风控红线。
                   </ItemDescription>
                 </ItemContent>
               </Item>
@@ -1229,7 +1250,7 @@ export function ClassicRebalanceAnalytics({
               <Item variant="muted" className="py-2.5 px-3 flex-col items-stretch">
                 <ItemContent className="gap-1">
                   <div className="flex items-center justify-between">
-                    <ItemTitle className="text-xs font-semibold text-emerald-700">
+                    <ItemTitle className="text-xs font-semibold text-teal-700">
                       左下象限 · 低波防守缓冲池 (σ&lt;25%, W&lt;10%)
                     </ItemTitle>
                   </div>
@@ -1242,13 +1263,13 @@ export function ClassicRebalanceAnalytics({
               <Item variant="muted" className="py-2.5 px-3 flex-col items-stretch">
                 <ItemContent className="gap-1">
                   <div className="flex items-center justify-between">
-                    <ItemTitle className="text-xs font-semibold text-purple-700">
+                    <ItemTitle className="text-xs font-semibold text-violet-700">
                       右下象限 · 高赔率非线性期权 (σ&gt;40%, W&lt;5%)
                     </ItemTitle>
-                    <TrendingUp className="size-3.5 text-purple-600" />
+                    <TrendingUp className="size-3.5 text-violet-600" />
                   </div>
                   <ItemDescription className="text-[11px] leading-relaxed">
-                    Circle (CRCL)、英伟达 (NVDA)、NuScale (SMR)、DataSection：单票严控在 2%~4%，博取高赔率而不伤本金。
+                    Circle (CRCL)、英伟达 (NVDA)、NuScale (SMR)、DataSection：单票严控在 2%~4%，触发 +30% 止盈 / -15% 止损。
                   </ItemDescription>
                 </ItemContent>
               </Item>
@@ -1256,7 +1277,7 @@ export function ClassicRebalanceAnalytics({
           </CardContent>
 
           <CardFooter className="text-xs text-muted-foreground border-t pt-3">
-            气泡面积代表持仓市值大小，颜色对应核心(蓝)/防守(绿)/卫星(橙)分层
+            气泡面积代表持仓市值大小，颜色对应核心(皇家蓝)/防守(青色)/卫星(紫罗兰)分层
           </CardFooter>
         </Card>
       </div>

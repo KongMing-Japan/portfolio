@@ -41,6 +41,16 @@ export interface ManualHoldingInput {
   theme: string;
 }
 
+export interface QuickTradeInput {
+  holdingId: string;
+  action: 'BUY' | 'SELL';
+  quantityDelta: number;
+  executionPrice: number;
+  syncBrokerCash: boolean;
+  cashHoldingId?: string;
+  note?: string;
+}
+
 export interface QuoteResult {
   ticker: string;
   price: number | null;

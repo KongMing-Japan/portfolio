@@ -12,25 +12,25 @@ export const LAYER_META: Record<
 > = {
   Core: {
     label: '核心仓',
-    description: '长期压舱的大盘基石与宽基指数资产',
+    description: '长期压舱的大盘基石与双主线龙头资产',
     color: '#2563eb',
     pale: '#eff6ff',
   },
   Satellite: {
     label: '卫星仓',
-    description: '高成长科技主题与阿尔法收益机会',
-    color: '#d97706',
-    pale: '#fffbeb',
+    description: '高赔率成长主题与非线性阿尔法机会',
+    color: '#7c3aed',
+    pale: '#f5f3ff',
   },
   Defensive: {
     label: '防守仓',
-    description: '低波动国债、高股息与抵御风险资产',
-    color: '#16a34a',
-    pale: '#f0fdf4',
+    description: '低波动国债、宽基定投、高股息基建与抗风险资产',
+    color: '#0d9488',
+    pale: '#f0fdfa',
   },
   Cash: {
     label: '现金储备',
-    description: '高流动性资金缓冲池与再平衡弹药',
+    description: '高流动性资金缓冲池与再平衡交易子弹',
     color: '#64748b',
     pale: '#f1f5f9',
   },
@@ -783,4 +783,169 @@ export function estimateAssetVolatility(
     riskCategory: '美股核心宽基',
   };
 }
+
+/**
+ * 规范化战略投资主题（解决同一 AI / EV / 标普 主题因括号备注不同而被拆散的问题）
+ */
+export function canonicalThemeFromHolding(
+  holding: Pick<Holding, 'ticker' | 'name' | 'theme' | 'layer'>,
+): string {
+  const combined = `${holding.ticker} ${holding.name} ${holding.theme}`.toLowerCase();
+  if (holding.layer === 'Cash' || CASH_PATTERN.test(combined)) {
+    return '机动现金与流动性储备';
+  }
+  if (
+    /\b(2845|nvda|3905|smr|00700|513130|googl|goog|aapl|msft)\b|ai\s*ecosystem|算力|芯片|核能|恒生科技|互联网|digital\s*platform/i.test(
+      combined,
+    )
+  ) {
+    return 'AI 算力与科技生态';
+  }
+  if (/\b(01810|300750|tsla)\b|ev\b|智能电车|电池|人车家|小米|宁德时代/i.test(combined)) {
+    return '智能电车与新能源';
+  }
+  if (/\b(2563|513500)\b|emaxis|s&p\s*500|标普\s*500/i.test(combined)) {
+    return '标普 500 宽基定投';
+  }
+  if (/\b(1482|9023)\b|美债|国债|bond|treasury|东京地铁|urban\s*transport|基建/i.test(combined)) {
+    return '美债与高息基建防守';
+  }
+  if (/\b(7581|9616)\b|萨莉亚|共立|hospitality|餐饮|旅游|酒店/i.test(combined)) {
+    return '日本内需与文旅消费';
+  }
+  if (/\b(crcl|crypto_bitget|crypto_wld)\b|web3|stablecoin|稳定币|circle|worldcoin|bitget/i.test(combined)) {
+    return 'Web3 与链上金融';
+  }
+  if (/\b(cn_qdii_vn|1571)\b|越南|vietnam|反向|tactical\s*hedge/i.test(combined)) {
+    return '新兴市场与战术对冲';
+  }
+  const raw = (holding.theme || '').trim();
+  if (!raw || raw === 'Uncategorized') return '其他配置主题';
+  return raw.replace(/\s*\([^)]*\)/g, '').replace(/\s*（[^）]*）/g, '').trim() || raw;
+}
+
+export type DualEngineCategory =
+  | '美股 AI 算力与科技生态'
+  | '中国智能电车与平台经济'
+  | '全球宽基与固收缓冲'
+  | '战术卫星与新兴市场'
+  | '多币种流动性储备';
+
+/**
+ * 中美双主线（AI + EV）战略矩阵归类
+ */
+export function dualEngineFromHolding(
+  holding: Pick<Holding, 'ticker' | 'name' | 'theme' | 'layer' | 'currency'>,
+): DualEngineCategory {
+  const combined = `${holding.ticker} ${holding.name} ${holding.theme}`.toLowerCase();
+  if (holding.layer === 'Cash' || CASH_PATTERN.test(combined)) {
+    return '多币种流动性储备';
+  }
+  const market = underlyingMarketFromHolding(holding);
+
+  if (/\b(01810|300750|00700|513130|tsla)\b|ev\b|智能电车|电池|人车家|小米|宁德时代|恒生科技|腾讯/i.test(combined)) {
+    if (market === '中国') {
+      return '中国智能电车与平台经济';
+    }
+  }
+  if (
+    /\b(2845|nvda|3905|smr|googl|goog|aapl|msft)\b|ai\s*ecosystem|算力|芯片|核能|纳指|nasdaq/i.test(
+      combined,
+    )
+  ) {
+    return '美股 AI 算力与科技生态';
+  }
+  if (
+    holding.layer === 'Defensive' ||
+    /\b(2563|513500|1482|9023)\b|emaxis|s&p\s*500|标普\s*500|美债|国债|东京地铁/i.test(combined)
+  ) {
+    return '全球宽基与固收缓冲';
+  }
+  if (market === '中国') {
+    return '中国智能电车与平台经济';
+  }
+  if (market === '美国' && holding.layer === 'Core') {
+    return '美股 AI 算力与科技生态';
+  }
+  return '战术卫星与新兴市场';
+}
+
+export interface HoldingPnLMetrics {
+  costBasisBase: number;
+  marketValueBase: number;
+  unrealizedPnLBase: number;
+  returnPct: number;
+  unrealizedPnLPct: number;
+  hasCost: boolean;
+  hasCostBasis: boolean;
+   hasDistinctCost: boolean;
+  satelliteDiscipline: 'take_profit' | 'stop_loss' | 'ok';
+  disciplineAlert: 'take-profit' | 'stop-loss-review' | null;
+}
+
+/**
+ * 计算单笔或聚合持仓的成本、浮动盈亏与卫星仓铁律触发状态（+30% 止盈 / -15% 止损）
+ */
+export function calculateAggregatedPnL(
+  item: AggregatedHolding,
+  fx?: Record<string, number>,
+  baseCurrency: BaseCurrency = 'JPY',
+): HoldingPnLMetrics {
+  const safeFx = fx || { JPY: 1, USD: 157.97, HKD: 20.13, CNY: 23.61 };
+  const baseToJpy = safeFx[baseCurrency] ?? 1;
+
+  let costBasisBase = 0;
+  let marketValueBase = 0;
+  let hasDistinctCost = false;
+
+  for (const acc of item.accounts) {
+    const cur = sanitizeCurrencyCode(acc.currency);
+    const rate = safeFx[cur] ?? safeFx[acc.currency] ?? 1;
+    const mktPrice = acc.marketPrice ?? acc.costPerUnit ?? 1;
+    const costPrice = acc.costPerUnit ?? mktPrice;
+    if (
+      acc.costPerUnit != null &&
+      acc.marketPrice != null &&
+      Math.abs(acc.costPerUnit - acc.marketPrice) > 1e-5
+    ) {
+      hasDistinctCost = true;
+    }
+    const localCost = acc.quantity * costPrice;
+    const localMkt =
+      acc.marketValue ?? acc.importedMarketValue ?? acc.quantity * mktPrice;
+
+    costBasisBase += (localCost * rate) / baseToJpy;
+    marketValueBase += acc.valueInBase ?? (localMkt * rate) / baseToJpy;
+  }
+
+  const unrealizedPnLBase = marketValueBase - costBasisBase;
+  const returnPct = costBasisBase > 0 ? unrealizedPnLBase / costBasisBase : 0;
+
+  let satelliteDiscipline: 'take_profit' | 'stop_loss' | 'ok' = 'ok';
+  let disciplineAlert: 'take-profit' | 'stop-loss-review' | null = null;
+  if (item.layer === 'Satellite' && hasDistinctCost) {
+    if (returnPct >= 0.30) {
+      satelliteDiscipline = 'take_profit';
+      disciplineAlert = 'take-profit';
+    } else if (returnPct <= -0.15) {
+      satelliteDiscipline = 'stop_loss';
+      disciplineAlert = 'stop-loss-review';
+    }
+  }
+
+  return {
+    costBasisBase,
+    marketValueBase,
+    unrealizedPnLBase,
+    returnPct,
+    unrealizedPnLPct: returnPct,
+    hasCost: hasDistinctCost,
+    hasCostBasis: hasDistinctCost,
+    hasDistinctCost,
+    satelliteDiscipline,
+    disciplineAlert,
+  };
+}
+
+
 

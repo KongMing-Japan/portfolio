@@ -25,6 +25,7 @@ import type {
   BaseCurrency,
   Layer,
   LayerTargetConfig,
+  RebalanceTradeItem,
 } from '../types';
 
 interface RebalanceCockpitModalProps {
@@ -33,6 +34,7 @@ interface RebalanceCockpitModalProps {
   holdings: AggregatedHolding[];
   totalValue: number;
   baseCurrency: BaseCurrency;
+  onApplyTrades?: (trades: RebalanceTradeItem[]) => Promise<void> | void;
 }
 
 type RebalanceMode = 'inflow' | 'full';
@@ -45,6 +47,7 @@ export function RebalanceCockpitModal({
   holdings,
   totalValue,
   baseCurrency,
+  onApplyTrades,
 }: RebalanceCockpitModalProps) {
   // Load saved custom targets or default
   const [targets, setTargets] = useState<LayerTargetConfig>(() => {
@@ -1106,27 +1109,59 @@ export function RebalanceCockpitModal({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '0.75rem',
           }}
         >
           <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
             再平衡是投资者的刷牙洗脸，每季一次，规则执行，不含情绪。
           </div>
-          <button
-            onClick={onClose}
-            style={{
-              padding: '7px 18px',
-              borderRadius: '6px',
-              border: 'none',
-              background: '#0f172a',
-              color: '#ffffff',
-              fontSize: '0.82rem',
-              fontWeight: 500,
-              cursor: 'pointer',
-              boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-            }}
-          >
-            关闭驾驶舱
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+            {onApplyTrades &&
+              (mode === 'inflow' ? inflowResult.trades.length > 0 : fullResult.trades.length > 0) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const activeTrades =
+                      mode === 'inflow' ? inflowResult.trades : fullResult.trades;
+                    void onApplyTrades(activeTrades);
+                    onClose();
+                  }}
+                  style={{
+                    padding: '7px 16px',
+                    borderRadius: '6px',
+                    border: '1px solid #2563eb',
+                    background: '#2563eb',
+                    color: '#ffffff',
+                    fontSize: '0.82rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    boxShadow: '0 1px 2px rgba(37,99,235,0.2)',
+                  }}
+                >
+                  <CheckCircle2 size={14} />
+                  <span>一键执行此调仓方案至持仓</span>
+                </button>
+              )}
+            <button
+              onClick={onClose}
+              style={{
+                padding: '7px 18px',
+                borderRadius: '6px',
+                border: '1px solid #cbd5e1',
+                background: '#ffffff',
+                color: '#0f172a',
+                fontSize: '0.82rem',
+                fontWeight: 500,
+                cursor: 'pointer',
+              }}
+            >
+              关闭驾驶舱
+            </button>
+          </div>
         </footer>
       </div>
     </div>

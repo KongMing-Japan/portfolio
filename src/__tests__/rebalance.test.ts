@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
+  applyRebalanceTradesToHoldings,
   calculateInflowRebalance,
   calculateLayerDrift,
   calculateFullRebalance,
   DEFAULT_TARGET_CONFIG,
+  executeQuickTrade,
+  SINGLE_SECURITY_CAP,
 } from '../lib/rebalance';
 import type { AggregatedHolding } from '../types';
 
@@ -207,4 +210,61 @@ describe('Rebalance Engine', () => {
     expect(aaplTrade).toBeDefined();
     expect(aaplTrade?.suggestedShares).toBeGreaterThan(0);
   });
+
+  it('executes QuickTrade and automatically debits/credits broker cash pool', () => {
+    expect(SINGLE_SECURITY_CAP).toBe(0.15);
+    const flatHoldings = MOCK_HOLDINGS.flatMap((h) => h.accounts);
+    const fx = { JPY: 1, USD: 150 };
+
+    // Buy 50 shares of Toyota (7203.T) at 2000 JPY = 100,000 JPY deducted from SBI Cash_JPY (400,000 -> 300,000)
+    const afterBuy = executeQuickTrade(
+      flatHoldings,
+      {
+        holdingId: '3',
+        action: 'BUY',
+        quantityDelta: 50,
+        executionPrice: 2200,
+        syncBrokerCash: true,
+      },
+      fx,
+      'JPY',
+    );
+
+    const toyota = afterBuy.find((h) => h.id === '3')!;
+    const sbiCash = afterBuy.find((h) => h.id === '4')!;
+    expect(toyota.quantity).toBe(350);
+    // Weighted avg cost: (300 * 2000 + 50 * 2200) / 350 = 2028.5714
+    expect(toyota.costPerUnit).toBeCloseTo(2028.5714, 3);
+    // Cash reduced by 50 * 2200 = 110,000 -> 290,000
+    expect(sbiCash.quantity).toBe(290000);
+
+    // One-click apply rebalance trades
+    const applied = applyRebalanceTradesToHoldings(
+      flatHoldings,
+      [
+        {
+          ticker: '7203.T',
+          name: 'Toyota',
+          broker: 'SBI 証券',
+          layer: 'Defensive',
+          currency: 'JPY',
+          action: 'BUY',
+          amountInBase: 40000,
+          currentShares: 300,
+          suggestedShares: 20,
+          priceInBase: 2000,
+          priceInCurrency: 2000,
+          currentWeight: 0.12,
+          projectedWeight: 0.128,
+          reason: '补足防守仓位',
+          urgency: 'medium',
+        },
+      ],
+      fx,
+      'JPY',
+    );
+    expect(applied.find((h) => h.id === '3')?.quantity).toBe(320);
+    expect(applied.find((h) => h.id === '4')?.quantity).toBe(360000);
+  });
 });
+

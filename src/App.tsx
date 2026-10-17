@@ -517,20 +517,7 @@ function App() {
       const nextHoldings = holdings.map((holding) => {
         if (holding.id !== id) return holding;
         const updated = { ...holding, ...patch };
-        const costChanged = Object.prototype.hasOwnProperty.call(
-          patch,
-          'costPerUnit',
-        );
-        const priceChanged = Object.prototype.hasOwnProperty.call(
-          patch,
-          'marketPrice',
-        );
-        if (
-          costChanged &&
-          !priceChanged &&
-          holding.sourceType === 'manual' &&
-          holding.marketPrice === holding.costPerUnit
-        ) {
+        if (updated.marketPrice == null && updated.costPerUnit != null) {
           updated.marketPrice = updated.costPerUnit;
         }
         updated.market =
@@ -634,6 +621,7 @@ function App() {
         onAddHolding={addManualHolding}
         onUpdateHolding={updateReportHolding}
         onRemoveHolding={removeReportHolding}
+        onReplaceHoldings={saveReportHoldings}
         onSave={handleManualSave}
         onFiles={handleFiles}
         onJsonImport={handleJsonImport}
@@ -669,6 +657,7 @@ function App() {
     removeReportHolding,
     resetToDashboard,
     resumeSaved,
+    saveReportHoldings,
     step,
     updateReportHolding,
     updateHolding,

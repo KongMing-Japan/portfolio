@@ -2660,3 +2660,26 @@
     padding: 6px 8px !important;
   }
 }
+
+/* ==========================================================================
+   Modern Web Layout Containment & Modal Scroll Isolation
+   ========================================================================== */
+.perf-contain-section,
+.gf-section {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 300px auto 800px;
+}
+
+.gf-modal-backdrop,
+.gf-import-modal,
+.gf-add-modal,
+.gf-editor-modal,
+.gf-cockpit-modal,
+.gf-timeline-modal {
+  overscroll-behavior: contain;
+}
+
+html:has(.gf-modal-backdrop) {
+  overflow: hidden;
+  scrollbar-gutter: stable;
+}

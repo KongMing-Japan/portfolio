@@ -1,14 +1,23 @@
 import type {
   AggregatedHolding,
+  BaseCurrency,
   DriftStatus,
   FullRebalanceResult,
+  Holding,
   InflowRebalanceResult,
   Layer,
   LayerDriftInfo,
   LayerTargetConfig,
+  QuickTradeInput,
   RebalanceSettings,
   RebalanceTradeItem,
 } from '../types';
+import { recalculateBaseValues } from './portfolio';
+
+export const SINGLE_SECURITY_CAP = 0.15; // 15% institutional hard cap per single security
+export const SINGLE_THEME_CAP = 0.35; // 35% institutional hard cap per single theme
+export const CORRIDOR_BAND_ABSOLUTE = 0.05; // ±5% absolute drift trigger
+export const CORRIDOR_BAND_RELATIVE = 0.20; // ±20% relative drift trigger
 
 export const DEFAULT_TARGET_CONFIG: LayerTargetConfig = {
   Core: 0.60,
@@ -69,10 +78,10 @@ export const TARGET_PRESETS: Record<
 
 export const DEFAULT_REBALANCE_SETTINGS: RebalanceSettings = {
   targets: DEFAULT_TARGET_CONFIG,
-  singleSecurityCap: 0.15, // 15% cap per holding
-  singleThemeCap: 0.35, // 35% cap per theme
-  toleranceBandAbsolute: 0.05, // ±5% absolute drift
-  toleranceBandRelative: 0.2, // ±20% relative drift
+  singleSecurityCap: SINGLE_SECURITY_CAP,
+  singleThemeCap: SINGLE_THEME_CAP,
+  toleranceBandAbsolute: CORRIDOR_BAND_ABSOLUTE,
+  toleranceBandRelative: CORRIDOR_BAND_RELATIVE,
 };
 
 const ALL_LAYERS: Layer[] = ['Core', 'Satellite', 'Defensive', 'Cash'];
@@ -265,13 +274,15 @@ export function calculateInflowRebalance(
       0,
     );
 
-    for (const item of targetList) {
-      // If equal distribution or proportional to weight inverse
-      const proportion =
-        totalCurrentLayerBase > 0
-          ? (totalCurrentLayerBase - item.marketValueBase + 1) /
-            (targetList.length * totalCurrentLayerBase + 1)
-          : 1 / targetList.length;
+    const rawWeights = targetList.map((item) => {
+      if (targetList.length === 1 || totalCurrentLayerBase <= 0) return 1;
+      return Math.max(1, totalCurrentLayerBase - item.marketValueBase);
+    });
+    const weightSum = rawWeights.reduce((sum, w) => sum + w, 0) || 1;
+
+    for (let idx = 0; idx < targetList.length; idx += 1) {
+      const item = targetList[idx];
+      const proportion = rawWeights[idx] / weightSum;
 
       const itemAllocation = layerFund * proportion;
       const unitPriceInBase =
@@ -538,3 +549,204 @@ export function calculateFullRebalance(
     projectedLayerWeights: targets,
   };
 }
+
+/**
+ * Finds the best matching broker cash holding to debit/credit when executing a trade.
+ */
+export function findDefaultBrokerCashHolding(
+  holdings: Holding[],
+  targetOrBroker: Pick<Holding, 'broker' | 'currency'> | string,
+  currencyArg?: string,
+): Holding | undefined {
+  const broker = typeof targetOrBroker === 'string' ? targetOrBroker : targetOrBroker.broker;
+  const currency = typeof targetOrBroker === 'string' ? (currencyArg ?? 'JPY') : targetOrBroker.currency;
+
+  const cashItems = holdings.filter(
+    (h) =>
+      h.layer === 'Cash' ||
+      /^(CASH|BALANCE|DEPOSIT|MMF|YEB)[-_]/i.test(h.ticker),
+  );
+  // 1. Exact broker + currency match
+  const exact = cashItems.find(
+    (c) => c.broker === broker && c.currency === currency,
+  );
+  if (exact) return exact;
+  // 2. Same broker (any currency)
+  const sameBroker = cashItems.find((c) => c.broker === broker);
+  if (sameBroker) return sameBroker;
+  // 3. Linked bank for Rakuten Securities -> Rakuten Bank
+  if (/乐天证券|Rakuten/i.test(broker)) {
+    const rakutenBank = cashItems.find((c) => /乐天银行/i.test(c.broker));
+    if (rakutenBank) return rakutenBank;
+  }
+  // 4. Same currency cash pool
+  return cashItems.find((c) => c.currency === currency);
+}
+
+/**
+ * Executes a Quick Buy / Sell trade on a specific holding:
+ * - Adjusts quantity
+ * - Recalculates weighted average costPerUnit on BUY
+ * - Updates marketPrice & marketValue
+ * - Automatically debits/credits the linked broker cash holding if syncBrokerCash is enabled
+ */
+export function executeQuickTrade(
+  holdings: Holding[],
+  trade: QuickTradeInput,
+  fx: Record<string, number>,
+  baseCurrency: BaseCurrency,
+): Holding[] {
+  const target = holdings.find((h) => h.id === trade.holdingId);
+  if (!target || trade.quantityDelta <= 0) return holdings;
+
+  const safeFx: Record<string, number> = {
+    JPY: 1,
+    USD: 157.97,
+    HKD: 20.13,
+    CNY: 23.61,
+    ...fx,
+  };
+
+  const execPrice =
+    trade.executionPrice > 0
+      ? trade.executionPrice
+      : (target.marketPrice ?? target.costPerUnit ?? 1);
+  const tradeValueLocal = trade.quantityDelta * execPrice;
+  const targetRateToJpy = safeFx[target.currency] ?? 1;
+  const tradeValueJpy = tradeValueLocal * targetRateToJpy;
+
+  const cashTarget = trade.syncBrokerCash
+    ? holdings.find((h) => h.id === trade.cashHoldingId) ??
+      findDefaultBrokerCashHolding(holdings, target)
+    : undefined;
+
+  const nextHoldings = holdings.map((item) => {
+    if (item.id === target.id) {
+      const oldQty = Math.max(0, item.quantity);
+      const newQty =
+        trade.action === 'BUY'
+          ? oldQty + trade.quantityDelta
+          : Math.max(0, oldQty - trade.quantityDelta);
+
+      let newCost = item.costPerUnit;
+      if (trade.action === 'BUY' && newQty > 0) {
+        const oldCostBasis =
+          oldQty * (item.costPerUnit ?? item.marketPrice ?? execPrice);
+        newCost = Number(((oldCostBasis + tradeValueLocal) / newQty).toFixed(4));
+      }
+
+      const newMarketValue = newQty * execPrice;
+      return {
+        ...item,
+        quantity: Number(newQty.toFixed(4)),
+        costPerUnit: newCost,
+        marketPrice: execPrice,
+        importedMarketValue: newMarketValue,
+        marketValue: newMarketValue,
+        investmentThesis: trade.note
+          ? `${item.investmentThesis ? `${item.investmentThesis} · ` : ''}${trade.note}`
+          : item.investmentThesis,
+      };
+    }
+
+    if (cashTarget && item.id === cashTarget.id) {
+      const cashRateToJpy = safeFx[item.currency] ?? 1;
+      const cashDeltaLocal = cashRateToJpy > 0 ? tradeValueJpy / cashRateToJpy : 0;
+      const signedDelta = trade.action === 'BUY' ? -cashDeltaLocal : cashDeltaLocal;
+
+      const currentLocalVal =
+        item.marketValue ??
+        (item.marketPrice != null ? item.quantity * item.marketPrice : item.quantity);
+      const nextLocalVal = Math.max(0, currentLocalVal + signedDelta);
+
+      if (item.marketPrice === 1 || item.quantity > 100) {
+        return {
+          ...item,
+          quantity: Math.round(nextLocalVal),
+          marketPrice: 1,
+          importedMarketValue: Math.round(nextLocalVal),
+          marketValue: Math.round(nextLocalVal),
+        };
+      }
+      return {
+        ...item,
+        marketPrice: Number(nextLocalVal.toFixed(2)),
+        importedMarketValue: Number(nextLocalVal.toFixed(2)),
+        marketValue: Number(nextLocalVal.toFixed(2)),
+      };
+    }
+
+    return item;
+  });
+
+  return recalculateBaseValues(nextHoldings, safeFx, baseCurrency);
+}
+
+/**
+ * Applies a batch of simulated RebalanceTradeItem recommendations directly into holdings
+ * so the user can commit a rebalance plan in 1 click.
+ */
+export function applyRebalanceTradesToHoldings(
+  holdings: Holding[],
+  trades: RebalanceTradeItem[],
+  fx: Record<string, number>,
+  baseCurrency: BaseCurrency,
+): Holding[] {
+  let working = [...holdings];
+  for (const t of trades) {
+    if (t.action === 'HOLD' || t.suggestedShares <= 0 || t.ticker.startsWith('Cash')) continue;
+    // Find matching primary holding by ticker (or canonical S&P 500 wrapper)
+    const candidate =
+      working.find((h) => h.ticker === t.ticker && h.broker === t.broker) ??
+      working.find((h) => h.ticker === t.ticker) ??
+      (t.ticker === 'S&P500·合并'
+        ? working.find((h) => h.ticker === '2563.T' || h.ticker === 'EMAXIS_SP500')
+        : undefined);
+
+    if (!candidate) continue;
+
+    const unitPriceLocal =
+      candidate.marketPrice ??
+      t.priceInCurrency ??
+      (candidate.quantity > 0 && candidate.marketValue != null
+        ? candidate.marketValue / candidate.quantity
+        : 1);
+
+    // If it's a merged wrapper like S&P500·合并, convert amountInBase to local candidate shares
+    const safeFx: Record<string, number> = {
+      JPY: 1,
+      USD: 157.97,
+      HKD: 20.13,
+      CNY: 23.61,
+      ...fx,
+    };
+    const baseToJpy = safeFx[baseCurrency] ?? 1;
+    const candidateRateToJpy = safeFx[candidate.currency] ?? 1;
+    const tradeAmountJpy = t.amountInBase * baseToJpy;
+    const tradeAmountLocal =
+      candidateRateToJpy > 0 ? tradeAmountJpy / candidateRateToJpy : t.amountInBase;
+
+    const computedShares =
+      candidate.ticker === t.ticker
+        ? t.suggestedShares
+        : unitPriceLocal > 0
+          ? Math.max(1, Math.round(tradeAmountLocal / unitPriceLocal))
+          : t.suggestedShares;
+
+    working = executeQuickTrade(
+      working,
+      {
+        holdingId: candidate.id,
+        action: t.action,
+        quantityDelta: computedShares,
+        executionPrice: unitPriceLocal,
+        syncBrokerCash: true,
+        note: '智能调仓指令执行',
+      },
+      safeFx,
+      baseCurrency,
+    );
+  }
+  return working;
+}
+
