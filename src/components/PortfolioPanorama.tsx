@@ -1,8 +1,6 @@
 import { useMemo } from 'react';
-import { X } from 'lucide-react';
 import { Bar, BarChart, Cell, XAxis, YAxis } from 'recharts';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
@@ -16,7 +14,6 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from '@/components/ui/chart';
-import { Separator } from '@/components/ui/separator';
 import {
   Tabs,
   TabsContent,
@@ -53,8 +50,6 @@ interface PortfolioPanoramaProps {
   aggregated: AggregatedHolding[];
   totalValue: number;
   baseCurrency: BaseCurrency;
-  activeFilter?: PanoramaFilter | null;
-  onSelectFilter?: (filter: PanoramaFilter | null) => void;
 }
 
 const CHART_SCALE = [
@@ -72,26 +67,19 @@ const geoChartConfig = {
   },
 } satisfies ChartConfig;
 
+const fxChartConfig = {
+  percentNum: {
+    label: '真实汇率权重 (%)',
+    color: 'var(--primary)',
+  },
+} satisfies ChartConfig;
+
 export function PortfolioPanorama({
   holdings,
   aggregated,
   totalValue,
   baseCurrency,
-  activeFilter,
-  onSelectFilter,
 }: PortfolioPanoramaProps) {
-  const toggleFilter = (next: PanoramaFilter) => {
-    if (!onSelectFilter) return;
-    if (
-      activeFilter &&
-      activeFilter.dimension === next.dimension &&
-      activeFilter.value === next.value
-    ) {
-      onSelectFilter(null);
-    } else {
-      onSelectFilter(next);
-    }
-  };
 
   // 1. Layer x Security Proportional Matrix
   const layerGroups = useMemo(() => {
@@ -207,6 +195,7 @@ export function PortfolioPanorama({
         label,
         value,
         weight: totalValue > 0 ? value / totalValue : 0,
+        percentNum: totalValue > 0 ? Number(((value / totalValue) * 100).toFixed(1)) : 0,
         color: CHART_SCALE[idx % CHART_SCALE.length],
       }))
       .sort((a, b) => b.value - a.value);
@@ -223,25 +212,10 @@ export function PortfolioPanorama({
   return (
     <Card id="panorama">
       <CardHeader className="pb-3">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-          <div>
-            <CardTitle className="text-base">持仓全景结构</CardTitle>
-            <CardDescription>
-              按真实市值比例穿透展示资产分层、战略主题与国别汇率敞口（点击任一模块可联动筛选持仓表）
-            </CardDescription>
-          </div>
-          {activeFilter && (
-            <Button
-              variant="outline"
-              size="xs"
-              onClick={() => onSelectFilter?.(null)}
-              className="gap-1.5 self-start sm:self-auto"
-            >
-              <span>筛选中: {activeFilter.label}</span>
-              <X className="size-3" />
-            </Button>
-          )}
-        </div>
+        <CardTitle className="text-base">持仓全景结构</CardTitle>
+        <CardDescription>
+          按真实市值比例穿透展示资产分层、战略主题与国别汇率敞口
+        </CardDescription>
       </CardHeader>
 
       <CardContent className="space-y-4">
@@ -263,71 +237,40 @@ export function PortfolioPanorama({
             <div className="flex flex-col lg:flex-row w-full gap-2.5 min-h-[260px]">
               {layerGroups.map((group) => {
                 const flexGrow = Math.max(group.weight * 100, 14);
-                const isLayerSelected =
-                  activeFilter?.dimension === 'layer' && activeFilter.value === group.layer;
 
                 return (
                   <div
                     key={group.layer}
                     style={{ flex: `${flexGrow} 1 0%` }}
-                    className={`rounded-xl border p-3 flex flex-col gap-2.5 transition-colors ${
-                      isLayerSelected
-                        ? 'border-primary bg-primary/5'
-                        : 'border-border bg-muted/30'
-                    }`}
+                    className="rounded-xl border border-border bg-muted/30 p-3 flex flex-col gap-2.5"
                   >
-                    <button
-                      type="button"
-                      onClick={() =>
-                        toggleFilter({
-                          dimension: 'layer',
-                          value: group.layer,
-                          label: `资产层级: ${group.meta.label}`,
-                        })
-                      }
-                      className="flex items-center justify-between gap-1.5 text-left w-full cursor-pointer group"
-                    >
+                    <div className="flex items-center justify-between gap-1.5 text-left w-full">
                       <div className="flex items-center gap-1.5 min-w-0">
                         <span
                           className="size-2 rounded-full shrink-0"
                           style={{ background: group.meta.color }}
                         />
-                        <span className="text-xs font-semibold text-foreground truncate group-hover:text-primary transition-colors">
+                        <span className="text-xs font-semibold text-foreground truncate">
                           {group.meta.label}
                         </span>
                       </div>
                       <span className="text-xs font-semibold tabular-nums text-foreground shrink-0">
                         {formatPercent(group.weight)}
                       </span>
-                    </button>
+                    </div>
 
                     <div className="flex flex-wrap gap-1.5 flex-1 content-start">
                       {group.items.map((item) => {
                         const itemFlex = Math.max(Math.round(item.shareOfLayer * 100), 18);
-                        const isSelected =
-                          activeFilter?.dimension === 'ticker' &&
-                          activeFilter.value === item.ticker;
 
                         return (
-                          <button
+                          <div
                             key={item.ticker}
-                            type="button"
-                            onClick={() =>
-                              toggleFilter({
-                                dimension: 'ticker',
-                                value: item.ticker,
-                                label: `标的: ${getCleanSecurityName(item.ticker, item.name)}`,
-                              })
-                            }
                             style={{
                               flex: `${itemFlex} 1 ${item.shareOfLayer > 0.35 ? '46%' : '28%'}`,
                               minHeight: item.shareOfLayer > 0.35 ? '72px' : '56px',
                             }}
-                            className={`rounded-lg border p-2 text-left flex flex-col justify-between transition-all cursor-pointer ${
-                              isSelected
-                                ? 'border-primary bg-primary/5 ring-1 ring-primary'
-                                : 'border-border bg-card hover:border-foreground/30'
-                            }`}
+                            className="rounded-lg border border-border bg-card p-2 text-left flex flex-col justify-between"
                           >
                             <div className="flex items-start justify-between gap-1 w-full">
                               <span className="text-xs font-semibold text-foreground truncate leading-tight">
@@ -351,7 +294,7 @@ export function PortfolioPanorama({
                                 {formatMoney(item.marketValueBase, baseCurrency)}
                               </span>
                             </div>
-                          </button>
+                          </div>
                         );
                       })}
                     </div>
@@ -364,63 +307,47 @@ export function PortfolioPanorama({
           {/* TAB 2: Strategic Themes */}
           <TabsContent value="themes" className="space-y-3">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5">
-              {themeGroups.map((tg) => {
-                const isSelected =
-                  activeFilter?.dimension === 'theme' && activeFilter.value === tg.theme;
-                return (
-                  <button
-                    key={tg.theme}
-                    type="button"
-                    onClick={() =>
-                      toggleFilter({
-                        dimension: 'theme',
-                        value: tg.theme,
-                        label: `战略主题: ${tg.theme}`,
-                      })
-                    }
-                    className={`rounded-xl border p-3 text-left flex flex-col justify-between gap-2 transition-colors cursor-pointer ${
-                      isSelected
-                        ? 'border-primary bg-primary/5'
-                        : 'border-border bg-card hover:bg-muted/40'
-                    }`}
-                  >
-                    <div className="w-full space-y-1">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs font-semibold text-foreground truncate">
-                          {tg.theme}
-                        </span>
-                        <span className="text-xs font-semibold tabular-nums text-foreground shrink-0">
-                          {formatPercent(tg.weight)}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-                        <span className="truncate">{tg.engine}</span>
-                        <span className="tabular-nums shrink-0">
-                          {formatMoney(tg.value, baseCurrency)}
-                        </span>
-                      </div>
-                      <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden mt-1">
-                        <div
-                          className="h-full rounded-full bg-primary"
-                          style={{ width: `${Math.min(100, tg.weight * 100)}%` }}
-                        />
-                      </div>
+              {themeGroups.map((tg) => (
+                <div
+                  key={tg.theme}
+                  className="rounded-xl border border-border bg-card p-3 text-left flex flex-col justify-between gap-2"
+                >
+                  <div className="w-full space-y-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-semibold text-foreground truncate">
+                        {tg.theme}
+                      </span>
+                      <span className="text-xs font-semibold tabular-nums text-foreground shrink-0">
+                        {formatPercent(tg.weight)}
+                      </span>
                     </div>
+                    <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                      <span className="truncate">{tg.engine}</span>
+                      <span className="tabular-nums shrink-0">
+                        {formatMoney(tg.value, baseCurrency)}
+                      </span>
+                    </div>
+                    <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden mt-1">
+                      <div
+                        className="h-full rounded-full bg-primary"
+                        style={{ width: `${Math.min(100, tg.weight * 100)}%` }}
+                      />
+                    </div>
+                  </div>
 
-                    <div className="flex items-center gap-1 flex-wrap pt-1 border-t border-border/60 w-full">
-                      {tg.items.slice(0, 4).map((it) => (
-                        <Badge
-                          key={it.ticker}
-                          variant="secondary"
-                          className="text-[10px] px-1.5 py-0 font-normal"
-                        >
-                          {it.name} {formatPercent(it.weight, 0)}
-                        </Badge>
-                      ))}
-                    </div>
-                  </button>
-                );
-              })}
+                  <div className="flex items-center gap-1 flex-wrap pt-1 border-t border-border/60 w-full">
+                    {tg.items.slice(0, 4).map((it) => (
+                      <Badge
+                        key={it.ticker}
+                        variant="secondary"
+                        className="text-[10px] px-1.5 py-0 font-normal"
+                      >
+                        {it.name} {formatPercent(it.weight, 0)}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
           </TabsContent>
 
@@ -432,9 +359,6 @@ export function PortfolioPanorama({
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold text-foreground">
                     底层真实市场暴露（穿透 ETF / QDII 包装）
-                  </span>
-                  <span className="text-[11px] text-muted-foreground">
-                    点击条形筛选
                   </span>
                 </div>
                 <ChartContainer config={geoChartConfig} className="h-[190px] w-full">
@@ -468,19 +392,6 @@ export function PortfolioPanorama({
                       name="底层权重"
                       radius={[0, 6, 6, 0]}
                       maxBarSize={20}
-                      onClick={(data) => {
-                        const itemLabel =
-                          (data as { label?: string; payload?: { label?: string } })?.label ??
-                          (data as { payload?: { label?: string } })?.payload?.label;
-                        if (itemLabel) {
-                          toggleFilter({
-                            dimension: 'market',
-                            value: itemLabel,
-                            label: `底层市场: ${itemLabel}`,
-                          });
-                        }
-                      }}
-                      className="cursor-pointer"
                     >
                       {marketGroups.map((entry) => (
                         <Cell key={entry.label} fill={entry.color} />
@@ -490,8 +401,8 @@ export function PortfolioPanorama({
                 </ChartContainer>
               </div>
 
-              {/* Right: True FX Exposure */}
-              <div className="space-y-2.5">
+              {/* Right: True FX Exposure - Matched simplicity with Left */}
+              <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold text-foreground">
                     真实汇率敞口（区分日元对冲与无对冲外币）
@@ -502,52 +413,44 @@ export function PortfolioPanorama({
                     </Badge>
                   )}
                 </div>
-                <Separator />
-                <div className="space-y-2 pt-1">
-                  {fxStats.rows.map((row) => {
-                    const isSelected =
-                      activeFilter?.dimension === 'fx' && activeFilter.value === row.label;
-                    return (
-                      <button
-                        key={row.label}
-                        type="button"
-                        onClick={() =>
-                          toggleFilter({
-                            dimension: 'fx',
-                            value: row.label,
-                            label: `汇率敞口: ${row.label}`,
-                          })
-                        }
-                        className={`w-full text-left rounded-lg p-2 transition-colors cursor-pointer ${
-                          isSelected ? 'bg-primary/10' : 'hover:bg-muted/60'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between text-xs mb-1">
-                          <span className="font-medium text-foreground truncate pr-2">
-                            {row.label}
-                          </span>
-                          <div className="flex items-center gap-2 shrink-0 tabular-nums">
-                            <span className="text-muted-foreground">
-                              {formatMoney(row.value, baseCurrency)}
-                            </span>
-                            <span className="font-semibold text-foreground w-11 text-right">
-                              {formatPercent(row.weight)}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
-                          <div
-                            className="h-full rounded-full"
-                            style={{
-                              width: `${Math.min(100, row.weight * 100)}%`,
-                              background: row.color,
-                            }}
-                          />
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
+                <ChartContainer config={fxChartConfig} className="h-[190px] w-full">
+                  <BarChart
+                    accessibilityLayer
+                    data={fxStats.rows}
+                    layout="vertical"
+                    margin={{ left: 4, right: 20, top: 4, bottom: 4 }}
+                  >
+                    <XAxis type="number" hide />
+                    <YAxis
+                      dataKey="label"
+                      type="category"
+                      tickLine={false}
+                      axisLine={false}
+                      width={75}
+                      className="text-xs font-medium fill-foreground"
+                    />
+                    <ChartTooltip
+                      cursor={false}
+                      content={
+                        <ChartTooltipContent
+                          formatter={(val, _name, item) =>
+                            `${val}% (${formatMoney(item.payload.value, baseCurrency)})`
+                          }
+                        />
+                      }
+                    />
+                    <Bar
+                      dataKey="percentNum"
+                      name="汇率权重"
+                      radius={[0, 6, 6, 0]}
+                      maxBarSize={20}
+                    >
+                      {fxStats.rows.map((entry) => (
+                        <Cell key={entry.label} fill={entry.color} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ChartContainer>
               </div>
             </div>
           </TabsContent>

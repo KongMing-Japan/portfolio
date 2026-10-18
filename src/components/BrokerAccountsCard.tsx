@@ -123,7 +123,7 @@ export function BrokerAccountsCard({
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {brokerGroups.map((group) => {
             const isExpanded = expandedBroker === group.broker;
             const isBank = group.isBankCashPool;
@@ -131,26 +131,26 @@ export function BrokerAccountsCard({
             return (
               <div
                 key={group.broker}
-                className="rounded-xl border border-border bg-card p-3.5 flex flex-col justify-between gap-2.5 transition-colors hover:bg-muted/30"
+                className="rounded-xl border border-border bg-card p-3.5 flex flex-col justify-between gap-2.5 transition-colors hover:bg-muted/30 min-w-0 overflow-hidden"
               >
-                <div>
+                <div className="min-w-0">
                   <div className="flex items-start justify-between gap-2 mb-2">
-                    <div className="flex items-center gap-2.5">
+                    <div className="flex items-center gap-2.5 min-w-0">
                       <span className="size-8 rounded-lg bg-muted text-foreground flex items-center justify-center font-semibold text-xs shrink-0 border border-border">
                         {group.broker.slice(0, 1)}
                       </span>
-                      <div>
+                      <div className="min-w-0">
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="text-xs font-semibold text-foreground">
+                          <span className="text-xs font-semibold text-foreground truncate">
                             {group.broker}
                           </span>
                           {isBank && (
-                            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 font-normal">
+                            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 font-normal shrink-0">
                               现金储备
                             </Badge>
                           )}
                         </div>
-                        <span className="text-[11px] text-muted-foreground">
+                        <span className="text-[11px] text-muted-foreground block truncate">
                           {group.currencies.join(' · ')} · {group.items.length} 笔
                         </span>
                       </div>

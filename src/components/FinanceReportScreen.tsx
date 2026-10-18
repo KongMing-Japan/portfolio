@@ -57,7 +57,7 @@ import { SINGLE_SECURITY_CAP } from '../lib/rebalance';
 import { getAuthenticatedUsername } from '../lib/auth';
 import { BrokerAccountsCard } from './BrokerAccountsCard';
 import { HoldingsCompositionCard } from './HoldingsCompositionCard';
-import { PortfolioPanorama, type PanoramaFilter } from './PortfolioPanorama';
+import { PortfolioPanorama } from './PortfolioPanorama';
 import { ClassicRebalanceAnalytics } from './ClassicRebalanceAnalytics';
 import { AccountVaultSection } from './AccountVaultSection';
 import { UserAuthModal } from './UserAuthModal';
@@ -192,7 +192,6 @@ export function FinanceReportScreen({
   const [expandedTicker, setExpandedTicker] = useState<string | null>(null);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [mergeEquivalent, setMergeEquivalent] = useState(true);
-  const [panoramaFilter, setPanoramaFilter] = useState<PanoramaFilter | null>(null);
   const [layerFilter, setLayerFilter] = useState<'ALL' | Layer>('ALL');
   const [holdingSearch, setHoldingSearch] = useState('');
   const [addOpen, setAddOpen] = useState(false);
@@ -412,35 +411,6 @@ export function FinanceReportScreen({
     const q = holdingSearch.trim().toLowerCase();
     return aggregated.filter((item) => {
       if (layerFilter !== 'ALL' && item.layer !== layerFilter) return false;
-      if (panoramaFilter) {
-        const { dimension, value } = panoramaFilter;
-        if (dimension === 'layer' && item.layer !== value) return false;
-        if (dimension === 'ticker' && item.ticker !== value) return false;
-        if (
-          dimension === 'theme' &&
-          !item.accounts.some((acc) => canonicalThemeFromHolding(acc) === value)
-        ) {
-          return false;
-        }
-        if (
-          dimension === 'market' &&
-          !item.accounts.some((acc) => underlyingMarketFromHolding(acc) === value)
-        ) {
-          return false;
-        }
-        if (
-          dimension === 'fx' &&
-          !item.accounts.some((acc) => fxExposureFromHolding(acc) === value)
-        ) {
-          return false;
-        }
-        if (
-          dimension === 'engine' &&
-          !item.accounts.some((acc) => dualEngineFromHolding(acc) === value)
-        ) {
-          return false;
-        }
-      }
       if (!q) return true;
       const cleanName = getCleanSecurityName(item.ticker, item.name).toLowerCase();
       const brokerList = item.accounts.map((a) => a.broker.toLowerCase()).join(' ');
@@ -452,7 +422,7 @@ export function FinanceReportScreen({
         brokerList.includes(q)
       );
     });
-  }, [aggregated, layerFilter, holdingSearch, panoramaFilter]);
+  }, [aggregated, layerFilter, holdingSearch]);
 
   const layerRows = useMemo(
     () =>
@@ -880,13 +850,6 @@ export function FinanceReportScreen({
               aggregated={aggregated}
               totalValue={total}
               baseCurrency={baseCurrency}
-              activeFilter={panoramaFilter}
-              onSelectFilter={(nextFilter) => {
-                setPanoramaFilter(nextFilter);
-                if (nextFilter) {
-                  document.getElementById('holdings')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                }
-              }}
             />
           )}
 
@@ -903,11 +866,6 @@ export function FinanceReportScreen({
                 baseCurrency={baseCurrency}
                 onSelectTicker={(ticker) => {
                   setExpandedTicker((prev) => (prev === ticker ? null : ticker));
-                  setPanoramaFilter((prev) =>
-                    prev?.dimension === 'ticker' && prev.value === ticker
-                      ? null
-                      : { dimension: 'ticker', value: ticker, label: `标的: ${ticker}` },
-                  );
                 }}
               />
             </div>
@@ -934,13 +892,6 @@ export function FinanceReportScreen({
                   </button>
                   <button
                     type="button"
-                    className="gf-text-action text-xs font-medium"
-                    onClick={() => setEditorOpen(true)}
-                  >
-                    {t.manageAccounts}
-                  </button>
-                  <button
-                    type="button"
                     className="gf-primary-action text-xs font-medium"
                     onClick={() => setAddOpen(true)}
                   >
@@ -952,21 +903,6 @@ export function FinanceReportScreen({
             </CardHeader>
 
             <CardContent className="space-y-3">
-              {panoramaFilter && (
-                <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-muted text-xs text-foreground">
-                  <span>
-                    当前按全景视图筛选：<strong>{panoramaFilter.label}</strong>（共 {filteredHoldings.length} 项）
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setPanoramaFilter(null)}
-                    className="text-xs font-medium text-primary hover:underline cursor-pointer"
-                  >
-                    清除筛选 ×
-                  </button>
-                </div>
-              )}
-
               {/* Layer Filter Pills & Search Toolbar */}
               <div className="nova-holdings-toolbar">
                 <div className="nova-filter-pills" role="tablist" aria-label="按资产层级筛选">
@@ -1048,22 +984,21 @@ export function FinanceReportScreen({
                       <TableCell colSpan={6} className="py-10 text-center">
                         <div className="flex flex-col items-center gap-2 text-xs text-muted-foreground">
                           <strong className="text-foreground">
-                            {holdingSearch || layerFilter !== 'ALL' || panoramaFilter
+                            {holdingSearch || layerFilter !== 'ALL'
                               ? '未找到匹配的持仓标的'
                               : t.emptyTitle}
                           </strong>
                           <span>
-                            {holdingSearch || layerFilter !== 'ALL' || panoramaFilter
+                            {holdingSearch || layerFilter !== 'ALL'
                               ? '请尝试切换分层或清空搜索条件。'
                               : t.emptyBody}
                           </span>
-                          {holdingSearch || layerFilter !== 'ALL' || panoramaFilter ? (
+                          {holdingSearch || layerFilter !== 'ALL' ? (
                             <button
                               type="button"
                               onClick={() => {
                                 setLayerFilter('ALL');
                                 setHoldingSearch('');
-                                setPanoramaFilter(null);
                               }}
                               className="gf-text-action mt-1"
                             >
