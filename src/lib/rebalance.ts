@@ -407,7 +407,7 @@ export function calculateFullRebalance(
         totalSellAmount += deployAmount;
         trades.push({
           ticker: 'Cash·机动调配',
-          name: '动用超配现金储备池 (优先券商子弹与乐天银证联动)',
+          name: '动用超配现金储备 (优先券商现金池与乐天银行)',
           layer: 'Cash',
           broker: 'Tiger证券 / 乐天银行 / moomoo',
           action: 'SELL',

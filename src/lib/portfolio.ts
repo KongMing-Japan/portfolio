@@ -333,20 +333,20 @@ function resolveCanonicalGroup(holding: Holding): {
 
   // 2. Three-Tier Cash Pool Grouping when multiple cash accounts exist
   if (holding.layer === 'Cash' || CASH_PATTERN.test(combined)) {
-    if (/brokerage|券商|moomoo|tiger|wechatsec|微信证券/i.test(combined)) {
+    if (/brokerage|券商|moomoo|tiger|wechatsec|微信证券|乐天银行|rakutenbank/i.test(combined)) {
       return {
         key: 'CASH_POOL_BROKER',
-        ticker: 'Cash·券商子弹',
-        name: '券商可用交易现金池 (Tiger美港币 / moomoo / 微信证券)',
-        theme: 'Brokerage Cash (券商交易子弹)',
+        ticker: 'Cash·券商现金池',
+        name: '券商现金池',
+        theme: 'Cash & Liquidity',
       };
     }
-    if (/linked|联动|乐天银行|rakutenbank|余额宝|yuebao|招商银行|cmb|ant\s*bank/i.test(combined)) {
+    if (/linked|联动|余额宝|yuebao|招商银行|cmb|ant\s*bank/i.test(combined)) {
       return {
         key: 'CASH_POOL_LINKED',
-        ticker: 'Cash·联动储备',
-        name: '银证联动与理财储备池 (乐天银行 / 余额宝 / 招行 / ANT)',
-        theme: 'Linked Bank Reserve (银证联动储备)',
+        ticker: 'Cash·理财储备',
+        name: '理财储备池 (余额宝 / 招行 / ANT)',
+        theme: 'Linked Bank Reserve (理财储备)',
       };
     }
     return {
@@ -526,6 +526,7 @@ export function getCleanSecurityName(ticker: string, originalName = ''): string 
   if (t === 'AAPL' || /苹果/i.test(n)) return '苹果';
   if (t === 'MSFT' || /微软/i.test(n)) return '微软';
   if (t === 'GOOGL' || t === 'GOOG' || /谷歌/i.test(n)) return '谷歌';
+  if (/券商现金池/i.test(n) || /券商现金池/i.test(t)) return '券商现金池';
   if (/余额宝/i.test(n) || t.includes('YUEBAO')) return '余额宝';
   if (/招商银行/i.test(n) || t.includes('CMB')) return '招商银行';
   if (/微信支付/i.test(n) || t.includes('WECHAT')) return '微信支付';

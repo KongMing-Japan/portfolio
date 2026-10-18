@@ -38,41 +38,61 @@ const FX_RATES_TO_JPY: Record<string, number> = {
   CNY: 23.6102,
 };
 
-const ACCOUNT_TAGS: Record<string, string[]> = {
-  '三井住友': ['日常结算', '生活缴费', '日本主力'],
-  SMBC: ['日常结算', '生活缴费', '日本主力'],
-  '瑞穗': ['备用日元', '生活缴费'],
-  Mizuho: ['备用日元', '生活缴费'],
-  Sony: ['外币理财', '日元活期', '借记卡'],
-  'Sony银行': ['外币理财', '日元活期', '借记卡'],
-  'SBI新生': ['日常备用', '网银转账'],
-  'SBI新生银行': ['日常备用', '网银转账'],
-  '招商银行': ['国内结算', '人民币备用'],
-  CMB: ['国内结算', '人民币备用'],
-  Wise: ['跨境汇款', '多币种中转'],
-  PayPal: ['线上海淘', '美元备用'],
-  Revolut: ['海外刷卡', '外汇换汇'],
-  '微信支付': ['社交零钱', '日常小额'],
-  '微信': ['社交零钱', '日常小额'],
-  '支付宝': ['余额宝理财', '日常扫码'],
-  '支付宝余额宝': ['余额宝理财', '日常扫码'],
-  'ANT Bank': ['境外储蓄', '港币活期'],
-  '蚂蚁银行': ['境外储蓄', '港币活期'],
-  Worldcoin: ['Web3身份', '链上钱包'],
-  Bitget: ['加密资产', '现货备用'],
+export function getDailyAccountCategory(item: Holding): string {
+  const combined = `${item.broker} ${item.name} ${item.ticker}`.toLowerCase();
+  if (
+    combined.includes('crypto') ||
+    combined.includes('bitget') ||
+    combined.includes('worldcoin') ||
+    combined.includes('wld') ||
+    combined.includes('web3')
+  ) {
+    return '虚拟币账户';
+  }
+  if (
+    combined.includes('wise') ||
+    combined.includes('revolut') ||
+    combined.includes('paypal') ||
+    combined.includes('微信支付') ||
+    combined.includes('wechatpay') ||
+    combined.includes('alipay')
+  ) {
+    return '钱包账户';
+  }
+  return '银行账户';
+}
+
+const DEFAULT_ACCOUNT_NOTES: Record<string, string> = {
+  '三井住友银行': '日常生活消费与日本公共事业缴费主力账户',
+  'Sony银行': '多币种外汇兑换与日常备用存款',
+  Wise: '跨境资金调拨与多币种国际汇款通道',
+  Revolut: '海外刷卡消费与即时多币种兑换',
+  '瑞穗银行': '日常日元小额存款与备用资金',
+  'SBI新生银行': '日元活期储蓄与日常资金周转备用',
+  PayPal: '线上国际海淘与美元支付小额零钱',
+  '蚂蚁财富': '高流动性活期货币基金（余额宝），用于日常支出',
+  '招商银行': '国内人民币日常结算与活期储备资金',
+  '微信支付': '国内移动支付与日常社交零钱',
+  'ANT BANK': '蚂蚁银行(香港)港币活期储蓄与理财备用',
+  'Bitget Wallet': 'Web3 链上交互钱包与加密资产估值',
+  Worldcoin: '数字身份与代币钱包估值',
 };
 
-function getAccountTags(item: Holding): string[] {
-  const combined = `${item.broker} ${item.name} ${item.ticker}`.toLowerCase();
-  for (const [key, tags] of Object.entries(ACCOUNT_TAGS)) {
-    if (combined.includes(key.toLowerCase())) {
-      return tags.slice(0, 3);
+export function getAccountDescription(item: Holding): string {
+  for (const [key, note] of Object.entries(DEFAULT_ACCOUNT_NOTES)) {
+    if (item.broker.includes(key) || item.name.includes(key)) {
+      return note;
     }
   }
-  if (item.currency === 'JPY') return ['日元日常', '生活备用'];
-  if (item.currency === 'CNY') return ['人民币备用', '国内结算'];
-  if (item.currency === 'USD') return ['美元备用', '海外消费'];
-  return ['日常备用'];
+  if (item.investmentThesis && item.investmentThesis.trim()) {
+    const cleaned = item.investmentThesis
+      .replace(/（独立备忘.*?）/g, '')
+      .replace(/【.*?】/g, '')
+      .replace(/^[、，。\s]+|[、，。\s]+$/g, '')
+      .trim();
+    if (cleaned) return cleaned;
+  }
+  return '日常消费与生活备用资金';
 }
 
 export function AccountVaultSection({
@@ -178,26 +198,20 @@ export function AccountVaultSection({
           <TableBody>
             {dailyItems.map((item) => {
               const isEditing = editingId === item.id;
-              const tags = getAccountTags(item);
+              const category = getDailyAccountCategory(item);
+              const description = getAccountDescription(item);
 
               return (
                 <TableRow key={item.id}>
                   <TableCell>
-                    <div className="flex flex-col">
-                      <span className="font-medium text-xs text-foreground">
-                        {item.broker}
-                      </span>
-                      {item.account && item.account !== item.broker && (
-                        <span className="text-[11px] text-muted-foreground truncate max-w-[160px]">
-                          {item.account}
-                        </span>
-                      )}
-                    </div>
+                    <span className="font-medium text-xs text-foreground">
+                      {item.broker}
+                    </span>
                   </TableCell>
 
                   <TableCell>
                     <Badge variant="secondary" className="text-[10px] font-normal">
-                      {item.role === 'banking' ? '日常银行' : '支付/钱包'}
+                      {category}
                     </Badge>
                   </TableCell>
 
@@ -259,17 +273,9 @@ export function AccountVaultSection({
                   </TableCell>
 
                   <TableCell>
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      {tags.map((tag) => (
-                        <Badge
-                          key={tag}
-                          variant="outline"
-                          className="text-[10px] font-normal px-1.5 py-0 text-muted-foreground"
-                        >
-                          {tag}
-                        </Badge>
-                      ))}
-                    </div>
+                    <span className="text-xs text-muted-foreground line-clamp-1" title={description}>
+                      {description}
+                    </span>
                   </TableCell>
                 </TableRow>
               );

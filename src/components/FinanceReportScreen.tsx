@@ -1454,30 +1454,23 @@ function FinanceHoldingRow({
             <span className="size-7 rounded-lg bg-muted text-foreground flex items-center justify-center font-semibold text-xs shrink-0 border border-border">
               {holding.ticker.slice(0, 1)}
             </span>
-            <div className="flex flex-col min-w-0">
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="text-xs font-semibold text-foreground">
-                  {getCleanSecurityName(holding.ticker, holding.name)}
-                </span>
-                <span className="text-[11px] text-muted-foreground">
-                  {holding.ticker}
-                </span>
-                {isMultiAccount && (
-                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0 font-normal">
-                    {holding.accounts.length} 笔合并
-                  </Badge>
-                )}
-                {holding.weight > SINGLE_SECURITY_CAP && holding.layer !== 'Cash' && (
-                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal">
-                    &gt;15%
-                  </Badge>
-                )}
-              </div>
-              <span className="text-[11px] text-muted-foreground truncate">
-                {isMultiAccount
-                  ? holding.accounts.map((a) => a.broker).join(' · ')
-                  : firstAccount?.broker || ''}
+            <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+              <span className="text-xs font-semibold text-foreground">
+                {getCleanSecurityName(holding.ticker, holding.name)}
               </span>
+              <span className="text-[11px] text-muted-foreground">
+                {holding.ticker}
+              </span>
+              {isMultiAccount && (
+                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 font-normal">
+                  {holding.accounts.length} 笔合并
+                </Badge>
+              )}
+              {holding.weight > SINGLE_SECURITY_CAP && holding.layer !== 'Cash' && (
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal">
+                  &gt;15%
+                </Badge>
+              )}
             </div>
           </div>
         </TableCell>
@@ -1491,28 +1484,23 @@ function FinanceHoldingRow({
         </TableCell>
 
         <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
-          {!isMultiAccount && firstAccount ? (
-            <select
-              aria-label={`${holding.ticker} 资产分层`}
-              value={firstAccount.layer}
-              onChange={(event) =>
-                void onUpdateHolding(firstAccount.id, {
-                  layer: event.target.value as Layer,
-                })
-              }
-              className="h-6 px-2 rounded-md border border-border bg-background text-xs font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer"
-            >
-              {LAYERS.map((layer) => (
-                <option key={layer} value={layer}>
-                  {LAYER_META[layer].label}
-                </option>
-              ))}
-            </select>
-          ) : (
-            <Badge variant="secondary" className="text-[10px] font-normal">
-              {LAYER_META[holding.layer].label}
-            </Badge>
-          )}
+          <select
+            aria-label={`${holding.ticker} 资产分层`}
+            value={holding.layer}
+            onChange={(event) => {
+              const targetLayer = event.target.value as Layer;
+              holding.accounts.forEach((acc) => {
+                void onUpdateHolding(acc.id, { layer: targetLayer });
+              });
+            }}
+            className="h-6 px-2 rounded-md border border-border bg-background text-xs font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer"
+          >
+            {LAYERS.map((layer) => (
+              <option key={layer} value={layer}>
+                {LAYER_META[layer].label}
+              </option>
+            ))}
+          </select>
         </TableCell>
 
         {/* Direct Inline Edit for Quantity on Single-Account Rows */}
@@ -1621,22 +1609,9 @@ function FinanceHoldingRow({
               </TableCell>
 
               <TableCell className="text-center">
-                <select
-                  aria-label={`${account.ticker} 资产分层`}
-                  value={account.layer}
-                  onChange={(event) =>
-                    void onUpdateHolding(account.id, {
-                      layer: event.target.value as Layer,
-                    })
-                  }
-                  className="h-6 px-2 rounded-md border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer"
-                >
-                  {LAYERS.map((layer) => (
-                    <option key={layer} value={layer}>
-                      {LAYER_META[layer].label}
-                    </option>
-                  ))}
-                </select>
+                <span className="text-xs text-muted-foreground font-medium">
+                  {LAYER_META[account.layer]?.label ?? account.layer}
+                </span>
               </TableCell>
 
               <TableCell className="text-right">

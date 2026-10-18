@@ -108,7 +108,7 @@ export function RebalanceCockpitModal({
       .filter(
         (h) =>
           h.layer === 'Cash' &&
-          /brokerage|券商|moomoo|tiger|wechatsec|微信证券/i.test(
+          /brokerage|券商|moomoo|tiger|wechatsec|微信证券|乐天银行|rakutenbank/i.test(
             `${h.ticker} ${h.name} ${h.theme}`,
           ),
       )
@@ -120,11 +120,11 @@ export function RebalanceCockpitModal({
     const list: Array<{ label: string; amount: number }> = [];
     if (brokerageCash > 0) {
       list.push({
-        label: `50% 券商子弹 (${formatMoney(brokerageCash * 0.5, baseCurrency)})`,
+        label: `50% 券商现金池 (${formatMoney(brokerageCash * 0.5, baseCurrency)})`,
         amount: Math.round(brokerageCash * 0.5),
       });
       list.push({
-        label: `全额券商子弹 (${formatMoney(brokerageCash, baseCurrency)})`,
+        label: `全额券商现金池 (${formatMoney(brokerageCash, baseCurrency)})`,
         amount: Math.round(brokerageCash),
       });
     }
