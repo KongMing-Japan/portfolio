@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { AlertCircle, Check, Loader2, Sparkles, Trash2, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import type { BaseCurrency, Holding } from '../types';
-import { formatEditableNumber, getCleanSecurityName } from '../lib/portfolio';
+import { formatEditableNumber, getCleanSecurityName, isDailyMemoAccount } from '../lib/portfolio';
 import { isSameSecurity } from '../lib/upsert';
 
 interface UpsertReviewModalProps {
@@ -38,10 +38,12 @@ export function UpsertReviewModal({
       const matched = existingHoldings.find((existing) =>
         isSameSecurity(existing, item),
       );
+      const isDaily = isDailyMemoAccount(item);
       return {
         item,
         matched,
         isUpdate: Boolean(matched),
+        isDaily,
       };
     });
   }, [items, existingHoldings]);
@@ -141,6 +143,7 @@ export function UpsertReviewModal({
               <thead>
                 <tr className="border-b border-border text-muted-foreground font-medium">
                   <th className="pb-2">标的与代码</th>
+                  <th className="pb-2 text-center">归属板块</th>
                   <th className="pb-2 text-center">合并动作</th>
                   <th className="pb-2">券商</th>
                   <th className="pb-2">币种</th>
@@ -150,7 +153,7 @@ export function UpsertReviewModal({
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/60">
-                {previewRows.map(({ item, matched, isUpdate }, index) => {
+                {previewRows.map(({ item, matched, isUpdate, isDaily }, index) => {
                   const cleanName = getCleanSecurityName(item.ticker, item.name);
                   return (
                     <tr key={item.id || `${item.ticker}-${index}`} className="hover:bg-muted/20">
@@ -160,6 +163,27 @@ export function UpsertReviewModal({
                           <span className="font-semibold text-foreground">{cleanName}</span>
                           <span className="text-[11px] text-muted-foreground">{item.ticker}</span>
                         </div>
+                      </td>
+
+                      {/* Destination: Portfolio vs Daily Memo */}
+                      <td className="py-2.5 px-2 text-center">
+                        {isDaily ? (
+                          <Badge
+                            variant="secondary"
+                            className="text-[10px] px-1.5 py-0 bg-amber-50 text-amber-700 border border-amber-300 dark:bg-amber-950/50 dark:text-amber-300"
+                            title="作为日常银行/钱包备忘，不影响上方投资比例"
+                          >
+                            日常备忘
+                          </Badge>
+                        ) : (
+                          <Badge
+                            variant="secondary"
+                            className="text-[10px] px-1.5 py-0 bg-slate-100 text-slate-700 border border-slate-300 dark:bg-slate-800 dark:text-slate-300"
+                            title="纳入 70/30 投资组合全景与调仓策略"
+                          >
+                            投资组合
+                          </Badge>
+                        )}
                       </td>
 
                       {/* Upsert Action */}

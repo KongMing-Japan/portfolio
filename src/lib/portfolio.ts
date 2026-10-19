@@ -590,30 +590,59 @@ const DAILY_WALLET_BROKERS = new Set([
  * - 微信支付、招商银行活期、三井住友、Sony银行、瑞穗、Wise、Revolut、PayPal等：属于日常消费生活现金
  */
 export function isDailyMemoAccount(holding: Pick<Holding, 'broker' | 'ticker' | 'name' | 'layer'>): boolean {
+  // 1. Any holding classified as Core, Satellite, or Defensive is ALWAYS an investment holding
+  if (holding.layer === 'Core' || holding.layer === 'Satellite' || holding.layer === 'Defensive') {
+    return false;
+  }
+
   const broker = (holding.broker || '').trim();
   const ticker = (holding.ticker || '').toUpperCase();
   const name = (holding.name || '').trim();
 
-  // 乐天银行现金属于投资现金
+  // 2. Specific exception: 乐天银行 cash is linked investment cash
   if (broker === '乐天银行') return false;
 
-  // 蚂蚁财富：余额宝为日常生活现金；越南QDII为投资
+  // 3. 蚂蚁财富: 余额宝 is daily living cash, but QDII / funds are investments
   if (broker === '蚂蚁财富') {
     return ticker.includes('YU_E_BAO') || ticker.includes('YUEBAO') || name.includes('余额宝');
   }
 
-  // 核心证券账户（包括证券内现金）属于投资
+  // 4. Brokerages (stocks, ETFs, funds, and brokerage cash pools) are investments
   if (
     broker === '乐天证券' ||
     broker === 'moomoo证券' ||
     broker === 'Tiger证券' ||
-    broker === '微信证券'
+    broker === '微信证券' ||
+    /证券|securities|broker|ibkr|interactive brokers|robinhood|charles schwab|fidelity/i.test(broker)
   ) {
     return false;
   }
 
-  // 其余银行与支付/数字钱包均属于日常生活备忘账户
-  return true;
+  // 5. If it has a standard security ticker (e.g. 7203.T, 1482.T, AAPL, 00700) and is not Cash_
+  if (
+    !ticker.startsWith('CASH') &&
+    !ticker.startsWith('CASH_') &&
+    !ticker.includes('YUEBAO') &&
+    !ticker.includes('WALLET') &&
+    !/现金|現金|存款|活期/i.test(name) &&
+    !/现金|現金|存款|活期/i.test(ticker)
+  ) {
+    return false;
+  }
+
+  // 6. Explicit daily banks and wallets
+  if (DAILY_BANKING_BROKERS.has(broker) || DAILY_WALLET_BROKERS.has(broker)) {
+    return true;
+  }
+
+  if (
+    /银行|bank|wallet|支付|pay|wise|revolut|paypal/i.test(broker) ||
+    /活期|零钱|储蓄|生活|日常/i.test(name)
+  ) {
+    return true;
+  }
+
+  return false;
 }
 
 /**
