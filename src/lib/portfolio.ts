@@ -36,7 +36,7 @@ export const LAYER_META: Record<
   },
 };
 
-const CASH_PATTERN = /(^cash[_\s-]|现金|現金|cash)/i;
+const CASH_PATTERN = /(^cash[_\s-]|(?<!高|自由)现金(?!流)|(?<!高|自由)現金(?!流)|\bcash\b(?! flow))/i;
 const DEFENSIVE_PATTERN =
   /(bond|treasury|国债|國債|債券|债券|s&p\s?500|index|指数|インデックス|infra|transport|consumer staples)/i;
 const SATELLITE_PATTERN =
@@ -53,9 +53,6 @@ export function normalizeLayer(
   name: string,
   theme: string,
 ): Layer {
-  const combined = `${ticker} ${name} ${theme}`;
-  if (CASH_PATTERN.test(combined)) return 'Cash';
-
   const value = String(raw ?? '').trim().toLowerCase();
   if (['core', '核心', '核心仓', '信仰层'].includes(value)) return 'Core';
   if (['satellite', '卫星', '衛星', '卫星仓', '机会层'].includes(value)) {
@@ -67,6 +64,14 @@ export function normalizeLayer(
     return 'Defensive';
   }
   if (['cash', '现金', '現金'].includes(value)) return 'Cash';
+
+  const combined = `${ticker} ${name} ${theme}`;
+  if (/(高现金流|自由现金流|现金流|現金流|cash flow)/i.test(combined)) {
+    if (DEFENSIVE_PATTERN.test(combined)) return 'Defensive';
+    if (SATELLITE_PATTERN.test(combined)) return 'Satellite';
+    return 'Core';
+  }
+  if (CASH_PATTERN.test(combined)) return 'Cash';
   if (DEFENSIVE_PATTERN.test(combined)) return 'Defensive';
   if (SATELLITE_PATTERN.test(combined)) return 'Satellite';
   return 'Core';
@@ -74,7 +79,13 @@ export function normalizeLayer(
 
 export function marketFromTicker(ticker: string, name = ''): string {
   const combined = `${ticker} ${name}`.trim();
-  if (CASH_PATTERN.test(combined)) return 'Cash';
+  if (
+    CASH_PATTERN.test(combined) &&
+    !/(现金流|現金流|cash flow)/i.test(combined) &&
+    !/^\d{4,6}(\.[A-Za-z]+)?$/i.test(ticker)
+  ) {
+    return 'Cash';
+  }
   if (/\.T$|^TYO:|^(1482|1571|2563|2845|3905|7581|9023|9616)(\.T)?$/i.test(ticker) || /日本|東証|日経|TOPIX|emaxis/i.test(name)) return 'Japan';
   if (/^HKG:|\.HK$|^0\d{4}$/i.test(ticker) || /港股|恒生/i.test(name)) return 'Hong Kong';
   if (
@@ -92,9 +103,17 @@ export function marketFromTicker(ticker: string, name = ''): string {
  * 资产底层经济体与国别分布
  * 穿透日股挂牌的美债/标普/纳指 ETF 与 A 股跨境 ETF/QDII 至底层真实挂钩经济体
  */
-export function underlyingMarketFromHolding(holding: Pick<Holding, 'ticker' | 'name' | 'theme' | 'currency'>): string {
+export function underlyingMarketFromHolding(holding: Pick<Holding, 'ticker' | 'name' | 'theme' | 'currency' | 'layer'>): string {
   const combined = `${holding.ticker} ${holding.name} ${holding.theme}`.toLowerCase();
-  if (CASH_PATTERN.test(combined)) return '现金储备';
+  if (
+    holding.layer === 'Cash' ||
+    (!['Core', 'Satellite', 'Defensive'].includes(holding.layer || '') &&
+      !/^\d{4,6}(\.[a-z]+)?$/i.test(holding.ticker) &&
+      CASH_PATTERN.test(combined) &&
+      !/(现金流|cash flow)/i.test(combined))
+  ) {
+    return '现金储备';
+  }
   if (/vietnam|越南|cn_qdii_vn/i.test(combined)) return '越南';
   if (
     /\b(1482|2563|2845|513500)\b|emaxis.*s&p|s&p\s*500|标普\s*500|nasdaq|纳指|美国国债|美债/i.test(
@@ -199,9 +218,18 @@ export function assetClassFromHolding(
   ticker: string,
   name = '',
   theme = '',
+  layer?: Layer,
 ): AssetClassType {
   const combined = `${ticker} ${name} ${theme}`.toLowerCase();
-  if (CASH_PATTERN.test(combined)) return 'Cash';
+  if (
+    layer === 'Cash' ||
+    (!['Core', 'Satellite', 'Defensive'].includes(layer || '') &&
+      !/^\d{4,6}(\.[a-z]+)?$/i.test(ticker) &&
+      CASH_PATTERN.test(combined) &&
+      !/(现金流|cash flow)/i.test(combined))
+  ) {
+    return 'Cash';
+  }
   if (
     /(etf|1482|1571|2563|2845|513130|513500|510\d{3}|159\d{3}|1306|2558|\bspy\b|\bvoo\b|\bqqq\b|\bvti\b)/i.test(
       combined,
@@ -331,9 +359,20 @@ function resolveCanonicalGroup(holding: Holding): {
     };
   }
 
-  // 2. Three-Tier Cash Pool Grouping when multiple cash accounts exist
-  if (holding.layer === 'Cash' || CASH_PATTERN.test(combined)) {
-    if (/brokerage|券商|moomoo|tiger|wechatsec|微信证券|乐天银行|rakutenbank/i.test(combined)) {
+  // 2. Three-Tier Cash Pool Grouping ONLY for actual cash holdings
+  // Real equities/ETFs/bonds in Core, Satellite, Defensive MUST NEVER be grouped into Cash Pools
+  const fullCombined = `${holding.broker} ${holding.ticker} ${holding.name} ${holding.theme}`;
+  const isPureCash =
+    holding.layer === 'Cash' ||
+    holding.ticker.startsWith('Cash') ||
+    holding.ticker.startsWith('CASH_') ||
+    (!['Core', 'Satellite', 'Defensive'].includes(holding.layer) &&
+      !/^\d{4,6}(\.[A-Za-z]+)?$/i.test(holding.ticker) &&
+      CASH_PATTERN.test(combined) &&
+      !/(现金流|cash flow)/i.test(combined));
+
+  if (isPureCash) {
+    if (/brokerage|券商|moomoo|tiger|wechatsec|微信证券|乐天银行|rakutenbank/i.test(fullCombined)) {
       return {
         key: 'CASH_POOL_BROKER',
         ticker: 'Cash·券商现金池',
@@ -341,18 +380,18 @@ function resolveCanonicalGroup(holding: Holding): {
         theme: 'Cash & Liquidity',
       };
     }
-    if (/linked|联动|余额宝|yuebao|招商银行|cmb|ant\s*bank/i.test(combined)) {
+    if (/linked|联动|余额宝|yuebao|招商银行|cmb|ant\s*bank/i.test(fullCombined)) {
       return {
         key: 'CASH_POOL_LINKED',
         ticker: 'Cash·理财储备',
-        name: '理财储备池 (余额宝 / 招行 / ANT)',
+        name: '理财储备池',
         theme: 'Linked Bank Reserve (理财储备)',
       };
     }
     return {
       key: 'CASH_POOL_LIVING',
       ticker: 'Cash·日常与钱包',
-      name: '日常银行与跨境支付钱包池 (SMBC / Sony / Wise / 微信等)',
+      name: '日常银行与钱包池',
       theme: 'Living & Emergency (日常与应急储备)',
     };
   }
@@ -505,6 +544,18 @@ export function getCleanSecurityName(ticker: string, originalName = ''): string 
   const t = (ticker || '').trim().toUpperCase();
   const n = (originalName || '').trim();
 
+  // Cash pools first so their descriptions never trigger individual bank regexes
+  if (t === 'CASH·券商现金池' || t === 'CASH_POOL_BROKER' || n === '券商现金池') return '券商现金池';
+  if (t === 'CASH·理财储备' || t === 'CASH_POOL_LINKED' || n.startsWith('理财储备池')) return '理财储备池';
+  if (
+    t === 'CASH·日常与钱包' ||
+    t === 'CASH_POOL_LIVING' ||
+    n.startsWith('日常银行与钱包池') ||
+    n.startsWith('日常银行与跨境支付钱包池')
+  ) {
+    return '日常银行与钱包池';
+  }
+
   if (t === '1482' || t === '1482.T') return '美债 7-10年 (对冲)';
   if (t === '1571' || t === '1571.T') return '日经反向';
   if (t === '2563' || t === '2563.T') return 'S&P 500 (对冲)';
@@ -528,19 +579,19 @@ export function getCleanSecurityName(ticker: string, originalName = ''): string 
   if (t === 'GOOGL' || t === 'GOOG' || /谷歌/i.test(n)) return '谷歌';
   if (/券商现金池/i.test(n) || /券商现金池/i.test(t)) return '券商现金池';
   if (/余额宝/i.test(n) || t.includes('YUEBAO')) return '余额宝';
-  if (/招商银行/i.test(n) || t.includes('CMB')) return '招商银行';
-  if (/微信支付/i.test(n) || t.includes('WECHAT')) return '微信支付';
-  if (/乐天银行/i.test(n) || t.includes('RAKUTENBANK')) return '乐天银行';
-  if (/三井住友/i.test(n) || t.includes('SMBC')) return '三井住友银行';
-  if (/瑞穗/i.test(n) || t.includes('MIZUHO')) return '瑞穗银行';
-  if (/Sony/i.test(n) || t.includes('SONY')) return 'Sony银行';
-  if (/新生|SBI新生/i.test(n) || t.includes('SHINSEI') || t.includes('SBI新生')) return 'SBI新生银行';
-  if (/Wise/i.test(n) || t.includes('WISE')) return 'Wise';
-  if (/PayPal/i.test(n) || t.includes('PAYPAL')) return 'PayPal';
-  if (/Revolut/i.test(n) || t.includes('REVOLUT')) return 'Revolut';
-  if (/Ant\s*Bank/i.test(n) || t.includes('ANTBANK')) return 'ANT BANK';
-  if (/Worldcoin/i.test(n) || t.includes('WORLDCOIN') || t.includes('WLD')) return 'Worldcoin';
-  if (/Bitget/i.test(n) || t.includes('BITGET')) return 'Bitget Wallet';
+  if (t.includes('CMB') || n === '招商银行' || n.startsWith('招商银行')) return '招商银行';
+  if (t.includes('WECHAT') || n === '微信支付' || n.startsWith('微信支付')) return '微信支付';
+  if (t.includes('RAKUTENBANK') || n === '乐天银行' || n.startsWith('乐天银行')) return '乐天银行';
+  if (t.includes('SMBC') || n === '三井住友银行' || n.startsWith('三井住友')) return '三井住友银行';
+  if (t.includes('MIZUHO') || n === '瑞穗银行' || n.startsWith('瑞穗')) return '瑞穗银行';
+  if (t.includes('SONY') || n === 'Sony银行' || /^Sony\s*(Bank|银行)?$/i.test(n)) return 'Sony银行';
+  if (t.includes('SHINSEI') || t.includes('SBI新生') || n === 'SBI新生银行' || n.startsWith('SBI新生')) return 'SBI新生银行';
+  if (t.includes('WISE') || n === 'Wise' || /^Wise(\s*Account)?$/i.test(n)) return 'Wise';
+  if (t.includes('PAYPAL') || n === 'PayPal' || /^PayPal/i.test(n)) return 'PayPal';
+  if (t.includes('REVOLUT') || n === 'Revolut' || /^Revolut/i.test(n)) return 'Revolut';
+  if (t.includes('ANTBANK') || /^ant\s*bank$/i.test(n)) return 'ANT BANK';
+  if (t.includes('WORLDCOIN') || t.includes('WLD') || /Worldcoin/i.test(n)) return 'Worldcoin';
+  if (t.includes('BITGET') || /Bitget/i.test(n)) return 'Bitget Wallet';
 
   if (!n) return t || '未命名标的';
   return n
@@ -826,7 +877,13 @@ export function canonicalThemeFromHolding(
   holding: Pick<Holding, 'ticker' | 'name' | 'theme' | 'layer'>,
 ): string {
   const combined = `${holding.ticker} ${holding.name} ${holding.theme}`.toLowerCase();
-  if (holding.layer === 'Cash' || CASH_PATTERN.test(combined)) {
+  if (
+    holding.layer === 'Cash' ||
+    (!['Core', 'Satellite', 'Defensive'].includes(holding.layer || '') &&
+      !/^\d{4,6}(\.[a-z]+)?$/i.test(holding.ticker) &&
+      CASH_PATTERN.test(combined) &&
+      !/(现金流|cash flow)/i.test(combined))
+  ) {
     return '机动现金与流动性储备';
   }
   if (
@@ -873,7 +930,13 @@ export function dualEngineFromHolding(
   holding: Pick<Holding, 'ticker' | 'name' | 'theme' | 'layer' | 'currency'>,
 ): DualEngineCategory {
   const combined = `${holding.ticker} ${holding.name} ${holding.theme}`.toLowerCase();
-  if (holding.layer === 'Cash' || CASH_PATTERN.test(combined)) {
+  if (
+    holding.layer === 'Cash' ||
+    (!['Core', 'Satellite', 'Defensive'].includes(holding.layer || '') &&
+      !/^\d{4,6}(\.[a-z]+)?$/i.test(holding.ticker) &&
+      CASH_PATTERN.test(combined) &&
+      !/(现金流|cash flow)/i.test(combined))
+  ) {
     return '多币种流动性储备';
   }
   const market = underlyingMarketFromHolding(holding);

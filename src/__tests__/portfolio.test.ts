@@ -5,12 +5,17 @@ import { parseHoldingsCsv, parseHoldingsText, parseNumber } from '../lib/csv';
 import {
   aggregateHoldings,
   applyQuotes,
+  canonicalThemeFromHolding,
   concentrationScore,
+  dualEngineFromHolding,
   estimateAssetVolatility,
   formatExactMoney,
   formatMoney,
+  getCleanSecurityName,
   isDailyMemoAccount,
+  normalizeLayer,
   sanitizeCurrencyCode,
+  underlyingMarketFromHolding,
 } from '../lib/portfolio';
 import { sanitizeLoadedSnapshot } from '../lib/storage';
 import { REAL_PORTFOLIO_SNAPSHOT } from '../lib/realPortfolioData';
@@ -160,5 +165,67 @@ describe('portfolio import and analysis', () => {
     expect(sanitized).toBeDefined();
     expect(sanitized?.holdings).toHaveLength(1);
     expect(sanitized?.holdings[0].ticker).toBe('1482.T');
+  });
+
+  it('correctly classifies Tokyo Metro 9023.T with "高现金流" theme as investment stock, NOT Cash or Sony Bank', () => {
+    const tokyoMetroHolding = {
+      id: 'real-moomoo-9023',
+      ticker: '9023.T',
+      name: '东京地铁 (Tokyo Metro)',
+      broker: 'moomoo证券',
+      account: '日元账户',
+      market: 'Japan',
+      currency: 'JPY',
+      quantity: 5300,
+      costPerUnit: 1453,
+      importedMarketValue: 7700900,
+      marketPrice: 1453,
+      marketValue: 7700900,
+      valueInBase: 7700900,
+      layer: 'Defensive' as const,
+      theme: 'Infra / Transport (高现金流基建)',
+      sourceType: 'manual' as const,
+      confidence: 1,
+      needsReview: false,
+      reviewReasons: [],
+      targetWeight: null,
+      investmentThesis: '',
+    };
+
+    // 1. normalizeLayer must honor Defensive layer even when theme mentions '高现金流'
+    expect(
+      normalizeLayer(
+        tokyoMetroHolding.layer,
+        tokyoMetroHolding.ticker,
+        tokyoMetroHolding.name,
+        tokyoMetroHolding.theme,
+      ),
+    ).toBe('Defensive');
+
+    // 2. Underlying market must be Japan, not '现金储备'
+    expect(underlyingMarketFromHolding(tokyoMetroHolding)).toBe('日本');
+
+    // 3. Clean security name must be '东京地铁', NOT 'Sony银行'
+    expect(
+      getCleanSecurityName(tokyoMetroHolding.ticker, tokyoMetroHolding.name),
+    ).toBe('东京地铁');
+
+    // 4. Canonical theme must be defensive infrastructure, not liquidity reserve
+    expect(canonicalThemeFromHolding(tokyoMetroHolding)).toBe(
+      '美债与高息基建防守',
+    );
+    expect(dualEngineFromHolding(tokyoMetroHolding)).toBe('全球宽基与固收缓冲');
+
+    // 5. Must NOT be marked as daily memo account
+    expect(isDailyMemoAccount(tokyoMetroHolding)).toBe(false);
+
+    // 6. When aggregating with mergeEquivalent, 9023.T must remain its own entry
+    const aggregated = aggregateHoldings([tokyoMetroHolding], {
+      mergeEquivalent: true,
+    });
+    expect(aggregated).toHaveLength(1);
+    expect(aggregated[0].ticker).toBe('9023.T');
+    expect(aggregated[0].ticker).not.toContain('Cash');
+    expect(aggregated[0].name).toContain('东京地铁');
   });
 });
