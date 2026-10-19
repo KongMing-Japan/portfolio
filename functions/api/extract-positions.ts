@@ -49,6 +49,7 @@ const positionSchema = {
 
 interface ExtractRequest {
   image?: unknown;
+  text?: unknown;
 }
 
 interface GroqResponse {
@@ -74,7 +75,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     return json(
       {
         error:
-          'Screenshot recognition is not configured. Use CSV or set GROQ_API_KEY in Cloudflare Pages.',
+          'AI recognition is not configured. Use CSV or set GROQ_API_KEY in Cloudflare Pages.',
       },
       503,
     );
@@ -84,7 +85,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     context.request.headers.get('content-length') ?? 0,
   );
   if (contentLength > MAX_REQUEST_BYTES) {
-    return json({ error: 'Screenshot requests must be 4 MB or smaller.' }, 413);
+    return json({ error: 'Requests must be 4 MB or smaller.' }, 413);
   }
 
   let body: ExtractRequest;
@@ -94,14 +95,91 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     return json({ error: 'Invalid request format.' }, 400);
   }
 
-  const image = typeof body.image === 'string' ? body.image : '';
-  if (!ALLOWED_IMAGE_PREFIXES.some((prefix) => image.startsWith(prefix))) {
-    return json({ error: 'Only PNG, JPG, and WebP images are supported.' }, 400);
+  const isImageRequest = typeof body.image === 'string' && body.image.trim().length > 0;
+  const isTextRequest = typeof body.text === 'string' && body.text.trim().length > 0;
+
+  if (!isImageRequest && !isTextRequest) {
+    return json({ error: 'Please provide a screenshot image or pasted text to analyze.' }, 400);
   }
-  const base64 = image.slice(image.indexOf(',') + 1);
-  const estimatedBytes = Math.ceil((base64.length * 3) / 4);
-  if (estimatedBytes > MAX_IMAGE_BYTES) {
-    return json({ error: 'Base64 screenshot requests must be 4 MB or smaller.' }, 413);
+
+  let messages: Array<{
+    role: string;
+    content: string | Array<{ type: string; text?: string; image_url?: { url: string } }>;
+  }>;
+  let model: string;
+
+  if (isImageRequest) {
+    const image = (body.image as string).trim();
+    if (!ALLOWED_IMAGE_PREFIXES.some((prefix) => image.startsWith(prefix))) {
+      return json({ error: 'Only PNG, JPG, and WebP images are supported.' }, 400);
+    }
+    const base64 = image.slice(image.indexOf(',') + 1);
+    const estimatedBytes = Math.ceil((base64.length * 3) / 4);
+    if (estimatedBytes > MAX_IMAGE_BYTES) {
+      return json({ error: 'Screenshot must be 4 MB or smaller.' }, 413);
+    }
+
+    model = context.env.GROQ_VISION_MODEL || 'qwen/qwen3.8-27b';
+    messages = [
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'text',
+            text: [
+              'Extract every visible investment position from this single brokerage screenshot.',
+              'Focus primarily on extracting:',
+              '1. Ticker symbol (e.g. 7203.T, 1482.T, NVDA, AAPL, 00700.HK, 513500.SS) or clear stock/fund name.',
+              '2. Latest holding quantity (持仓数/持股数/保有数量/份额).',
+              '3. Current unit price (现价/当前单价) or total market value (市值/评估额) if visible, allowing manual/fallback pricing if live market quotes are unavailable.',
+              'The screenshot may contain Chinese, Japanese, or English labels.',
+              'Normalize currency to ISO codes: JPY, USD, HKD, CNY. Default to JPY for Japanese brokerages (Rakuten, SBI, Moomoo JP), USD for US, CNY for China, HKD for HK.',
+              'Cash balances must use tickers such as Cash_JPY or Cash_USD.',
+              'Do not invent fictional numbers. Return strictly matching the JSON schema.',
+            ].join(' '),
+          },
+          {
+            type: 'image_url',
+            image_url: { url: image },
+          },
+        ],
+      },
+    ];
+  } else {
+    // Text extraction mode
+    const text = (body.text as string).trim();
+    if (text.length > 50_000) {
+      return json({ error: 'Pasted text is too long (limit 50,000 characters).' }, 400);
+    }
+
+    model =
+      context.env.GROQ_TEXT_MODEL ||
+      context.env.GROQ_VISION_MODEL ||
+      'llama-3.3-70b-versatile';
+    messages = [
+      {
+        role: 'system',
+        content: [
+          'You are an expert investment portfolio extractor.',
+          'Extract all investment positions from the user-provided text (which may be a copied broker statement, trade confirmation, account balance summary, or message).',
+          'Extract for each position:',
+          '1. ticker: Standard stock/fund ticker symbol if identifiable (e.g. 7203.T, 1482.T, AAPL, 00700, 513500.SS) or recognizable security name.',
+          '2. name: Security or fund name in Chinese, Japanese, or English.',
+          '3. quantity: Latest holding quantity / shares / units (持股数/持仓数/数量/份额). Must be a positive number.',
+          '4. costPerUnit / marketPrice: Latest unit price (现价/净值) if mentioned, otherwise null.',
+          '5. marketValue: Total position market value if mentioned, otherwise null.',
+          '6. currency: ISO currency code (JPY, USD, HKD, CNY). Default to JPY for Japanese assets/brokers, USD for US assets, etc.',
+          '7. broker: Brokerage name if mentioned (e.g. 乐天证券, SBI, moomoo, 招商银行, 微信证券), otherwise empty string.',
+          '8. layer: Core, Satellite, Defensive, or Cash if determinable, otherwise empty string.',
+          'For cash accounts or cash balances, use tickers such as Cash_JPY, Cash_USD, Cash_CNY.',
+          'Do not hallucinate fake positions. Return strictly valid data conforming to the JSON schema.',
+        ].join(' '),
+      },
+      {
+        role: 'user',
+        content: text,
+      },
+    ];
   }
 
   const upstream = await fetch(
@@ -113,31 +191,8 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: context.env.GROQ_VISION_MODEL || 'qwen/qwen3.8-27b',
-        messages: [
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'text',
-                text: [
-                  'Extract every visible investment position from this brokerage screenshot.',
-                  'The screenshot may contain Chinese, Japanese, or English labels.',
-                  'Return one row per visible account position. Do not invent missing numbers.',
-                  'Normalize currency to ISO codes such as JPY, USD, HKD, or CNY.',
-                  'Use Core, Satellite, Defensive, or Cash for layer only when the image explicitly provides it; otherwise return an empty string.',
-                  'Cash balances must use a ticker such as Cash_JPY or Cash_USD.',
-                  'Confidence reflects the reliability of the row, especially ticker and quantity.',
-                  'Return only data matching the provided JSON schema.',
-                ].join(' '),
-              },
-              {
-                type: 'image_url',
-                image_url: { url: image },
-              },
-            ],
-          },
-        ],
+        model,
+        messages,
         temperature: 0,
         max_completion_tokens: 6000,
         response_format: {

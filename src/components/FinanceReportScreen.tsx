@@ -11,15 +11,21 @@ import {
   FileText,
   Landmark,
   Layers3,
+  Loader2,
   Lock,
   Plus,
   RefreshCcw,
   Save,
   Search,
+  Sparkles,
   Trash2,
   Unlock,
   Upload,
 } from 'lucide-react';
+import { extractImagePositions, extractTextPositions } from '../lib/api';
+import { parseCsvFile, parseHoldingsText } from '../lib/csv';
+import { UpsertReviewModal } from './UpsertReviewModal';
+import type { UpsertResult } from '../lib/upsert';
 import { Badge } from '@/components/ui/badge';
 import {
   Card,
@@ -95,6 +101,7 @@ interface FinanceReportScreenProps {
   onUpdateHolding: (id: string, patch: Partial<Holding>) => Promise<void>;
   onRemoveHolding: (id: string) => Promise<void>;
   onReplaceHoldings?: (nextHoldings: Holding[]) => Promise<void>;
+  onUpsertHoldings?: (incoming: Holding[]) => Promise<UpsertResult['summary']>;
   onRefreshQuotes?: () => Promise<void>;
   onSave?: () => Promise<void> | void;
   onFiles: (files: File[]) => void;
@@ -126,12 +133,12 @@ const COPY = {
   emptyTitle: '暂无持仓数据',
   emptyBody: '上传持仓 CSV 或截图即可生成组合全景。',
   importTitle: '导入持仓',
-  uploadFile: '上传文件',
-  paste: '粘贴文本',
-  drop: '拖拽 CSV 或持仓截图到此处',
+  uploadFile: '上传单张截图 / CSV',
+  paste: '粘贴文本 (AI 识别)',
+  drop: '拖拽单张持仓截图到此处 (限制 1 张)',
   choose: '选择文件',
-  pasteHint: '每行一条：代码, 名称, 币种, 数量, 成本/单价, 券商, 层级, 主题',
-  generate: '解析并导入',
+  pasteHint: '可直接粘贴券商交易记录、微信持仓文字、或自定义表格文字',
+  generate: 'AI 智能提取并预览',
   sample: '加载伯克希尔 13F 示例',
   json: '导入 JSON 备份',
   resume: '恢复上次保存的组合',
@@ -179,6 +186,8 @@ export function FinanceReportScreen({
   onAddHolding,
   onUpdateHolding,
   onRemoveHolding,
+  onReplaceHoldings,
+  onUpsertHoldings,
   onRefreshQuotes,
   onSave,
   onFiles,
@@ -201,6 +210,9 @@ export function FinanceReportScreen({
   const [dragging, setDragging] = useState(false);
   const [manualText, setManualText] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
+  const [extractedPreview, setExtractedPreview] = useState<Holding[] | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analyzingNotice, setAnalyzingNotice] = useState('AI 正在分析...');
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [isExportingImg, setIsExportingImg] = useState(false);
   const [isRefreshingQuotes, setIsRefreshingQuotes] = useState(false);
@@ -454,27 +466,96 @@ export function FinanceReportScreen({
     setAddOpen(false);
   };
 
-  const processFiles = (list: FileList | null) => {
+  const processFiles = async (list: FileList | null) => {
     const files = [...(list ?? [])];
     if (!files.length) return;
     const valid = files.filter((file) =>
       /\.(csv|png|jpe?g|webp)$/i.test(file.name),
     );
-    if (valid.length !== files.length) {
-      setLocalError('只支持 CSV、PNG、JPG 和 WebP 格式文件。');
+    if (!valid.length) {
+      setLocalError('只支持 PNG、JPG、WebP 截图或 CSV 格式文件。');
+      return;
+    }
+    if (files.length > 1) {
+      showToast('每次限制导入 1 张截图分析，已自动为您选取第 1 张图片进行分析。');
+    }
+    const targetFile = valid[0];
+    setLocalError(null);
+    setIsAnalyzing(true);
+    try {
+      if (/\.csv$/i.test(targetFile.name)) {
+        setAnalyzingNotice('正在解析 CSV 持仓数据...');
+        const parsed = await parseCsvFile(targetFile);
+        if (!parsed.length) throw new Error('CSV 文件中未找到有效持仓标的。');
+        setExtractedPreview(parsed);
+        setImportOpen(false);
+      } else {
+        setAnalyzingNotice('AI 正在分析截图中的代码与最新持仓数...');
+        const parsed = await extractImagePositions(targetFile);
+        if (!parsed.length) {
+          throw new Error('截图中未识别到投资标的，请尝试更清晰的截图或使用文本粘贴。');
+        }
+        setExtractedPreview(parsed);
+        setImportOpen(false);
+      }
+    } catch (err) {
+      setLocalError(err instanceof Error ? err.message : '持仓识别失败');
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const handleAiTextExtract = async () => {
+    if (!manualText.trim()) {
+      setLocalError('请先输入或粘贴持仓文本。');
       return;
     }
     setLocalError(null);
-    onFiles(valid);
+    setIsAnalyzing(true);
+    setAnalyzingNotice('AI 正在智能识别文本中的标的代码与持股数...');
+    try {
+      const parsed = await extractTextPositions(manualText);
+      if (!parsed.length) {
+        throw new Error('未在文本中识别到有效投资标的，请检查内容。');
+      }
+      setExtractedPreview(parsed);
+      setImportOpen(false);
+    } catch (err) {
+      setLocalError(err instanceof Error ? err.message : '文本 AI 识别失败');
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
-  const importManualText = async () => {
-    try {
-      setLocalError(null);
-      await onManualImport(manualText);
-    } catch (error) {
-      setLocalError(error instanceof Error ? error.message : '导入失败');
+  const handleCsvTextExtract = async () => {
+    if (!manualText.trim()) {
+      setLocalError('请先输入或粘贴 CSV 文本。');
+      return;
     }
+    setLocalError(null);
+    try {
+      const parsed = parseHoldingsText(manualText, 'Manual text');
+      if (!parsed.length) {
+        throw new Error('未能按 CSV 格式解析出有效持仓。');
+      }
+      setExtractedPreview(parsed);
+      setImportOpen(false);
+    } catch (err) {
+      setLocalError(err instanceof Error ? err.message : 'CSV 解析失败');
+    }
+  };
+
+  const handleConfirmUpsert = async (reviewedItems: Holding[]) => {
+    if (onUpsertHoldings) {
+      const summary = await onUpsertHoldings(reviewedItems);
+      showToast(
+        `✅ 导入成功：已更新 ${summary.updatedCount} 笔持仓数量，新增 ${summary.addedCount} 笔标的！`,
+      );
+    } else if (onReplaceHoldings) {
+      await onReplaceHoldings(reviewedItems);
+      showToast('✅ 持仓已成功导入！');
+    }
+    setExtractedPreview(null);
   };
 
   const importJsonFile = async (file: File | undefined) => {
@@ -1138,7 +1219,13 @@ export function FinanceReportScreen({
               </button>
             </div>
 
-            {importMode === 'upload' ? (
+            {isAnalyzing ? (
+              <div className="py-12 flex flex-col items-center justify-center gap-3 text-center">
+                <Loader2 className="animate-spin text-primary" size={28} />
+                <p className="text-sm font-semibold text-foreground">{analyzingNotice}</p>
+                <p className="text-xs text-muted-foreground">正在调用 AI 智能识别代码、标的名称与最新持仓数量...</p>
+              </div>
+            ) : importMode === 'upload' ? (
               <div
                 className={`gf-drop-zone ${dragging ? 'is-dragging' : ''}`}
                 onDragEnter={(event) => {
@@ -1153,12 +1240,12 @@ export function FinanceReportScreen({
                 onDrop={(event) => {
                   event.preventDefault();
                   setDragging(false);
-                  processFiles(event.dataTransfer.files);
+                  void processFiles(event.dataTransfer.files);
                 }}
               >
                 <Upload size={30} strokeWidth={1.6} />
-                <strong>{t.drop}</strong>
-                <span>CSV / PNG / JPG / WebP</span>
+                <strong>拖拽单张持仓截图到此处 (限制 1 张)</strong>
+                <span>支持 PNG / JPG / WebP（AI 识别代码与持仓数）或 CSV</span>
                 <button type="button" onClick={() => fileInputRef.current?.click()}>
                   {t.choose}
                 </button>
@@ -1167,22 +1254,37 @@ export function FinanceReportScreen({
                   className="visually-hidden"
                   type="file"
                   accept={ACCEPTED}
-                  multiple
-                  onChange={(event) => processFiles(event.target.files)}
+                  onChange={(event) => void processFiles(event.target.files)}
                 />
               </div>
             ) : (
               <div className="gf-paste-panel">
-                <p>{t.pasteHint}</p>
+                <p className="text-xs text-muted-foreground mb-2">
+                  直接粘贴任意格式文本（微信聊天记录、券商账单、持仓文字截取、或自定义表格文字）。AI 将自动识别股票代码与最新持仓数。
+                </p>
                 <textarea
                   value={manualText}
                   onChange={(event) => setManualText(event.target.value)}
                   spellCheck={false}
-                  placeholder={`AAPL, Apple, USD, 100, 200, Demo Broker, Core, Technology\nCash_USD, USD Cash, USD, 50000, 1, Demo Broker, Cash, Liquidity`}
+                  placeholder={`可直接粘贴任意文本：\n今天在乐天证券买入 1482.T 100股 现价 2050日元\nNVDA 50股 现价 140美元\n腾讯控股 00700 200股\n\n或表格格式：\nAAPL, Apple, USD, 100, 200, Demo Broker\nCash_USD, USD Cash, USD, 50000, 1, Demo Broker`}
                 />
-                <button type="button" onClick={() => void importManualText()}>
-                  {t.generate}
-                </button>
+                <div className="flex items-center gap-2 mt-2">
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90"
+                    onClick={() => void handleAiTextExtract()}
+                  >
+                    <Sparkles size={13} />
+                    <span>AI 智能识别持仓并预览</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-border bg-background hover:bg-muted text-muted-foreground hover:text-foreground"
+                    onClick={() => void handleCsvTextExtract()}
+                  >
+                    <span>标准 CSV 直接解析</span>
+                  </button>
+                </div>
               </div>
             )}
 
@@ -1217,6 +1319,15 @@ export function FinanceReportScreen({
           </section>
         </div>
       ) : null}
+
+      <UpsertReviewModal
+        isOpen={Boolean(extractedPreview)}
+        incoming={extractedPreview ?? []}
+        existingHoldings={holdings}
+        baseCurrency={baseCurrency}
+        onConfirm={handleConfirmUpsert}
+        onClose={() => setExtractedPreview(null)}
+      />
 
       {addOpen ? (
         <div className="gf-modal-backdrop" role="presentation">
@@ -1463,10 +1574,10 @@ function FinanceHoldingRow({
 }) {
   const firstAccount = holding.accounts[0];
   const isMultiAccount = holding.accounts.length > 1;
-  const isCashOrLumpSum =
+  const isPureCash =
     holding.layer === 'Cash' ||
     holding.ticker.startsWith('Cash') ||
-    ['EMAXIS_SP500', 'ANT_YUEBAO', 'ANT_VN_QDII', 'CMB_ASSET', 'ANT_BANK_HKD', 'WLD_EARN', 'BITGET_WALLET'].includes(holding.ticker);
+    holding.ticker.startsWith('CASH_');
 
   return (
     <>
@@ -1565,7 +1676,7 @@ function FinanceHoldingRow({
         {/* Direct Inline Edit for Unit Price on Single-Account Rows */}
         <TableCell className="text-right tabular-nums text-xs" onClick={(e) => e.stopPropagation()}>
           {!isMultiAccount && firstAccount ? (
-            isCashOrLumpSum && (firstAccount.marketPrice === 1 || firstAccount.quantity > 100) ? (
+            isPureCash && (firstAccount.marketPrice === 1 || firstAccount.marketPrice == null) ? (
               <span className="text-xs text-muted-foreground">{firstAccount.currency}</span>
             ) : (
               <div className="inline-flex items-center justify-end gap-1">
@@ -1575,6 +1686,7 @@ function FinanceHoldingRow({
                   min="0"
                   step="any"
                   aria-label={`${holding.ticker} 单价`}
+                  placeholder={firstAccount.marketPrice == null ? '输入现价' : undefined}
                   value={formatEditableNumber(firstAccount.marketPrice)}
                   onChange={(event) =>
                     void onUpdateHolding(firstAccount.id, {
@@ -1582,7 +1694,7 @@ function FinanceHoldingRow({
                         event.target.value === '' ? null : Number(event.target.value),
                     })
                   }
-                  className="w-24 h-7 px-2 text-right text-xs tabular-nums rounded-md border border-border bg-background hover:border-foreground/30 focus:border-primary focus:outline-none focus:ring-1 focus:ring-ring"
+                  className="w-24 h-7 px-2 text-right text-xs tabular-nums rounded-md border border-border bg-background hover:border-foreground/30 focus:border-primary focus:outline-none focus:ring-1 focus:ring-ring font-medium"
                   title={`直接修改单价 (${firstAccount.currency})`}
                 />
                 <span className="text-[10px] text-muted-foreground w-7 text-left">
@@ -1599,10 +1711,10 @@ function FinanceHoldingRow({
       {/* Expanded Sub-Account Rows (for Multi-Account or Detail Inspection) */}
       {expanded &&
         holding.accounts.map((account) => {
-          const accountIsLumpSum =
+          const accountIsPureCash =
             account.layer === 'Cash' ||
             account.ticker.startsWith('Cash') ||
-            ['EMAXIS_SP500', 'ANT_YUEBAO', 'ANT_VN_QDII', 'CMB_ASSET', 'ANT_BANK_HKD', 'WLD_EARN', 'BITGET_WALLET'].includes(account.ticker);
+            account.ticker.startsWith('CASH_');
 
           return (
             <TableRow
@@ -1660,7 +1772,7 @@ function FinanceHoldingRow({
               </TableCell>
 
               <TableCell className="text-right">
-                {accountIsLumpSum && (account.marketPrice === 1 || account.quantity > 100) ? (
+                {accountIsPureCash && (account.marketPrice === 1 || account.marketPrice == null) ? (
                   <span className="text-xs text-muted-foreground">{account.currency}</span>
                 ) : (
                   <div className="inline-flex items-center justify-end gap-1">
@@ -1669,6 +1781,7 @@ function FinanceHoldingRow({
                       inputMode="decimal"
                       min="0"
                       step="any"
+                      placeholder={account.marketPrice == null ? '输入现价' : undefined}
                       value={formatEditableNumber(account.marketPrice)}
                       onChange={(event) =>
                         void onUpdateHolding(account.id, {
@@ -1676,7 +1789,7 @@ function FinanceHoldingRow({
                             event.target.value === '' ? null : Number(event.target.value),
                         })
                       }
-                      className="w-24 h-7 px-2 text-right text-xs tabular-nums rounded-md border border-border bg-background focus:border-primary focus:outline-none"
+                      className="w-24 h-7 px-2 text-right text-xs tabular-nums rounded-md border border-border bg-background focus:border-primary focus:outline-none font-medium"
                       title={`修改单价 (${account.currency})`}
                     />
                     <span className="text-[10px] text-muted-foreground w-7 text-left">

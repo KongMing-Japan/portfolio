@@ -15,6 +15,7 @@ import {
   recalculateBaseValues,
   suggestBaseCurrency,
 } from './lib/portfolio';
+import { upsertHoldings } from './lib/upsert';
 import {
   clearSnapshot,
   isOwnerSessionUnlocked,
@@ -605,6 +606,35 @@ function App() {
     [persist],
   );
 
+  const handleUpsertHoldings = useCallback(
+    async (incoming: Holding[]) => {
+      if (!incoming.length) throw new Error('未识别到有效持仓标的。');
+
+      const { updatedHoldings, summary } = upsertHoldings(holdings, incoming);
+
+      let quoteResponse: QuoteResponse;
+      try {
+        quoteResponse = await fetchQuotes(updatedHoldings);
+      } catch {
+        quoteResponse = await fetchBundledPrices().catch(() => ({
+          quotes: [],
+          fx: fx || { JPY: 1, USD: 150.4, HKD: 19.4, CNY: 21.1 },
+          fetchedAt: new Date().toISOString(),
+        }));
+      }
+
+      const nextFx = { JPY: 1, ...quoteResponse.fx };
+      const enriched = applyQuotes(updatedHoldings, quoteResponse, baseCurrency);
+      setHoldings(enriched);
+      setFx(nextFx);
+      setQuoteUpdatedAt(quoteResponse.fetchedAt);
+      await persist(enriched, baseCurrency, nextFx, quoteResponse.fetchedAt);
+
+      return summary;
+    },
+    [holdings, baseCurrency, fx, persist],
+  );
+
   const handleManualSave = useCallback(async () => {
     await persist(holdings, baseCurrency, fx, quoteUpdatedAt);
   }, [holdings, baseCurrency, fx, quoteUpdatedAt, persist]);
@@ -647,6 +677,7 @@ function App() {
         onUpdateHolding={updateReportHolding}
         onRemoveHolding={removeReportHolding}
         onReplaceHoldings={saveReportHoldings}
+        onUpsertHoldings={handleUpsertHoldings}
         onRefreshQuotes={handleRefreshQuotes}
         onSave={handleManualSave}
         onFiles={handleFiles}
@@ -674,6 +705,7 @@ function App() {
     handleRestoreSnapshot,
     handleSample,
     handleUnlockOwner,
+    handleUpsertHoldings,
     hasSavedPortfolio,
     holdings,
     isOwnerUnlocked,

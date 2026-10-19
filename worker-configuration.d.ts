@@ -3,6 +3,7 @@
 // Runtime types generated with workerd@1.20260617.1 2026-06-23 nodejs_compat
 interface __BaseEnv_Env {
 	GROQ_VISION_MODEL: string;
+	GROQ_TEXT_MODEL?: string;
 	GROQ_API_KEY: string;
 }
 declare namespace Cloudflare {

@@ -1,5 +1,5 @@
 export type Layer = 'Core' | 'Satellite' | 'Defensive' | 'Cash';
-export type SourceType = 'csv' | 'image' | 'json' | 'manual';
+export type SourceType = 'csv' | 'image' | 'json' | 'manual' | 'text';
 export type BaseCurrency = 'JPY' | 'USD' | 'CNY';
 export type AppStep = 'upload' | 'processing' | 'review' | 'report';
 export type Locale = 'zh';
