@@ -1072,12 +1072,40 @@ export function FinanceReportScreen({
         </div>
       )}
 
-      <footer className="gf-footer">
-        <p style={{ margin: '0 0 0.35rem', fontWeight: 600, color: 'var(--foreground)' }}>Portfolio</p>
-        <p style={{ margin: '0 0 0.45rem', fontSize: '0.75rem', color: 'var(--muted-foreground)', lineHeight: 1.6 }}>
-          {quoteUpdatedAt ? `行情更新于 ${formatDateTime(quoteUpdatedAt)}` : '行情未更新'} · 基准币种 {baseCurrency} · 仅用于资产结构偏离度分析与再平衡试算
-        </p>
-        <p style={{ margin: '0 0 0.6rem' }}>© 2026 KongMing LLC · 孔明合同会社</p>
+      <footer className="w-full max-w-7xl mx-auto mt-16 pt-8 pb-12 border-t border-border px-4 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-muted-foreground">
+        <div>
+          <span>© 2026 KongMing LLC · 孔明合同会社</span>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="opacity-75">KongMing Network:</span>
+          <a href="https://kongmingjapan.com/" target="_blank" rel="noreferrer" className="text-foreground/80 hover:text-foreground transition-colors">
+            KongMing
+          </a>
+          <span>·</span>
+          <a href="https://radar.kongmingjapan.com/" target="_blank" rel="noreferrer" className="text-foreground/80 hover:text-foreground transition-colors">
+            Radar
+          </a>
+          <span>·</span>
+          <a href="https://lab.kongmingjapan.com/" target="_blank" rel="noreferrer" className="text-foreground/80 hover:text-foreground transition-colors">
+            Lab
+          </a>
+          <span>·</span>
+          <a href="https://kodomo.fyi/" target="_blank" rel="noreferrer" className="text-foreground/80 hover:text-foreground transition-colors">
+            Kodomo Go!
+          </a>
+          <span>·</span>
+          <a href="https://tax.kongmingjapan.com/" target="_blank" rel="noreferrer" className="text-foreground/80 hover:text-foreground transition-colors">
+            Tax
+          </a>
+          <span>·</span>
+          <a href="https://planner.kongmingjapan.com/" target="_blank" rel="noreferrer" className="text-foreground/80 hover:text-foreground transition-colors">
+            Planner
+          </a>
+          <span>·</span>
+          <a href="https://portfolio.kongmingjapan.com/" target="_blank" rel="noreferrer" className="font-semibold text-foreground">
+            Portfolio
+          </a>
+        </div>
       </footer>
 
       {importOpen ? (

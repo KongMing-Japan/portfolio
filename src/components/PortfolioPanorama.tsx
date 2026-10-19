@@ -304,50 +304,52 @@ export function PortfolioPanorama({
             </div>
           </TabsContent>
 
-          {/* TAB 2: Strategic Themes */}
+          {/* TAB 2: Strategic Themes - Proportional Area Cards without Bars */}
           <TabsContent value="themes" className="space-y-3">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5">
-              {themeGroups.map((tg) => (
-                <div
-                  key={tg.theme}
-                  className="rounded-xl border border-border bg-card p-3 text-left flex flex-col justify-between gap-2"
-                >
-                  <div className="w-full space-y-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-xs font-semibold text-foreground truncate">
-                        {tg.theme}
-                      </span>
-                      <span className="text-xs font-semibold tabular-nums text-foreground shrink-0">
-                        {formatPercent(tg.weight)}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-                      <span className="truncate">{tg.engine}</span>
-                      <span className="tabular-nums shrink-0">
-                        {formatMoney(tg.value, baseCurrency)}
-                      </span>
-                    </div>
-                    <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden mt-1">
-                      <div
-                        className="h-full rounded-full bg-primary"
-                        style={{ width: `${Math.min(100, tg.weight * 100)}%` }}
-                      />
-                    </div>
-                  </div>
+            <div className="flex flex-wrap gap-2.5 w-full min-h-[220px]">
+              {themeGroups.map((tg) => {
+                const flexGrow = Math.max(Math.round(tg.weight * 100), 14);
+                const flexBasis = tg.weight > 0.28 ? '44%' : tg.weight > 0.14 ? '28%' : '20%';
 
-                  <div className="flex items-center gap-1 flex-wrap pt-1 border-t border-border/60 w-full">
-                    {tg.items.slice(0, 4).map((it) => (
-                      <Badge
-                        key={it.ticker}
-                        variant="secondary"
-                        className="text-[10px] px-1.5 py-0 font-normal"
-                      >
-                        {it.name} {formatPercent(it.weight, 0)}
-                      </Badge>
-                    ))}
+                return (
+                  <div
+                    key={tg.theme}
+                    style={{
+                      flex: `${flexGrow} 1 ${flexBasis}`,
+                      minHeight: tg.weight > 0.2 ? '96px' : '82px',
+                    }}
+                    className="rounded-xl border border-border bg-card p-3 text-left flex flex-col justify-between gap-2 transition-colors hover:border-foreground/30"
+                  >
+                    <div className="w-full">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <span className="text-xs font-semibold text-foreground truncate block">
+                            {tg.theme}
+                          </span>
+                          <span className="text-[11px] tabular-nums text-muted-foreground mt-0.5 block">
+                            {formatMoney(tg.value, baseCurrency)}
+                          </span>
+                        </div>
+                        <span className="text-xs font-semibold tabular-nums text-foreground shrink-0">
+                          {formatPercent(tg.weight)}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1 flex-wrap pt-1.5 border-t border-border/50 w-full mt-auto">
+                      {tg.items.slice(0, 5).map((it) => (
+                        <Badge
+                          key={it.ticker}
+                          variant="secondary"
+                          className="text-[10px] px-1.5 py-0 font-normal"
+                        >
+                          {it.name} {formatPercent(it.weight, 0)}
+                        </Badge>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </TabsContent>
 

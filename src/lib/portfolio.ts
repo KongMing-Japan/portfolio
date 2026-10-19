@@ -831,7 +831,7 @@ export function canonicalThemeFromHolding(
 }
 
 export type DualEngineCategory =
-  | '美股 AI 算力与科技生态'
+  | 'AI 算力与科技生态'
   | '中国智能电车与平台经济'
   | '全球宽基与固收缓冲'
   | '战术卫星与新兴市场'
@@ -859,7 +859,7 @@ export function dualEngineFromHolding(
       combined,
     )
   ) {
-    return '美股 AI 算力与科技生态';
+    return 'AI 算力与科技生态';
   }
   if (
     holding.layer === 'Defensive' ||
@@ -871,7 +871,7 @@ export function dualEngineFromHolding(
     return '中国智能电车与平台经济';
   }
   if (market === '美国' && holding.layer === 'Core') {
-    return '美股 AI 算力与科技生态';
+    return 'AI 算力与科技生态';
   }
   return '战术卫星与新兴市场';
 }

@@ -378,7 +378,7 @@ export function UserAuthModal({
                 </button>
 
                 <p className="text-[11px] text-muted-foreground text-center leading-relaxed">
-                  提示: 提交后 Chrome 浏览器会自动提示「保存密码」，下次打开即可一键自动填充。
+                  无需个人信息 · 凭据仅加密保存在当前浏览器本地（网站不保存密码）· 注册登录完全自愿，仅用作本地资产私享锁。
                 </p>
               </form>
             </div>
