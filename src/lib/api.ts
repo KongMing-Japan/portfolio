@@ -154,3 +154,99 @@ export async function fetchBundledPrices(): Promise<QuoteResponse> {
     fetchedAt,
   };
 }
+
+export interface CloudPortfolioResponse {
+  isOwner: boolean;
+  portfolio?: {
+    id: string;
+    name: string;
+    baseCurrency: string;
+    fx: Record<string, number>;
+    quoteUpdatedAt: string | null;
+    holdings: Holding[];
+  };
+}
+
+export async function fetchPortfolioFromCloud(): Promise<CloudPortfolioResponse | null> {
+  try {
+    const response = await fetch('/api/portfolio', {
+      headers: {
+        Accept: 'application/json',
+        'X-Owner-Pin': '8888',
+      },
+      cache: 'no-store',
+    });
+    if (!response.ok) return null;
+    return (await response.json()) as CloudPortfolioResponse;
+  } catch {
+    return null;
+  }
+}
+
+export async function saveHoldingToCloud(holding: Holding): Promise<boolean> {
+  try {
+    const response = await fetch('/api/holdings', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Owner-Pin': '8888',
+      },
+      body: JSON.stringify({ holding }),
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+export async function saveHoldingsBatchToCloud(holdings: Holding[]): Promise<boolean> {
+  try {
+    const response = await fetch('/api/holdings', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Owner-Pin': '8888',
+      },
+      body: JSON.stringify({ holdings }),
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+export async function deleteHoldingFromCloud(id: string): Promise<boolean> {
+  try {
+    const response = await fetch(`/api/holdings?id=${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      headers: {
+        'X-Owner-Pin': '8888',
+      },
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+export async function savePortfolioSettingsToCloud(settings: {
+  baseCurrency?: string;
+  fx?: Record<string, number>;
+  quoteUpdatedAt?: string;
+  name?: string;
+}): Promise<boolean> {
+  try {
+    const response = await fetch('/api/portfolio', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Owner-Pin': '8888',
+      },
+      body: JSON.stringify(settings),
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+

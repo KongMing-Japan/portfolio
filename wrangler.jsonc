@@ -5,6 +5,15 @@
   "compatibility_date": "2026-06-23",
   "compatibility_flags": ["nodejs_compat"],
   "vars": {
-    "GROQ_VISION_MODEL": "qwen/qwen3.8-27b"
-  }
+    "GROQ_VISION_MODEL": "qwen/qwen3.8-27b",
+    "GROQ_TEXT_MODEL": "llama-3.3-70b-versatile"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "portfolio-db",
+      "database_id": "fd12e5d0-fba4-4996-9a71-a5ac4d401a75",
+      "migrations_dir": "migrations"
+    }
+  ]
 }

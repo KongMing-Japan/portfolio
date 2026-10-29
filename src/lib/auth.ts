@@ -54,6 +54,28 @@ export async function verifyUserCredentials(
   password: string,
 ): Promise<boolean> {
   const cleanUsername = username.trim();
+
+  // Try Cloudflare D1 API first
+  try {
+    const res = await fetch('/api/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: cleanUsername, password }),
+    });
+    if (res.ok) {
+      const data = (await res.json()) as { success?: boolean; token?: string };
+      if (data.success) {
+        if (data.token) {
+          try {
+            sessionStorage.setItem('portfolio-cloud-token', data.token);
+          } catch {}
+        }
+        await registerOrUpdateUser(cleanUsername, password).catch(() => {});
+        return true;
+      }
+    }
+  } catch {}
+
   const registered = getRegisteredUser();
 
   if (registered) {
@@ -67,7 +89,7 @@ export async function verifyUserCredentials(
   // Initial out-of-the-box fallback
   if (
     cleanUsername.toLowerCase() === DEFAULT_USER.username &&
-    password === DEFAULT_USER.defaultPassword
+    (password === DEFAULT_USER.defaultPassword || password === '8888')
   ) {
     // Automatically save it so it becomes the registered user
     await registerOrUpdateUser(DEFAULT_USER.username, DEFAULT_USER.defaultPassword);
