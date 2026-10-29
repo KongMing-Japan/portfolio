@@ -200,7 +200,6 @@ export function FinanceReportScreen({
   const [layerFilter, setLayerFilter] = useState<'ALL' | Layer>('ALL');
   const [holdingSearch, setHoldingSearch] = useState('');
   const [addOpen, setAddOpen] = useState(false);
-  const [editorOpen, setEditorOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [importMode, setImportMode] = useState<ImportMode>('upload');
   const [dragging, setDragging] = useState(false);
@@ -1463,48 +1462,7 @@ export function FinanceReportScreen({
         </div>
       ) : null}
 
-      {editorOpen ? (
-        <div className="gf-modal-backdrop" role="presentation">
-          <section className="gf-editor-modal">
-            <div className="gf-modal-header">
-              <div>
-                <h2>{t.accountDetails}</h2>
-                <p>{t.editDetails}</p>
-              </div>
-              <button type="button" onClick={() => setEditorOpen(false)}>
-                {t.done}
-              </button>
-            </div>
-            <div className="gf-editor-table-wrap">
-              <table className="gf-editor-table">
-                <thead>
-                  <tr>
-                    <th>{t.symbol}</th>
-                    <th>{t.broker}</th>
-                    <th>{t.layer}</th>
-                    <th className="numeric">{t.qty}</th>
-                    <th className="numeric">{t.price}</th>
-                    <th className="numeric">{t.value}</th>
-                    <th />
-                  </tr>
-                </thead>
-                <tbody>
-                  {holdings.map((holding) => (
-                    <EditableHoldingRow
-                      key={holding.id}
-                      holding={holding}
-                      baseCurrency={baseCurrency}
-                      deleteLabel={t.delete}
-                      onUpdate={onUpdateHolding}
-                      onRemove={onRemoveHolding}
-                    />
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
-        </div>
-      ) : null}
+
 
       <UserAuthModal
         isOpen={authModalOpen}
@@ -1784,101 +1742,5 @@ function FinanceHoldingRow({
           );
         })}
     </>
-  );
-}
-
-function EditableHoldingRow({
-  holding,
-  baseCurrency,
-  deleteLabel,
-  onUpdate,
-  onRemove,
-}: {
-  holding: Holding;
-  baseCurrency: BaseCurrency;
-  deleteLabel: string;
-  onUpdate: (id: string, patch: Partial<Holding>) => Promise<void>;
-  onRemove: (id: string) => Promise<void>;
-}) {
-  return (
-    <tr className="gf-editor-row">
-      <td>
-        <div className="gf-editor-security">
-          <strong>{holding.ticker}</strong>
-          <span>{getCleanSecurityName(holding.ticker, holding.name)}</span>
-        </div>
-      </td>
-      <td>
-        <div className="gf-editor-security">
-          <input
-            list="popular-brokers-list"
-            value={holding.broker || ''}
-            onChange={(event) =>
-              void onUpdate(holding.id, { broker: event.target.value })
-            }
-            placeholder="券商/机构"
-            className="text-xs px-2 py-1 rounded-md border border-border bg-background w-full max-w-[130px]"
-          />
-          <span>{holding.account || holding.sourceType}</span>
-        </div>
-      </td>
-      <td>
-        <select
-          className="gf-compact-select"
-          value={holding.layer}
-          onChange={(event) =>
-            void onUpdate(holding.id, { layer: event.target.value as Layer })
-          }
-        >
-          {LAYERS.map((layer) => (
-            <option key={layer} value={layer}>
-              {LAYER_META[layer].label}
-            </option>
-          ))}
-        </select>
-      </td>
-      <td className="numeric">
-        <input
-          className="gf-compact-number"
-          type="number"
-          inputMode="decimal"
-          min="0"
-          step="any"
-          value={holding.quantity}
-          onChange={(event) =>
-            void onUpdate(holding.id, { quantity: Number(event.target.value) })
-          }
-        />
-      </td>
-      <td className="numeric">
-        <input
-          className="gf-compact-number"
-          type="number"
-          inputMode="decimal"
-          min="0"
-          step="any"
-          value={formatEditableNumber(holding.marketPrice)}
-          onChange={(event) =>
-            void onUpdate(holding.id, {
-              marketPrice:
-                event.target.value === '' ? null : Number(event.target.value),
-            })
-          }
-        />
-      </td>
-      <td className="numeric">
-        <strong>{formatMoney(holding.valueInBase ?? 0, baseCurrency)}</strong>
-        <span className="gf-editor-currency">{holding.currency}</span>
-      </td>
-      <td className="numeric">
-        <button
-          className="gf-row-delete"
-          aria-label={`${deleteLabel} ${holding.ticker || holding.name}`}
-          onClick={() => void onRemove(holding.id)}
-        >
-          <Trash2 size={15} />
-        </button>
-      </td>
-    </tr>
   );
 }
