@@ -39,7 +39,24 @@ async function main() {
   const status = await fetchStatus();
   console.log(`\n📊 组合概览: ${status.portfolioName} (基准币种: ${status.baseCurrency})`);
   console.log(`📅 上次行情更新: ${status.quoteUpdatedAt || '未记录'}`);
+  if (status.totalPortfolioValueJpy) {
+    console.log(`💰 总资产估值: ¥${status.totalPortfolioValueJpy.toLocaleString()} JPY`);
+  }
+  if (status.layerSummary) {
+    console.log(`🛡️ 资产层级结构:`);
+    console.log(`   • 防守仓: ¥${status.layerSummary.Defensive.valueJpy.toLocaleString()} (${(status.layerSummary.Defensive.weight * 100).toFixed(1)}%)`);
+    console.log(`   • 核心仓: ¥${status.layerSummary.Core.valueJpy.toLocaleString()} (${(status.layerSummary.Core.weight * 100).toFixed(1)}%)`);
+    console.log(`   • 卫星仓: ¥${status.layerSummary.Satellite.valueJpy.toLocaleString()} (${(status.layerSummary.Satellite.weight * 100).toFixed(1)}%)`);
+    console.log(`   • 现金储备: ¥${status.layerSummary.Cash.valueJpy.toLocaleString()} (${(status.layerSummary.Cash.weight * 100).toFixed(1)}%)`);
+  }
   console.log(`📋 总标的数: ${status.totalHoldingsCount} 项`);
+
+  if (status.recentSnapshots && status.recentSnapshots.length > 0) {
+    console.log(`\n📜 最近月度资产归档 (${status.recentSnapshots.length} 次记录):`);
+    for (const snap of status.recentSnapshots.slice(0, 3)) {
+      console.log(`   [${snap.createdAt.slice(0, 10)}] ${snap.summaryNotes || snap.actionType}`);
+    }
+  }
 
   if (status.needsPriceUpdate && status.needsPriceUpdate.length > 0) {
     console.log(`\n🔍 需要更新净值的场外基金/特殊标的 (${status.needsPriceUpdate.length} 项):`);
@@ -49,6 +66,20 @@ async function main() {
       console.log(`    搜索提示: "${item.searchHint}"`);
       if (item.note) console.log(`    说明: ${item.note}`);
     }
+  }
+
+  // Parse snapshot argument: --snapshot [notes]
+  const snapIndex = args.indexOf('--snapshot');
+  if (snapIndex !== -1) {
+    const notes = args[snapIndex + 1] || '月度实盘资产快照归档';
+    console.log(`\n📸 正在封存月度资产快照: "${notes}"...`);
+    const result = await postSync({
+      recordSnapshot: true,
+      actionType: 'monthly_snapshot',
+      notes,
+    });
+    console.log(`✅ 月度快照归档成功!`, result);
+    return;
   }
 
   // Parse manual set arguments: --set TICKER=PRICE ...

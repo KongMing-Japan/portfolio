@@ -38,6 +38,8 @@ interface AgentSyncBody {
   positions?: PositionUpdate[];
   dailyAccounts?: DailyAccountUpdate[];
   fx?: Record<string, number>;
+  recordSnapshot?: boolean;
+  actionType?: string;
   notes?: string;
 }
 
@@ -110,12 +112,72 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
       h.market_price == null,
   );
 
+  // Compute portfolio allocation metrics & total value in base currency (JPY)
+  let fx: Record<string, number> = { JPY: 1, USD: 157.97, HKD: 20.13, CNY: 23.61 };
+  try {
+    if (portfolio.fx_json) fx = JSON.parse(portfolio.fx_json);
+  } catch {}
+
+  const layerValues: Record<string, number> = { Defensive: 0, Core: 0, Satellite: 0, Cash: 0 };
+  let totalPortfolioValueJpy = 0;
+
+  for (const h of holdings) {
+    const rawVal = h.market_value ?? (h.market_price != null ? h.market_price * h.quantity : 0);
+    const rate = fx[h.currency.toUpperCase()] ?? 1;
+    const valJpy = rawVal * rate;
+    totalPortfolioValueJpy += valJpy;
+    if (h.layer in layerValues) {
+      layerValues[h.layer] += valJpy;
+    }
+  }
+
+  // Fetch recent monthly snapshots for MoM return calculation
+  const { results: recentSnapshots } = await context.env.DB.prepare(
+    'SELECT id, action_type, total_value_jpy, holdings_count, summary_notes, created_at FROM rebalance_history WHERE portfolio_id = ? ORDER BY created_at DESC LIMIT 12',
+  )
+    .bind(portfolio.id)
+    .all<{
+      id: string;
+      action_type: string;
+      total_value_jpy: number | null;
+      holdings_count: number | null;
+      summary_notes: string | null;
+      created_at: string;
+    }>();
+
   return json({
     portfolioId: portfolio.id,
     portfolioName: portfolio.name,
     baseCurrency: portfolio.base_currency,
     quoteUpdatedAt: portfolio.quote_updated_at,
+    totalPortfolioValueJpy: Math.round(totalPortfolioValueJpy),
     totalHoldingsCount: holdings.length,
+    layerSummary: {
+      Defensive: {
+        valueJpy: Math.round(layerValues.Defensive),
+        weight: totalPortfolioValueJpy > 0 ? Number((layerValues.Defensive / totalPortfolioValueJpy).toFixed(4)) : 0,
+      },
+      Core: {
+        valueJpy: Math.round(layerValues.Core),
+        weight: totalPortfolioValueJpy > 0 ? Number((layerValues.Core / totalPortfolioValueJpy).toFixed(4)) : 0,
+      },
+      Satellite: {
+        valueJpy: Math.round(layerValues.Satellite),
+        weight: totalPortfolioValueJpy > 0 ? Number((layerValues.Satellite / totalPortfolioValueJpy).toFixed(4)) : 0,
+      },
+      Cash: {
+        valueJpy: Math.round(layerValues.Cash),
+        weight: totalPortfolioValueJpy > 0 ? Number((layerValues.Cash / totalPortfolioValueJpy).toFixed(4)) : 0,
+      },
+    },
+    recentSnapshots: recentSnapshots.map((s) => ({
+      id: s.id,
+      actionType: s.action_type,
+      totalValueJpy: s.total_value_jpy,
+      holdingsCount: s.holdings_count,
+      summaryNotes: s.summary_notes,
+      createdAt: s.created_at,
+    })),
     needsPriceUpdate: needsPriceUpdate.map((h) => {
       const hint = FUND_METADATA_HINTS[h.ticker.toUpperCase()];
       return {
@@ -289,20 +351,75 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     }
 
     // 6. Record history snapshot in rebalance_history
-    statements.push(
-      context.env.DB.prepare(`
+    const isMonthlySnapshot = Boolean(body.recordSnapshot || body.actionType === 'monthly_snapshot');
+    const actionType = body.actionType || (isMonthlySnapshot ? 'monthly_snapshot' : 'ai_agent_sync');
+
+    if (isMonthlySnapshot) {
+      // Execute pending statements first so valuations are updated
+      if (statements.length > 0) {
+        await context.env.DB.batch(statements);
+        statements.length = 0;
+      }
+
+      // Compute latest total portfolio value in JPY
+      const { results: currentHoldings } = await context.env.DB.prepare(
+        'SELECT currency, quantity, market_price, market_value, layer FROM holdings WHERE portfolio_id = ?',
+      ).bind(portfolio.id).all<{ currency: string; quantity: number; market_price: number | null; market_value: number | null; layer: string }>();
+
+      const portfolioData = await context.env.DB.prepare(
+        'SELECT fx_json FROM portfolios WHERE id = ?',
+      ).bind(portfolio.id).first<{ fx_json: string | null }>();
+
+      let fxRates: Record<string, number> = { JPY: 1, USD: 157.97, HKD: 20.13, CNY: 23.61 };
+      try {
+        if (portfolioData?.fx_json) fxRates = JSON.parse(portfolioData.fx_json);
+      } catch {}
+
+      let totalJpy = 0;
+      const layerBreakdown: Record<string, number> = { Defensive: 0, Core: 0, Satellite: 0, Cash: 0 };
+      for (const h of currentHoldings) {
+        const val = h.market_value ?? (h.market_price != null ? h.market_price * h.quantity : 0);
+        const rate = fxRates[h.currency.toUpperCase()] ?? 1;
+        const inJpy = val * rate;
+        totalJpy += inJpy;
+        if (h.layer in layerBreakdown) layerBreakdown[h.layer] += inJpy;
+      }
+
+      await context.env.DB.prepare(`
         INSERT INTO rebalance_history (
-          id, portfolio_id, action_type, summary_notes, snapshot_json
+          id, portfolio_id, action_type, total_value_jpy, holdings_count, summary_notes, snapshot_json
         ) VALUES (
-          ?, ?, 'ai_agent_sync', ?, ?
+          ?, ?, ?, ?, ?, ?, ?
         );
       `).bind(
         crypto.randomUUID(),
         portfolio.id,
-        body.notes || `AI Agent sync: updated ${updatedTickers.length} tickers`,
-        JSON.stringify({ updatedTickers, timestamp: new Date().toISOString() }),
-      ),
-    );
+        actionType,
+        Math.round(totalJpy),
+        currentHoldings.length,
+        body.notes || `月度实盘资产快照归档: 总资产 ¥${Math.round(totalJpy).toLocaleString()}`,
+        JSON.stringify({
+          totalJpy: Math.round(totalJpy),
+          layerBreakdown,
+          timestamp: new Date().toISOString(),
+        }),
+      ).run();
+    } else {
+      statements.push(
+        context.env.DB.prepare(`
+          INSERT INTO rebalance_history (
+            id, portfolio_id, action_type, summary_notes, snapshot_json
+          ) VALUES (
+            ?, ?, 'ai_agent_sync', ?, ?
+          );
+        `).bind(
+          crypto.randomUUID(),
+          portfolio.id,
+          body.notes || `AI Agent sync: updated ${updatedTickers.length} tickers`,
+          JSON.stringify({ updatedTickers, timestamp: new Date().toISOString() }),
+        ),
+      );
+    }
 
     if (statements.length > 0) {
       await context.env.DB.batch(statements);
