@@ -21,16 +21,23 @@ interface QuoteUpdate {
 
 interface PositionUpdate {
   ticker: string;
+  name?: string;
   broker?: string;
+  account?: string;
+  market?: string;
+  currency?: string;
   quantity?: number;
   marketPrice?: number;
   costPerUnit?: number;
+  layer?: string;
+  theme?: string;
 }
 
 interface DailyAccountUpdate {
   broker: string;
   balance: number;
   currency?: string;
+  category?: string;
 }
 
 interface AgentSyncBody {
@@ -264,65 +271,149 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       }
     }
 
-    // 2. Process position adjustments (e.g. AI parsed trade confirmation)
+    // 2. Process position adjustments (smart upsert: update existing or insert new position)
     if (Array.isArray(body.positions) && body.positions.length > 0) {
       for (const p of body.positions) {
         const ticker = (p.ticker || '').trim();
         if (!ticker) continue;
 
-        const clauses: string[] = ['updated_at = CURRENT_TIMESTAMP'];
-        const bindings: unknown[] = [];
+        let existingQuery = 'SELECT id, quantity, market_price, cost_per_unit FROM holdings WHERE portfolio_id = ? AND ticker = ? COLLATE NOCASE';
+        const existingBindings: unknown[] = [portfolio.id, ticker];
+        if (p.broker) {
+          existingQuery += ' AND broker = ? COLLATE NOCASE';
+          existingBindings.push(p.broker.trim());
+        }
+        existingQuery += ' LIMIT 1';
 
-        if (p.quantity != null && Number.isFinite(p.quantity)) {
-          clauses.push('quantity = ?');
-          bindings.push(p.quantity);
-          if (p.marketPrice != null) {
+        const existing = await context.env.DB.prepare(existingQuery)
+          .bind(...existingBindings)
+          .first<{
+            id: string;
+            quantity: number;
+            market_price: number | null;
+            cost_per_unit: number | null;
+          }>();
+
+        if (existing) {
+          const clauses: string[] = ['updated_at = CURRENT_TIMESTAMP'];
+          const bindings: unknown[] = [];
+
+          if (p.quantity != null && Number.isFinite(p.quantity)) {
+            clauses.push('quantity = ?');
+            bindings.push(p.quantity);
+            const price = p.marketPrice ?? existing.market_price ?? existing.cost_per_unit ?? 1;
             clauses.push('market_value = ?');
-            bindings.push(p.quantity * p.marketPrice);
-          } else {
-            clauses.push('market_value = quantity * COALESCE(market_price, cost_per_unit, 1)');
+            bindings.push(p.quantity * price);
           }
+
+          if (p.marketPrice != null && Number.isFinite(p.marketPrice)) {
+            clauses.push('market_price = ?');
+            bindings.push(p.marketPrice);
+          }
+
+          if (p.costPerUnit != null && Number.isFinite(p.costPerUnit)) {
+            clauses.push('cost_per_unit = ?');
+            bindings.push(p.costPerUnit);
+          }
+
+          if (p.name) {
+            clauses.push('name = ?');
+            bindings.push(p.name);
+          }
+
+          if (p.layer) {
+            clauses.push('layer = ?');
+            bindings.push(p.layer);
+          }
+
+          bindings.push(existing.id);
+
+          statements.push(
+            context.env.DB.prepare(`
+              UPDATE holdings
+              SET ${clauses.join(', ')}
+              WHERE id = ?;
+            `).bind(...bindings),
+          );
+        } else {
+          // Insert new position
+          const newId = crypto.randomUUID();
+          const qty = p.quantity ?? 0;
+          const price = p.marketPrice ?? p.costPerUnit ?? null;
+          const mktVal = price != null ? qty * price : null;
+          statements.push(
+            context.env.DB.prepare(`
+              INSERT INTO holdings (
+                id, portfolio_id, ticker, name, broker, account, market, currency,
+                quantity, cost_per_unit, market_price, market_value, layer, theme,
+                updated_at
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP);
+            `).bind(
+              newId,
+              portfolio.id,
+              ticker,
+              p.name || ticker,
+              p.broker || 'Manual',
+              p.account || '默认账户',
+              p.market || 'Global',
+              (p.currency || 'JPY').toUpperCase(),
+              qty,
+              p.costPerUnit ?? price,
+              price,
+              mktVal,
+              p.layer || 'Core',
+              p.theme || 'AI Ingestion',
+            ),
+          );
         }
-
-        if (p.marketPrice != null && Number.isFinite(p.marketPrice)) {
-          clauses.push('market_price = ?');
-          bindings.push(p.marketPrice);
-        }
-
-        if (p.costPerUnit != null && Number.isFinite(p.costPerUnit)) {
-          clauses.push('cost_per_unit = ?');
-          bindings.push(p.costPerUnit);
-        }
-
-        bindings.push(portfolio.id);
-        bindings.push(ticker);
-
-        statements.push(
-          context.env.DB.prepare(`
-            UPDATE holdings
-            SET ${clauses.join(', ')}
-            WHERE portfolio_id = ? AND ticker = ? COLLATE NOCASE;
-          `).bind(...bindings),
-        );
       }
     }
 
-    // 3. Process daily accounts updates
+    // 3. Process daily accounts updates (smart upsert for cash balances)
     if (Array.isArray(body.dailyAccounts) && body.dailyAccounts.length > 0) {
       for (const acc of body.dailyAccounts) {
         const broker = (acc.broker || '').trim();
         const balance = Number(acc.balance);
         if (!broker || !Number.isFinite(balance)) continue;
 
-        statements.push(
-          context.env.DB.prepare(`
-            UPDATE holdings
-            SET quantity = ?,
-                market_value = ?,
-                updated_at = CURRENT_TIMESTAMP
-            WHERE portfolio_id = ? AND broker = ? AND layer = 'Cash';
-          `).bind(balance, balance, portfolio.id, broker),
-        );
+        const existingCash = await context.env.DB.prepare(
+          "SELECT id FROM holdings WHERE portfolio_id = ? AND broker = ? COLLATE NOCASE AND layer = 'Cash' LIMIT 1",
+        )
+          .bind(portfolio.id, broker)
+          .first<{ id: string }>();
+
+        if (existingCash) {
+          statements.push(
+            context.env.DB.prepare(`
+              UPDATE holdings
+              SET quantity = ?,
+                  market_value = ?,
+                  updated_at = CURRENT_TIMESTAMP
+              WHERE id = ?;
+            `).bind(balance, balance, existingCash.id),
+          );
+        } else {
+          const cashTicker = `Cash_${acc.currency || 'JPY'}_${broker.replace(/\s+/g, '')}`;
+          statements.push(
+            context.env.DB.prepare(`
+              INSERT INTO holdings (
+                id, portfolio_id, ticker, name, broker, account, market, currency,
+                quantity, cost_per_unit, market_price, market_value, layer, theme, updated_at
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1, ?, 'Cash', 'Living & Emergency', CURRENT_TIMESTAMP);
+            `).bind(
+              crypto.randomUUID(),
+              portfolio.id,
+              cashTicker,
+              `${broker}现金`,
+              broker,
+              '现金账户',
+              'Global',
+              (acc.currency || 'JPY').toUpperCase(),
+              balance,
+              balance,
+            ),
+          );
+        }
       }
     }
 
