@@ -315,12 +315,12 @@ export function UpsertReviewModal({
             {isSubmitting ? (
               <>
                 <Loader2 size={13} className="animate-spin" />
-                <span>正在合并组合并获取行情...</span>
+                <span>正在同步至云端数据库并获取最新行情...</span>
               </>
             ) : (
               <>
                 <Check size={13} />
-                <span>确认合并到组合 ({updateCount} 笔更新 · {addCount} 笔新增)</span>
+                <span>直接更新到云端数据库 ({updateCount} 笔更新 · {addCount} 笔新增)</span>
               </>
             )}
           </button>

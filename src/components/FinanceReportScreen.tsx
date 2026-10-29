@@ -542,11 +542,11 @@ export function FinanceReportScreen({
     if (onUpsertHoldings) {
       const summary = await onUpsertHoldings(reviewedItems);
       showToast(
-        `✅ 导入成功：已更新 ${summary.updatedCount} 笔持仓数量，新增 ${summary.addedCount} 笔标的！`,
+        `✅ AI 识别更新成功：已直接保存至云端数据库（更新 ${summary.updatedCount} 笔 · 新增 ${summary.addedCount} 笔）！无需重新发布。`,
       );
     } else if (onReplaceHoldings) {
       await onReplaceHoldings(reviewedItems);
-      showToast('✅ 持仓已成功导入！');
+      showToast('✅ 持仓已成功导入并更新至云端！');
     }
     setExtractedPreview(null);
   };

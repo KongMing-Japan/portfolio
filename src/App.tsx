@@ -693,6 +693,9 @@ function App() {
       setFx(nextFx);
       setQuoteUpdatedAt(quoteResponse.fetchedAt);
       await persist(enriched, baseCurrency, nextFx, quoteResponse.fetchedAt);
+      if (isOwnerSessionUnlocked()) {
+        void saveHoldingsBatchToCloud(enriched);
+      }
 
       return summary;
     },
@@ -701,6 +704,9 @@ function App() {
 
   const handleManualSave = useCallback(async () => {
     await persist(holdings, baseCurrency, fx, quoteUpdatedAt);
+    if (isOwnerSessionUnlocked()) {
+      void saveHoldingsBatchToCloud(holdings);
+    }
   }, [holdings, baseCurrency, fx, quoteUpdatedAt, persist]);
 
   const appContent = useMemo(() => {
