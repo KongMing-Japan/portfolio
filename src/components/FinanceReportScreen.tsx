@@ -81,10 +81,6 @@ const SuperinvestorsScreen = lazy(() =>
   import('./SuperinvestorsScreen').then((m) => ({ default: m.SuperinvestorsScreen })),
 );
 
-const PreviewScreen = lazy(() =>
-  import('./preview-02/PreviewScreen').then((m) => ({ default: m.PreviewScreen })),
-);
-
 interface FinanceReportScreenProps {
   holdings: Holding[];
   baseCurrency: BaseCurrency;
@@ -113,7 +109,7 @@ interface FinanceReportScreenProps {
 }
 
 type ImportMode = 'upload' | 'paste';
-type WorkspaceView = 'portfolio' | 'superinvestors' | 'preview';
+type WorkspaceView = 'portfolio' | 'superinvestors';
 
 const LAYERS = Object.keys(LAYER_META) as Layer[];
 const CURRENCIES = ['USD', 'JPY', 'CNY', 'HKD'] as const;
@@ -221,7 +217,6 @@ export function FinanceReportScreen({
   const exportMenuRef = useRef<HTMLDivElement>(null);
   const [workspaceView, setWorkspaceView] = useState<WorkspaceView>(() => {
     if (window.location.hash.startsWith('#superinvestors')) return 'superinvestors';
-    if (window.location.hash.startsWith('#preview')) return 'preview';
     return 'portfolio';
   });
   const [draft, setDraft] = useState<ManualHoldingInput>({
@@ -382,8 +377,6 @@ export function FinanceReportScreen({
     const onHashChange = () => {
       if (window.location.hash.startsWith('#superinvestors')) {
         setWorkspaceView('superinvestors');
-      } else if (window.location.hash.startsWith('#preview')) {
-        setWorkspaceView('preview');
       } else if (
         window.location.hash === '#portfolio' ||
         window.location.hash === '#holdings' ||
@@ -575,11 +568,6 @@ export function FinanceReportScreen({
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
-    if (view === 'preview') {
-      window.location.hash = 'preview';
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      return;
-    }
     const target = section || 'portfolio';
     window.location.hash = target;
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -660,12 +648,6 @@ export function FinanceReportScreen({
         >
           <Suspense fallback={<div className="p-12 text-center text-sm text-muted-foreground">正在加载投资大师档案...</div>}>
             <SuperinvestorsScreen />
-          </Suspense>
-        </section>
-      ) : workspaceView === 'preview' ? (
-        <section className="w-full">
-          <Suspense fallback={<div className="p-12 text-center text-sm text-muted-foreground">正在加载设计系统展板...</div>}>
-            <PreviewScreen onBack={() => openWorkspace('portfolio')} />
           </Suspense>
         </section>
       ) : (
