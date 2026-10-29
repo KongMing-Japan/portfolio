@@ -14,7 +14,8 @@
     "deploy:cf": "npm run build && wrangler pages deploy dist --project-name=portfolio",
     "cf:types": "wrangler types --strict-vars false",
     "fetch:prices": "node scripts/fetch-prices.js",
-    "fetch:superinvestors": "node scripts/fetch-superinvestors.mjs"
+    "fetch:superinvestors": "node scripts/fetch-superinvestors.mjs",
+    "ai:sync": "node scripts/ai-fund-sync.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",

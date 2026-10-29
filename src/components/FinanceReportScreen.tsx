@@ -657,10 +657,16 @@ export function FinanceReportScreen({
               <h1 className="text-xl font-semibold tracking-tight text-foreground">
                 {isOwnerUnlocked ? '我的组合' : '组合示例'}
               </h1>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                共 {aggregated.length} 项投资标的（分布于 {brokers} 个投资账户）
-                {quoteUpdatedAt ? ` · 行情更新于 ${formatDateTime(quoteUpdatedAt)}` : ''}
-              </p>
+              <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                <p className="text-xs text-muted-foreground">
+                  共 {aggregated.length} 项投资标的（分布于 {brokers} 个投资账户）
+                  {quoteUpdatedAt ? ` · 行情更新于 ${formatDateTime(quoteUpdatedAt)}` : ''}
+                </p>
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20" title="AI Agent 每日定时检索场外净值并直连 D1 数据库">
+                  <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  AI 协同直连
+                </span>
+              </div>
             </div>
 
             {/* Clean Action Toolbar */}
@@ -1120,7 +1126,7 @@ export function FinanceReportScreen({
                 详细方法论
               </a>
               <span>·</span>
-              <span>数据来源: Yahoo Finance · SEC EDGAR</span>
+              <span>数据来源: Yahoo Finance · SEC EDGAR · 🤖 AI Agent 实时同步</span>
             </div>
             <button
               type="button"
@@ -1268,6 +1274,13 @@ export function FinanceReportScreen({
                 </div>
               </div>
             )}
+
+            <div className="mt-4 p-3 rounded-lg border border-border bg-muted/40 text-xs text-muted-foreground flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="size-2 rounded-full bg-emerald-500 shrink-0 animate-pulse" />
+                <span className="truncate">也支持直接在 Antigravity / Codex 对话框发送交易指令或截图，AI 将直接更新数据库。</span>
+              </div>
+            </div>
 
             <div className="gf-import-actions">
               <button
@@ -1543,6 +1556,11 @@ function FinanceHoldingRow({
               {isMultiAccount && (
                 <Badge variant="secondary" className="text-[10px] px-1.5 py-0 font-normal">
                   {holding.accounts.length} 笔合并
+                </Badge>
+              )}
+              {['CN_QDII_VN', 'EMAXIS_SP500', 'CRYPTO_BITGET', 'CRYPTO_WLD'].includes(holding.ticker.toUpperCase()) && (
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal border-emerald-500/30 text-emerald-600 dark:text-emerald-400 bg-emerald-500/5">
+                  🤖 AI 托管
                 </Badge>
               )}
               {holding.weight > SINGLE_SECURITY_CAP && holding.layer !== 'Cash' && (
