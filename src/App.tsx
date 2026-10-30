@@ -26,10 +26,10 @@ import {
 } from './lib/portfolio';
 import { upsertHoldings } from './lib/upsert';
 import {
+  clearOwnerSnapshot,
   clearSnapshot,
   isOwnerSessionUnlocked,
   loadSnapshot,
-  saveOwnerSnapshot,
   saveSnapshot,
   setOwnerSessionUnlocked,
 } from './lib/storage';
@@ -115,9 +115,7 @@ function App() {
         quoteUpdatedAt: nextUpdatedAt,
         savedAt: new Date().toISOString(),
       };
-      if (ownerMode) {
-        await saveOwnerSnapshot(snapshot);
-      } else {
+      if (!ownerMode) {
         await saveSnapshot(snapshot);
         setHasSavedPortfolio(true);
       }
@@ -245,14 +243,6 @@ function App() {
     setBaseCurrency(nextBase);
     setFx(portfolio.fx);
     setQuoteUpdatedAt(portfolio.quoteUpdatedAt);
-    await saveOwnerSnapshot({
-      version: 1,
-      holdings: recalculated,
-      baseCurrency: nextBase,
-      fx: portfolio.fx,
-      quoteUpdatedAt: portfolio.quoteUpdatedAt,
-      savedAt: new Date().toISOString(),
-    }).catch(() => {});
     setStep('report');
   }, []);
 
@@ -260,6 +250,12 @@ function App() {
     setError(null);
     setOwnerSessionUnlocked(false);
     setIsOwnerUnlocked(false);
+    setHoldings(INITIAL_SAMPLE_HOLDINGS);
+    setBaseCurrency('USD');
+    setFx(INITIAL_FX);
+    setQuoteUpdatedAt(INITIAL_UPDATED_AT);
+    setStep('report');
+    await clearOwnerSnapshot().catch(() => {});
     try {
       const guestSnapshot = await loadSnapshot();
       if (guestSnapshot?.holdings?.length) {
@@ -304,14 +300,6 @@ function App() {
     setBaseCurrency(nextBase);
     setFx(portfolio.fx);
     setQuoteUpdatedAt(portfolio.quoteUpdatedAt);
-    await saveOwnerSnapshot({
-      version: 1,
-      holdings: recalculated,
-      baseCurrency: nextBase,
-      fx: portfolio.fx,
-      quoteUpdatedAt: portfolio.quoteUpdatedAt,
-      savedAt: new Date().toISOString(),
-    }).catch(() => {});
     setStep('report');
   }, []);
 
@@ -344,6 +332,7 @@ function App() {
       setOwnerSessionUnlocked(false);
       setUserAuthenticated(null);
       setIsOwnerUnlocked(false);
+      await clearOwnerSnapshot().catch(() => {});
       const snapshot = await loadSnapshot();
       if (!active || !snapshot?.holdings?.length) return;
       const nextBase: BaseCurrency = snapshot.baseCurrency === 'JPY' ? 'JPY' : 'USD';
