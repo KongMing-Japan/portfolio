@@ -26,21 +26,15 @@ import {
 } from './lib/portfolio';
 import { upsertHoldings } from './lib/upsert';
 import {
+  clearOwnerSnapshot,
   clearSnapshot,
   isOwnerSessionUnlocked,
-  loadOwnerSnapshot,
   loadSnapshot,
-  saveOwnerSnapshot,
   saveSnapshot,
   setOwnerSessionUnlocked,
 } from './lib/storage';
 import { INITIAL_SAMPLE_HOLDINGS, INITIAL_FX, INITIAL_UPDATED_AT } from './lib/initialData';
-import {
-  REAL_PORTFOLIO_FX,
-  REAL_PORTFOLIO_HOLDINGS,
-  REAL_PORTFOLIO_SNAPSHOT,
-  REAL_PORTFOLIO_UPDATED_AT,
-} from './lib/realPortfolioData';
+import { checkServerSession, setUserAuthenticated } from './lib/auth';
 import { ProcessingScreen } from './components/ProcessingScreen';
 import { FinanceReportScreen } from './components/FinanceReportScreen';
 import { ReviewScreen } from './components/ReviewScreen';
@@ -68,21 +62,11 @@ const INITIAL_STATUS: ProcessingStatus = {
 
 function App() {
   const [step, setStep] = useState<AppStep>('report');
-  const [isOwnerUnlocked, setIsOwnerUnlocked] = useState<boolean>(() =>
-    isOwnerSessionUnlocked(),
-  );
-  const [holdings, setHoldings] = useState<Holding[]>(() =>
-    isOwnerSessionUnlocked() ? REAL_PORTFOLIO_HOLDINGS : INITIAL_SAMPLE_HOLDINGS,
-  );
-  const [baseCurrency, setBaseCurrency] = useState<BaseCurrency>(() =>
-    isOwnerSessionUnlocked() ? 'JPY' : 'USD',
-  );
-  const [fx, setFx] = useState<Record<string, number>>(() =>
-    isOwnerSessionUnlocked() ? REAL_PORTFOLIO_FX : INITIAL_FX,
-  );
-  const [quoteUpdatedAt, setQuoteUpdatedAt] = useState<string | null>(() =>
-    isOwnerSessionUnlocked() ? REAL_PORTFOLIO_UPDATED_AT : INITIAL_UPDATED_AT,
-  );
+  const [isOwnerUnlocked, setIsOwnerUnlocked] = useState(false);
+  const [holdings, setHoldings] = useState<Holding[]>(INITIAL_SAMPLE_HOLDINGS);
+  const [baseCurrency, setBaseCurrency] = useState<BaseCurrency>('USD');
+  const [fx, setFx] = useState<Record<string, number>>(INITIAL_FX);
+  const [quoteUpdatedAt, setQuoteUpdatedAt] = useState<string | null>(INITIAL_UPDATED_AT);
   const [processing, setProcessing] =
     useState<ProcessingStatus>(INITIAL_STATUS);
   const [error, setError] = useState<string | null>(null);
@@ -131,9 +115,7 @@ function App() {
         quoteUpdatedAt: nextUpdatedAt,
         savedAt: new Date().toISOString(),
       };
-      if (ownerMode) {
-        await saveOwnerSnapshot(snapshot);
-      } else {
+      if (!ownerMode) {
         await saveSnapshot(snapshot);
         setHasSavedPortfolio(true);
       }
@@ -244,59 +226,23 @@ function App() {
 
   const handleUnlockOwner = useCallback(async () => {
     setError(null);
+    const cloudData = await fetchPortfolioFromCloud();
+    if (!cloudData?.isOwner || !cloudData.portfolio) {
+      setOwnerSessionUnlocked(false);
+      setUserAuthenticated(null);
+      setIsOwnerUnlocked(false);
+      throw new Error('Server authentication could not be confirmed');
+    }
+
+    const portfolio = cloudData.portfolio;
+    const nextBase: BaseCurrency = portfolio.baseCurrency === 'USD' ? 'USD' : 'JPY';
+    const recalculated = recalculateBaseValues(portfolio.holdings, portfolio.fx, nextBase);
     setOwnerSessionUnlocked(true);
     setIsOwnerUnlocked(true);
-    try {
-      // 1. Try to fetch cloud portfolio from Cloudflare D1
-      const cloudData = await fetchPortfolioFromCloud();
-      if (cloudData?.isOwner && cloudData.portfolio?.holdings?.length) {
-        const p = cloudData.portfolio;
-        const nextBase: BaseCurrency = p.baseCurrency === 'USD' ? 'USD' : 'JPY';
-        const recalculated = recalculateBaseValues(p.holdings, p.fx, nextBase);
-        setHoldings(recalculated);
-        setBaseCurrency(nextBase);
-        setFx(p.fx);
-        setQuoteUpdatedAt(p.quoteUpdatedAt);
-        await saveOwnerSnapshot({
-          version: 1,
-          holdings: recalculated,
-          baseCurrency: nextBase,
-          fx: p.fx,
-          quoteUpdatedAt: p.quoteUpdatedAt,
-          savedAt: new Date().toISOString(),
-        }).catch(() => {});
-        setStep('report');
-        return;
-      }
-
-      // 2. Fallback to local snapshot
-      const savedOwner = await loadOwnerSnapshot();
-      if (savedOwner?.holdings?.length) {
-        const nextBase: BaseCurrency =
-          savedOwner.baseCurrency === 'USD' ? 'USD' : 'JPY';
-        // Ensure values are recalculated with saved FX & baseCurrency
-        const recalculated = recalculateBaseValues(
-          savedOwner.holdings,
-          savedOwner.fx,
-          nextBase,
-        );
-        setHoldings(recalculated);
-        setBaseCurrency(nextBase);
-        setFx(savedOwner.fx);
-        setQuoteUpdatedAt(savedOwner.quoteUpdatedAt);
-      } else {
-        await saveOwnerSnapshot(REAL_PORTFOLIO_SNAPSHOT);
-        setHoldings(REAL_PORTFOLIO_HOLDINGS);
-        setBaseCurrency('JPY');
-        setFx(REAL_PORTFOLIO_FX);
-        setQuoteUpdatedAt(REAL_PORTFOLIO_UPDATED_AT);
-      }
-    } catch {
-      setHoldings(REAL_PORTFOLIO_HOLDINGS);
-      setBaseCurrency('JPY');
-      setFx(REAL_PORTFOLIO_FX);
-      setQuoteUpdatedAt(REAL_PORTFOLIO_UPDATED_AT);
-    }
+    setHoldings(recalculated);
+    setBaseCurrency(nextBase);
+    setFx(portfolio.fx);
+    setQuoteUpdatedAt(portfolio.quoteUpdatedAt);
     setStep('report');
   }, []);
 
@@ -304,6 +250,12 @@ function App() {
     setError(null);
     setOwnerSessionUnlocked(false);
     setIsOwnerUnlocked(false);
+    setHoldings(INITIAL_SAMPLE_HOLDINGS);
+    setBaseCurrency('USD');
+    setFx(INITIAL_FX);
+    setQuoteUpdatedAt(INITIAL_UPDATED_AT);
+    setStep('report');
+    await clearOwnerSnapshot().catch(() => {});
     try {
       const guestSnapshot = await loadSnapshot();
       if (guestSnapshot?.holdings?.length) {
@@ -336,93 +288,68 @@ function App() {
 
   const handleResetOwnerBaseline = useCallback(async () => {
     setError(null);
-    setOwnerSessionUnlocked(true);
-    setIsOwnerUnlocked(true);
-    await saveOwnerSnapshot(REAL_PORTFOLIO_SNAPSHOT).catch(() => {});
-    setHoldings(REAL_PORTFOLIO_HOLDINGS);
-    setBaseCurrency('JPY');
-    setFx(REAL_PORTFOLIO_FX);
-    setQuoteUpdatedAt(REAL_PORTFOLIO_UPDATED_AT);
+    const cloudData = await fetchPortfolioFromCloud();
+    if (!cloudData?.isOwner || !cloudData.portfolio) {
+      setError('无法从云端重新载入私享组合');
+      return;
+    }
+    const portfolio = cloudData.portfolio;
+    const nextBase: BaseCurrency = portfolio.baseCurrency === 'USD' ? 'USD' : 'JPY';
+    const recalculated = recalculateBaseValues(portfolio.holdings, portfolio.fx, nextBase);
+    setHoldings(recalculated);
+    setBaseCurrency(nextBase);
+    setFx(portfolio.fx);
+    setQuoteUpdatedAt(portfolio.quoteUpdatedAt);
     setStep('report');
   }, []);
 
   useEffect(() => {
     let active = true;
-    if (isOwnerSessionUnlocked()) {
-      fetchPortfolioFromCloud()
-        .then((cloudData) => {
-          if (!active) return;
-          if (cloudData?.isOwner && cloudData.portfolio?.holdings?.length) {
-            const p = cloudData.portfolio;
-            const nextBase: BaseCurrency = p.baseCurrency === 'USD' ? 'USD' : 'JPY';
-            const recalculated = recalculateBaseValues(p.holdings, p.fx, nextBase);
-            setHoldings(recalculated);
-            setBaseCurrency(nextBase);
-            setFx(p.fx);
-            setQuoteUpdatedAt(p.quoteUpdatedAt);
-            void saveOwnerSnapshot({
-              version: 1,
-              holdings: recalculated,
-              baseCurrency: nextBase,
-              fx: p.fx,
-              quoteUpdatedAt: p.quoteUpdatedAt,
-              savedAt: new Date().toISOString(),
-            }).catch(() => {});
-            setStep('report');
-            return;
-          }
 
-          return loadOwnerSnapshot().then((snapshot) => {
-            if (!active) return;
-            if (snapshot?.holdings?.length) {
-              const nextBase: BaseCurrency =
-                snapshot.baseCurrency === 'USD' ? 'USD' : 'JPY';
-              setHoldings(
-                recalculateBaseValues(
-                  snapshot.holdings,
-                  snapshot.fx,
-                  nextBase,
-                ),
-              );
-              setBaseCurrency(nextBase);
-              setFx(snapshot.fx);
-              setQuoteUpdatedAt(snapshot.quoteUpdatedAt);
-            } else {
-              void saveOwnerSnapshot(REAL_PORTFOLIO_SNAPSHOT);
-              setHoldings(REAL_PORTFOLIO_HOLDINGS);
-              setBaseCurrency('JPY');
-              setFx(REAL_PORTFOLIO_FX);
-              setQuoteUpdatedAt(REAL_PORTFOLIO_UPDATED_AT);
-            }
-            setStep('report');
-          });
-        })
-        .catch(() => {});
-    } else {
-      loadSnapshot()
-        .then((snapshot) => {
-          if (!active) return;
-          if (snapshot?.holdings?.length) {
-            const nextBase: BaseCurrency =
-              snapshot.baseCurrency === 'JPY' ? 'JPY' : 'USD';
-            setHasSavedPortfolio(true);
-            setHoldings(
-              recalculateBaseValues(
-                snapshot.holdings,
-                snapshot.fx,
-                nextBase,
-              ),
-            );
-            setBaseCurrency(nextBase);
-            setFx(snapshot.fx);
-            setQuoteUpdatedAt(snapshot.quoteUpdatedAt);
-            setStep('report');
-          }
-        })
-        .catch(() => {
-          // Keep initial sample state if storage lookup fails
-        });
-    }
+    const restore = async () => {
+      const session = await checkServerSession();
+      if (!active) return;
+
+      if (session.authenticated) {
+        setUserAuthenticated(session.username || 'owner');
+        const cloudData = await fetchPortfolioFromCloud();
+        if (!active) return;
+        if (cloudData?.isOwner && cloudData.portfolio) {
+          const portfolio = cloudData.portfolio;
+          const nextBase: BaseCurrency = portfolio.baseCurrency === 'USD' ? 'USD' : 'JPY';
+          const recalculated = recalculateBaseValues(portfolio.holdings, portfolio.fx, nextBase);
+          setOwnerSessionUnlocked(true);
+          setIsOwnerUnlocked(true);
+          setHoldings(recalculated);
+          setBaseCurrency(nextBase);
+          setFx(portfolio.fx);
+          setQuoteUpdatedAt(portfolio.quoteUpdatedAt);
+          setStep('report');
+          return;
+        }
+      }
+
+      setOwnerSessionUnlocked(false);
+      setUserAuthenticated(null);
+      setIsOwnerUnlocked(false);
+      await clearOwnerSnapshot().catch(() => {});
+      const snapshot = await loadSnapshot();
+      if (!active || !snapshot?.holdings?.length) return;
+      const nextBase: BaseCurrency = snapshot.baseCurrency === 'JPY' ? 'JPY' : 'USD';
+      setHasSavedPortfolio(true);
+      setHoldings(recalculateBaseValues(snapshot.holdings, snapshot.fx, nextBase));
+      setBaseCurrency(nextBase);
+      setFx(snapshot.fx);
+      setQuoteUpdatedAt(snapshot.quoteUpdatedAt);
+      setStep('report');
+    };
+
+    void restore().catch(() => {
+      setOwnerSessionUnlocked(false);
+      setUserAuthenticated(null);
+      setIsOwnerUnlocked(false);
+    });
+
     return () => {
       active = false;
     };

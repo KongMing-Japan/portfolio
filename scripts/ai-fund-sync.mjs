@@ -4,11 +4,14 @@
 import process from 'node:process';
 
 const SYNC_ENDPOINT = process.env.PORTFOLIO_SYNC_URL || 'https://portfolio-kfb.pages.dev/api/agent/sync';
-const OWNER_PIN = process.env.OWNER_PIN || '8888';
+const SYNC_TOKEN = process.env.PORTFOLIO_SYNC_TOKEN;
+if (!SYNC_TOKEN || SYNC_TOKEN.length < 32) {
+  throw new Error('PORTFOLIO_SYNC_TOKEN must be configured');
+}
 
 async function fetchStatus() {
   const res = await fetch(SYNC_ENDPOINT, {
-    headers: { 'X-Owner-Pin': OWNER_PIN },
+    headers: { 'X-Portfolio-Sync-Token': SYNC_TOKEN },
   });
   if (!res.ok) {
     throw new Error(`Failed to fetch status: ${res.status} ${res.statusText}`);
@@ -21,7 +24,7 @@ async function postSync(payload) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'X-Owner-Pin': OWNER_PIN,
+      'X-Portfolio-Sync-Token': SYNC_TOKEN,
     },
     body: JSON.stringify(payload),
   });
