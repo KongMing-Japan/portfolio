@@ -11,6 +11,26 @@ function json(data: unknown, status = 200) {
   });
 }
 
+async function findForeignHoldingIds(
+  db: D1Database,
+  portfolioId: string,
+  ids: string[],
+): Promise<string[]> {
+  const uniqueIds = [...new Set(ids)];
+  if (!uniqueIds.length) return [];
+
+  const results = await db.batch(
+    uniqueIds.map((id) =>
+      db.prepare('SELECT portfolio_id FROM holdings WHERE id = ? LIMIT 1').bind(id),
+    ),
+  );
+
+  return uniqueIds.filter((_, index) => {
+    const row = results[index]?.results?.[0] as { portfolio_id?: string } | undefined;
+    return Boolean(row?.portfolio_id && row.portfolio_id !== portfolioId);
+  });
+}
+
 export const onRequestPost: PagesFunction<Env> = async (context) => {
   const user = await getAuthenticatedUser(context.request, context.env);
   if (!user) return json({ error: 'Unauthorized' }, 401);
@@ -33,6 +53,10 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     if (body.holding) {
       const h = body.holding;
       const id = String(h.id || crypto.randomUUID());
+      const foreignIds = await findForeignHoldingIds(context.env.DB, portfolio.id, [id]);
+      if (foreignIds.length) {
+        return json({ error: 'Holding ID belongs to another portfolio' }, 409);
+      }
       const ticker = String(h.ticker || '').trim();
       const name = String(h.name || ticker);
       const broker = String(h.broker || 'Manual');
@@ -67,7 +91,8 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
           layer = excluded.layer,
           theme = excluded.theme,
           investment_thesis = excluded.investment_thesis,
-          updated_at = CURRENT_TIMESTAMP;
+          updated_at = CURRENT_TIMESTAMP
+          WHERE holdings.portfolio_id = excluded.portfolio_id;
       `)
         .bind(
           id,
@@ -93,8 +118,18 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
 
     // Batch holdings update
     if (Array.isArray(body.holdings)) {
-      const statements = body.holdings.map((h) => {
-        const id = String(h.id || crypto.randomUUID());
+      const holdingIds = body.holdings.map((h) => String(h.id || crypto.randomUUID()));
+      const foreignIds = await findForeignHoldingIds(
+        context.env.DB,
+        portfolio.id,
+        holdingIds,
+      );
+      if (foreignIds.length) {
+        return json({ error: 'One or more holding IDs belong to another portfolio' }, 409);
+      }
+
+      const statements = body.holdings.map((h, index) => {
+        const id = holdingIds[index];
         const ticker = String(h.ticker || '').trim();
         const name = String(h.name || ticker);
         const broker = String(h.broker || 'Manual');
@@ -129,7 +164,8 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
             layer = excluded.layer,
             theme = excluded.theme,
             investment_thesis = excluded.investment_thesis,
-            updated_at = CURRENT_TIMESTAMP;
+            updated_at = CURRENT_TIMESTAMP
+          WHERE holdings.portfolio_id = excluded.portfolio_id;
         `).bind(
           id,
           portfolio.id,
