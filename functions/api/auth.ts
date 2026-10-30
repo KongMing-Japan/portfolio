@@ -7,6 +7,7 @@ import {
 } from '../_shared/auth';
 
 type LoginEnv = Env & {
+  OWNER_USERNAME?: string;
   OWNER_PASSWORD_HASH?: string;
   SESSION_SECRET?: string;
 };
@@ -55,19 +56,27 @@ export const onRequestPost: PagesFunction<LoginEnv> = async (context) => {
       return json({ error: 'Username and password are required' }, 400);
     }
 
+    const configuredUsername = context.env.OWNER_USERNAME?.trim();
     const configuredHash = context.env.OWNER_PASSWORD_HASH?.trim().toLowerCase();
-    if (!configuredHash || !/^[a-f0-9]{64}$/.test(configuredHash) || !context.env.SESSION_SECRET) {
+    if (
+      !configuredUsername ||
+      !configuredHash ||
+      !/^[a-f0-9]{64}$/.test(configuredHash) ||
+      !context.env.SESSION_SECRET
+    ) {
       return json({ error: 'Authentication is not configured' }, 503);
     }
 
     const user = await context.env.DB.prepare(
       'SELECT id, username FROM users WHERE username = ? COLLATE NOCASE',
     )
-      .bind(username)
+      .bind(configuredUsername)
       .first<{ id: string; username: string }>();
 
     const suppliedHash = await sha256(password);
-    if (!user || !constantTimeEqual(configuredHash, suppliedHash)) {
+    const usernameMatches =
+      username.localeCompare(configuredUsername, undefined, { sensitivity: 'accent' }) === 0;
+    if (!user || !usernameMatches || !constantTimeEqual(configuredHash, suppliedHash)) {
       return json({ error: 'Invalid username or password' }, 401);
     }
 
