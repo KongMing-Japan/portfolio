@@ -57,13 +57,6 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
     .first<PortfolioRow>();
 
   if (!portfolio) {
-    // Check fallback for default owner portfolio
-    portfolio = await context.env.DB.prepare(
-      'SELECT id, user_id, name, base_currency, fx_json, quote_updated_at FROM portfolios LIMIT 1',
-    ).first<PortfolioRow>();
-  }
-
-  if (!portfolio) {
     return json({ isOwner: true, portfolio: null, holdings: [] });
   }
 

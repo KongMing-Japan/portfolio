@@ -1,5 +1,5 @@
 // functions/api/agent/sync.ts
-import { getAuthenticatedUser } from '../../_shared/auth';
+import { getAuthenticatedUser, getSyncServiceUser } from '../../_shared/auth';
 
 function json(data: unknown, status = 200) {
   return Response.json(data, {
@@ -77,8 +77,10 @@ const FUND_METADATA_HINTS: Record<string, { query: string; code?: string; note?:
  * highlighting which funds/stocks need price updates (e.g. OTC funds, QDII, unlisted trusts).
  */
 export const onRequestGet: PagesFunction<Env> = async (context) => {
-  const user = await getAuthenticatedUser(context.request, context.env);
-  if (!user) return json({ error: 'Unauthorized. Provide X-Owner-Pin: 8888 or Authorization token.' }, 401);
+  const user =
+    (await getAuthenticatedUser(context.request, context.env)) ??
+    (await getSyncServiceUser(context.request, context.env));
+  if (!user) return json({ error: 'Unauthorized' }, 401);
 
   const portfolio = await context.env.DB.prepare(
     'SELECT id, name, base_currency, fx_json, quote_updated_at FROM portfolios WHERE user_id = ? LIMIT 1',
@@ -219,8 +221,10 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
  * Allows AI Agent / Automation to directly push price quotes or position adjustments into Cloudflare D1.
  */
 export const onRequestPost: PagesFunction<Env> = async (context) => {
-  const user = await getAuthenticatedUser(context.request, context.env);
-  if (!user) return json({ error: 'Unauthorized. Provide X-Owner-Pin: 8888 or Authorization token.' }, 401);
+  const user =
+    (await getAuthenticatedUser(context.request, context.env)) ??
+    (await getSyncServiceUser(context.request, context.env));
+  if (!user) return json({ error: 'Unauthorized' }, 401);
 
   try {
     const portfolio = await context.env.DB.prepare(

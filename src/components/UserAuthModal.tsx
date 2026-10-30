@@ -12,8 +12,7 @@ import {
 import {
   DEFAULT_USER,
   getAuthenticatedUsername,
-  getRegisteredUser,
-  registerOrUpdateUser,
+  logoutServerSession,
   setUserAuthenticated,
   verifyUserCredentials,
 } from '../lib/auth';
@@ -22,7 +21,7 @@ interface UserAuthModalProps {
   isOpen: boolean;
   isUnlocked: boolean;
   onClose: () => void;
-  onUnlockSuccess: () => void;
+  onUnlockSuccess: () => void | Promise<void>;
   onLockVault: () => void;
   onResetToVerifiedBaseline?: () => void;
 }
@@ -35,76 +34,50 @@ export function UserAuthModal({
   onLockVault,
   onResetToVerifiedBaseline,
 }: UserAuthModalProps) {
-  const [mode, setMode] = useState<'login' | 'register'>('login');
-  const [username, setUsername] = useState('');
+  const [username, setUsername] = useState(DEFAULT_USER.username);
   const [password, setPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const registered = getRegisteredUser();
-  const currentUsername = getAuthenticatedUsername() || registered?.username || DEFAULT_USER.username;
+  const currentUsername = getAuthenticatedUsername() || DEFAULT_USER.username;
 
   useEffect(() => {
     if (isOpen) {
       setError(null);
-      setSuccessMsg(null);
-      const reg = getRegisteredUser();
-      setUsername(reg?.username || DEFAULT_USER.username);
+      setUsername(DEFAULT_USER.username);
       setPassword('');
-      setNewPassword('');
-      setMode('login');
     }
   }, [isOpen]);
 
   if (!isOpen) return null;
 
-  const handleLogin = async (e: FormEvent) => {
-    e.preventDefault();
+  const handleLogin = async (event: FormEvent) => {
+    event.preventDefault();
     setError(null);
     setIsSubmitting(true);
     try {
       const valid = await verifyUserCredentials(username, password);
-      if (valid) {
-        setUserAuthenticated(username.trim());
-        onUnlockSuccess();
-        onClose();
-      } else {
+      if (!valid) {
         setError('用户名或密码不正确，请重试');
+        return;
       }
+      setUserAuthenticated(username.trim());
+      await onUnlockSuccess();
+      onClose();
     } catch {
-      setError('登录验证出错，请重试');
+      setUserAuthenticated(null);
+      setError('服务器未能确认登录，请重试');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleRegisterOrChange = async (e: FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    if (!username.trim()) {
-      setError('请输入用户名');
-      return;
-    }
-    const targetPassword = newPassword || password;
-    if (targetPassword.length < 4) {
-      setError('密码长度至少为 4 位');
-      return;
-    }
-
+  const handleLogout = async () => {
     setIsSubmitting(true);
     try {
-      await registerOrUpdateUser(username.trim(), targetPassword);
-      setUserAuthenticated(username.trim());
-      setSuccessMsg('账户凭据已更新！Chrome 浏览器将提示您保存密码。');
-      setTimeout(() => {
-        onUnlockSuccess();
-        onClose();
-      }, 900);
-    } catch {
-      setError('保存账户凭据失败');
+      await logoutServerSession();
     } finally {
+      onLockVault();
+      onClose();
       setIsSubmitting(false);
     }
   };
@@ -112,8 +85,8 @@ export function UserAuthModal({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-150"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
+      onClick={(event) => {
+        if (event.target === event.currentTarget) onClose();
       }}
     >
       <div
@@ -122,7 +95,6 @@ export function UserAuthModal({
         aria-modal="true"
         aria-labelledby="auth-modal-title"
       >
-        {/* Header */}
         <div className="flex items-center justify-between border-b border-border/60 px-6 py-4 bg-muted/20">
           <div className="flex items-center gap-2.5">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
@@ -133,9 +105,7 @@ export function UserAuthModal({
                 {isUnlocked ? '私享账户已解锁' : '私享资产安全登录'}
               </h2>
               <p className="text-xs text-muted-foreground">
-                {isUnlocked
-                  ? `当前已登录: ${currentUsername}`
-                  : '支持 Chrome 自动填充与密码管理器'}
+                {isUnlocked ? `当前已登录: ${currentUsername}` : '凭据由服务端验证，不保存在浏览器'}
               </p>
             </div>
           </div>
@@ -149,10 +119,8 @@ export function UserAuthModal({
           </button>
         </div>
 
-        {/* Modal Body */}
         <div className="p-6">
           {isUnlocked ? (
-            /* Unlocked state actions */
             <div className="space-y-4">
               <div className="rounded-lg border border-emerald-200/60 bg-emerald-50/50 p-4 text-emerald-900">
                 <div className="flex items-center gap-2 font-medium text-xs">
@@ -160,228 +128,108 @@ export function UserAuthModal({
                   <span>您正处于私享持仓管理模式</span>
                 </div>
                 <p className="mt-1 text-xs text-emerald-700/90 leading-relaxed">
-                  包含您的核心券商持仓、日常银行备忘及投资现金池。
+                  私享数据读取和修改均需要有效的服务端会话。
                 </p>
               </div>
 
-              {mode === 'register' ? (
-                /* Change Password Form */
-                <form onSubmit={handleRegisterOrChange} method="post" action="#" className="space-y-3.5 pt-1">
-                  <div>
-                    <label className="text-xs font-medium text-foreground block mb-1">
-                      用户名
-                    </label>
-                    <input
-                      name="username"
-                      type="text"
-                      autoComplete="username"
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
-                      className="w-full h-9 px-3 rounded-md border border-input bg-background text-sm text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-foreground block mb-1">
-                      新密码
-                    </label>
-                    <input
-                      name="password"
-                      type="password"
-                      autoComplete="new-password"
-                      placeholder="设置新密码 (最少4位)"
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      className="w-full h-9 px-3 rounded-md border border-input bg-background text-sm text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                      required
-                    />
-                  </div>
-
-                  {error && (
-                    <div className="text-xs text-destructive bg-destructive/10 border border-destructive/20 rounded-md p-2">
-                      {error}
-                    </div>
-                  )}
-
-                  {successMsg && (
-                    <div className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-md p-2">
-                      {successMsg}
-                    </div>
-                  )}
-
-                  <div className="flex gap-2 pt-1">
-                    <button
-                      type="submit"
-                      disabled={isSubmitting}
-                      className="flex-1 h-9 inline-flex items-center justify-center rounded-md bg-primary text-primary-foreground text-xs font-medium shadow hover:bg-primary/90 transition-colors"
-                    >
-                      保存新密码
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setMode('login')}
-                      className="h-9 px-3 inline-flex items-center justify-center rounded-md border border-input bg-background text-xs font-medium hover:bg-muted transition-colors"
-                    >
-                      取消
-                    </button>
-                  </div>
-                </form>
-              ) : (
-                <div className="space-y-2 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => setMode('register')}
-                    className="w-full h-9 inline-flex items-center justify-center gap-2 rounded-md border border-input bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors shadow-sm"
-                  >
-                    <KeyRound size={14} />
-                    <span>修改用户名或密码</span>
-                  </button>
-
-                  {onResetToVerifiedBaseline && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (window.confirm('确认重新载入18个账户的核对基准数据？（覆盖当前草稿）')) {
-                          onResetToVerifiedBaseline();
-                          onClose();
-                        }
-                      }}
-                      className="w-full h-9 inline-flex items-center justify-center gap-2 rounded-md border border-input bg-background text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shadow-sm"
-                    >
-                      <RefreshCw size={13} />
-                      <span>恢复 18 账户核对基准</span>
-                    </button>
-                  )}
-
+              <div className="space-y-2 pt-1">
+                {onResetToVerifiedBaseline && (
                   <button
                     type="button"
                     onClick={() => {
-                      onLockVault();
-                      onClose();
+                      if (window.confirm('确认从云端重新载入已核对的组合数据？（覆盖当前草稿）')) {
+                        onResetToVerifiedBaseline();
+                        onClose();
+                      }
                     }}
-                    className="w-full h-9 inline-flex items-center justify-center gap-2 rounded-md bg-muted text-muted-foreground text-xs font-medium hover:bg-muted/80 hover:text-foreground transition-colors"
+                    className="w-full h-9 inline-flex items-center justify-center gap-2 rounded-md border border-input bg-background text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shadow-sm"
                   >
-                    <LogOut size={14} />
-                    <span>退出私享登录 (切换为公开示例)</span>
+                    <RefreshCw size={13} />
+                    <span>重新载入云端核对数据</span>
                   </button>
-                </div>
-              )}
-            </div>
-          ) : (
-            /* Login & First-time setup form */
-            <div>
-              {/* Tabs */}
-              <div className="grid grid-cols-2 rounded-lg bg-muted p-1 mb-4 text-xs font-medium text-muted-foreground">
+                )}
+
                 <button
                   type="button"
-                  onClick={() => {
-                    setMode('login');
-                    setError(null);
-                  }}
-                  className={`py-1.5 text-center rounded-md transition-all ${
-                    mode === 'login' ? 'bg-background text-foreground shadow-sm font-semibold' : 'hover:text-foreground'
-                  }`}
+                  disabled={isSubmitting}
+                  onClick={handleLogout}
+                  className="w-full h-9 inline-flex items-center justify-center gap-2 rounded-md bg-muted text-muted-foreground text-xs font-medium hover:bg-muted/80 hover:text-foreground transition-colors"
                 >
-                  登录私享账户
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMode('register');
-                    setError(null);
-                  }}
-                  className={`py-1.5 text-center rounded-md transition-all ${
-                    mode === 'register' ? 'bg-background text-foreground shadow-sm font-semibold' : 'hover:text-foreground'
-                  }`}
-                >
-                  设置/修改凭据
+                  <LogOut size={14} />
+                  <span>退出私享登录（切换为公开示例）</span>
                 </button>
               </div>
-
-              <form
-                onSubmit={mode === 'login' ? handleLogin : handleRegisterOrChange}
-                method="post"
-                action="#"
-                className="space-y-4"
-              >
-                <div>
-                  <label htmlFor="auth-username" className="text-xs font-medium text-foreground block mb-1.5">
-                    用户名
-                  </label>
-                  <div className="relative">
-                    <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-muted-foreground">
-                      <User size={15} />
-                    </span>
-                    <input
-                      id="auth-username"
-                      name="username"
-                      type="text"
-                      autoComplete="username"
-                      required
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
-                      placeholder="输入用户名"
-                      className="w-full h-9 pl-9 pr-3 rounded-md border border-input bg-background text-sm text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label htmlFor="auth-password" className="text-xs font-medium text-foreground block mb-1.5">
-                    密码
-                  </label>
-                  <div className="relative">
-                    <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-muted-foreground">
-                      <KeyRound size={15} />
-                    </span>
-                    <input
-                      id="auth-password"
-                      name="password"
-                      type="password"
-                      autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
-                      required
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder={mode === 'register' ? '设置新密码 (最少4位)' : '输入密码'}
-                      className="w-full h-9 pl-9 pr-3 rounded-md border border-input bg-background text-sm text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                    />
-                  </div>
-                </div>
-
-                {error && (
-                  <div className="text-xs text-destructive bg-destructive/10 border border-destructive/20 rounded-md p-2.5">
-                    {error}
-                  </div>
-                )}
-
-                {successMsg && (
-                  <div className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-md p-2.5">
-                    {successMsg}
-                  </div>
-                )}
-
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="w-full h-9 inline-flex items-center justify-center rounded-md bg-primary text-primary-foreground text-xs font-semibold shadow hover:bg-primary/90 transition-colors"
-                >
-                  {isSubmitting ? (
-                    <span className="inline-flex items-center gap-1.5">
-                      <RefreshCw size={13} className="animate-spin" />
-                      <span>正在处理...</span>
-                    </span>
-                  ) : mode === 'login' ? (
-                    '登录私享账户'
-                  ) : (
-                    '保存凭据并登录'
-                  )}
-                </button>
-
-                <p className="text-[11px] text-muted-foreground text-center leading-relaxed">
-                  无需个人信息 · 凭据仅加密保存在当前浏览器本地（网站不保存密码）· 注册登录完全自愿，仅用作本地资产私享锁。
-                </p>
-              </form>
             </div>
+          ) : (
+            <form onSubmit={handleLogin} method="post" action="#" className="space-y-4">
+              <div>
+                <label htmlFor="auth-username" className="text-xs font-medium text-foreground block mb-1.5">
+                  用户名
+                </label>
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-muted-foreground">
+                    <User size={15} />
+                  </span>
+                  <input
+                    id="auth-username"
+                    name="username"
+                    type="text"
+                    autoComplete="username"
+                    required
+                    value={username}
+                    onChange={(event) => setUsername(event.target.value)}
+                    className="w-full h-9 pl-9 pr-3 rounded-md border border-input bg-background text-sm text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="auth-password" className="text-xs font-medium text-foreground block mb-1.5">
+                  密码
+                </label>
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-muted-foreground">
+                    <KeyRound size={15} />
+                  </span>
+                  <input
+                    id="auth-password"
+                    name="password"
+                    type="password"
+                    autoComplete="current-password"
+                    required
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    placeholder="输入密码"
+                    className="w-full h-9 pl-9 pr-3 rounded-md border border-input bg-background text-sm text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  />
+                </div>
+              </div>
+
+              {error && (
+                <div className="text-xs text-destructive bg-destructive/10 border border-destructive/20 rounded-md p-2.5">
+                  {error}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full h-9 inline-flex items-center justify-center rounded-md bg-primary text-primary-foreground text-xs font-semibold shadow hover:bg-primary/90 transition-colors"
+              >
+                {isSubmitting ? (
+                  <span className="inline-flex items-center gap-1.5">
+                    <RefreshCw size={13} className="animate-spin" />
+                    <span>正在验证...</span>
+                  </span>
+                ) : (
+                  '登录私享账户'
+                )}
+              </button>
+
+              <p className="text-[11px] text-muted-foreground text-center leading-relaxed">
+                登录凭据仅由服务端验证；浏览器不会保存密码或固定 PIN。
+              </p>
+            </form>
           )}
         </div>
       </div>

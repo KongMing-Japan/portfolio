@@ -9,3 +9,9 @@ dist/
 .wrangler/
 
 push_err.log
+# Private portfolio inputs and generated database seeds
+data/*.csv
+data/*.json
+!data/prices.json
+migrations/seed_data.sql
+src/lib/realPortfolioData.ts
