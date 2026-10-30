@@ -11,7 +11,7 @@ function json(data: unknown, status = 200) {
   });
 }
 
-async function findForeignHoldingIds(
+export async function findForeignHoldingIds(
   db: D1Database,
   portfolioId: string,
   ids: string[],
