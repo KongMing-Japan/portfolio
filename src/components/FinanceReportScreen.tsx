@@ -68,6 +68,7 @@ import { HoldingsCompositionCard } from './HoldingsCompositionCard';
 import { PortfolioPanorama } from './PortfolioPanorama';
 import { ClassicRebalanceAnalytics } from './ClassicRebalanceAnalytics';
 import { CioInvestmentAdvisorCard } from './CioInvestmentAdvisorCard';
+import { PortfolioHeroOverview } from './PortfolioHeroOverview';
 import { AccountVaultSection } from './AccountVaultSection';
 import { UserAuthModal } from './UserAuthModal';
 import type {
@@ -979,105 +980,15 @@ export function FinanceReportScreen({
             </div>
           </div>
 
-          {/* 4-Card KPI Summary Grid (Shadcn b7Br6guwa style) */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
-            <Card size="sm">
-              <CardHeader className="pb-1">
-                <div className="flex items-center justify-between">
-                  <CardDescription className="text-xs font-medium">投资组合净值</CardDescription>
-                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0 font-normal">
-                    {baseCurrency}
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold tracking-tight tabular-nums text-foreground">
-                  {formatMoney(total, baseCurrency)}
-                </div>
-                <div className="text-[11px] text-muted-foreground tabular-nums mt-1">
-                  {formatExactMoney(total, baseCurrency)}
-                </div>
-              </CardContent>
-            </Card>
-
-            {(() => {
-              const row = layerRows.find((r) => r.layer === 'Core') || { weight: 0, value: 0, rows: [] };
-              return (
-                <Card size="sm">
-                  <CardHeader className="pb-1">
-                    <div className="flex items-center justify-between">
-                      <CardDescription className="text-xs font-medium flex items-center gap-1.5">
-                        <span className="size-2 rounded-full bg-primary" />
-                        核心仓 (Core)
-                      </CardDescription>
-                      <span className="text-[11px] text-muted-foreground tabular-nums">目标 60%</span>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold tracking-tight tabular-nums text-foreground">
-                      {formatPercent(row.weight)}
-                    </div>
-                    <div className="text-[11px] text-muted-foreground tabular-nums mt-1">
-                      {formatMoney(row.value, baseCurrency)} · {row.rows.length} 项
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })()}
-
-            {(() => {
-              const row = layerRows.find((r) => r.layer === 'Satellite') || { weight: 0, value: 0, rows: [] };
-              return (
-                <Card size="sm">
-                  <CardHeader className="pb-1">
-                    <div className="flex items-center justify-between">
-                      <CardDescription className="text-xs font-medium flex items-center gap-1.5">
-                        <span className="size-2 rounded-full bg-chart-4" />
-                        卫星仓 (Satellite)
-                      </CardDescription>
-                      <span className="text-[11px] text-muted-foreground tabular-nums">目标 20%</span>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold tracking-tight tabular-nums text-foreground">
-                      {formatPercent(row.weight)}
-                    </div>
-                    <div className="text-[11px] text-muted-foreground tabular-nums mt-1">
-                      {formatMoney(row.value, baseCurrency)} · {row.rows.length} 项
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })()}
-
-            {(() => {
-              const defRow = layerRows.find((r) => r.layer === 'Defensive') || { weight: 0, value: 0, rows: [] };
-              const cashRow = layerRows.find((r) => r.layer === 'Cash') || { weight: 0, value: 0, rows: [] };
-              const combinedWeight = defRow.weight + cashRow.weight;
-              const combinedValue = defRow.value + cashRow.value;
-              return (
-                <Card size="sm">
-                  <CardHeader className="pb-1">
-                    <div className="flex items-center justify-between">
-                      <CardDescription className="text-xs font-medium flex items-center gap-1.5">
-                        <span className="size-2 rounded-full bg-chart-3" />
-                        防守与现金
-                      </CardDescription>
-                      <span className="text-[11px] text-muted-foreground tabular-nums">目标 20%</span>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold tracking-tight tabular-nums text-foreground">
-                      {formatPercent(combinedWeight)}
-                    </div>
-                    <div className="text-[11px] text-muted-foreground tabular-nums mt-1">
-                      防守 {formatPercent(defRow.weight, 0)} · 现金 {formatPercent(cashRow.weight, 0)} ({formatMoney(combinedValue, baseCurrency)})
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })()}
-          </div>
+          {/* =====================================================================
+              HERO SECTION: Net Worth Evolution Area Chart + Core Layers Pie Chart
+             ===================================================================== */}
+          <PortfolioHeroOverview
+            totalValue={total}
+            baseCurrency={baseCurrency}
+            fx={fx}
+            aggregated={aggregated}
+          />
 
           {/* =====================================================================
               PROMINENT AI CIO INVESTMENT ADVISORY & REBALANCE CARD
