@@ -21,6 +21,8 @@ import {
   Trash2,
   Unlock,
   Upload,
+  Wallet,
+  TableProperties,
 } from 'lucide-react';
 import { extractImagePositions, extractTextPositions } from '../lib/api';
 import { parseCsvFile, parseHoldingsText } from '../lib/csv';
@@ -65,6 +67,7 @@ import { BrokerAccountsCard } from './BrokerAccountsCard';
 import { HoldingsCompositionCard } from './HoldingsCompositionCard';
 import { PortfolioPanorama } from './PortfolioPanorama';
 import { ClassicRebalanceAnalytics } from './ClassicRebalanceAnalytics';
+import { CioInvestmentAdvisorCard } from './CioInvestmentAdvisorCard';
 import { AccountVaultSection } from './AccountVaultSection';
 import { UserAuthModal } from './UserAuthModal';
 import type {
@@ -109,7 +112,7 @@ interface FinanceReportScreenProps {
 }
 
 type ImportMode = 'upload' | 'paste';
-type WorkspaceView = 'portfolio' | 'superinvestors';
+type WorkspaceView = 'portfolio' | 'superinvestors' | 'holdings' | 'daily_accounts';
 
 const LAYERS = Object.keys(LAYER_META) as Layer[];
 const CURRENCIES = ['USD', 'JPY', 'CNY', 'HKD'] as const;
@@ -376,10 +379,14 @@ export function FinanceReportScreen({
     const onHashChange = () => {
       if (window.location.hash.startsWith('#superinvestors')) {
         setWorkspaceView('superinvestors');
+      } else if (window.location.hash.startsWith('#holdings') || window.location.hash.startsWith('#ledger')) {
+        setWorkspaceView('holdings');
+      } else if (window.location.hash.startsWith('#daily') || window.location.hash.startsWith('#vault')) {
+        setWorkspaceView('daily_accounts');
       } else if (
         window.location.hash === '#portfolio' ||
-        window.location.hash === '#holdings' ||
-        window.location.hash === '#allocation'
+        window.location.hash === '#allocation' ||
+        window.location.hash === ''
       ) {
         setWorkspaceView('portfolio');
       }
@@ -564,11 +571,14 @@ export function FinanceReportScreen({
     setWorkspaceView(view);
     if (view === 'superinvestors') {
       window.location.hash = 'superinvestors';
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      return;
+    } else if (view === 'holdings') {
+      window.location.hash = 'holdings';
+    } else if (view === 'daily_accounts') {
+      window.location.hash = 'daily';
+    } else {
+      const target = section || 'portfolio';
+      window.location.hash = target;
     }
-    const target = section || 'portfolio';
-    window.location.hash = target;
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -586,29 +596,36 @@ export function FinanceReportScreen({
             Portfolio
           </button>
           <nav className="gf-nav-tabs" aria-label="视图导航">
-            {!isOwnerUnlocked ? (
-              <button
-                className={`gf-nav-tab ${workspaceView === 'portfolio' ? 'is-active' : ''}`}
-                onClick={() => openWorkspace('portfolio')}
-              >
-                <Briefcase size={14} />
-                <span>公开示例</span>
-              </button>
-            ) : (
-              <button
-                className={`gf-nav-tab ${workspaceView === 'portfolio' ? 'is-active' : ''}`}
-                onClick={() => openWorkspace('portfolio')}
-              >
-                <Briefcase size={14} />
-                <span>我的组合</span>
-              </button>
-            )}
+            <button
+              className={`gf-nav-tab ${workspaceView === 'portfolio' ? 'is-active' : ''}`}
+              onClick={() => openWorkspace('portfolio')}
+            >
+              <Briefcase size={14} />
+              <span>{isOwnerUnlocked ? '我的组合' : '组合示例'}</span>
+            </button>
+
             <button
               className={`gf-nav-tab ${workspaceView === 'superinvestors' ? 'is-active' : ''}`}
               onClick={() => openWorkspace('superinvestors')}
             >
               <Landmark size={14} />
               <span>投资大师</span>
+            </button>
+
+            <button
+              className={`gf-nav-tab ${workspaceView === 'holdings' ? 'is-active' : ''}`}
+              onClick={() => openWorkspace('holdings')}
+            >
+              <TableProperties size={14} />
+              <span>持仓明细</span>
+            </button>
+
+            <button
+              className={`gf-nav-tab ${workspaceView === 'daily_accounts' ? 'is-active' : ''}`}
+              onClick={() => openWorkspace('daily_accounts')}
+            >
+              <Wallet size={14} />
+              <span>日常金融账户</span>
             </button>
           </nav>
           <div className="gf-topbar-user-area" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -649,6 +666,159 @@ export function FinanceReportScreen({
             <SuperinvestorsScreen />
           </Suspense>
         </section>
+      ) : workspaceView === 'holdings' ? (
+        <div className="nova-shell space-y-6" id="holdings-view">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-xl font-semibold tracking-tight text-foreground">
+                持仓明细与调仓记账
+              </h1>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                直接在表内修改「持股数」或「单价」即可完成调仓并实时更新（共 {aggregated.length} 项有效投资标的）
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                className="gf-primary-action text-xs font-medium"
+                onClick={() => setAddOpen(true)}
+              >
+                <Plus size={13} />
+                <span>{t.addStock}</span>
+              </button>
+            </div>
+          </div>
+
+          <Card className="perf-contain-section">
+            <CardHeader className="pb-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <CardTitle className="text-base">{t.yourPortfolio}</CardTitle>
+                  <CardDescription>
+                    点击任意多账户合并行可展开查看各个券商分账户明细并直接行内修改
+                  </CardDescription>
+                </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button
+                    type="button"
+                    className="gf-text-action text-xs font-medium"
+                    onClick={() => setMergeEquivalent((prev) => !prev)}
+                  >
+                    <Layers3 size={13} />
+                    <span>同源归并: {mergeEquivalent ? '开' : '关'}</span>
+                  </button>
+                </div>
+              </div>
+            </CardHeader>
+
+            <CardContent className="space-y-3">
+              <div className="nova-holdings-toolbar">
+                <div className="nova-filter-pills" role="tablist" aria-label="按资产层级筛选">
+                  <button
+                    type="button"
+                    className={`nova-filter-pill ${layerFilter === 'ALL' ? 'is-active' : ''}`}
+                    onClick={() => setLayerFilter('ALL')}
+                  >
+                    <span>全部</span>
+                    <span className="nova-filter-count">{aggregated.length}</span>
+                  </button>
+                  {LAYERS.map((layer) => {
+                    const count = aggregated.filter((item) => item.layer === layer).length;
+                    return (
+                      <button
+                        key={layer}
+                        type="button"
+                        className={`nova-filter-pill ${layerFilter === layer ? 'is-active' : ''}`}
+                        onClick={() => setLayerFilter(layer)}
+                      >
+                        <span className="nova-dot" style={{ background: LAYER_META[layer].color }} />
+                        <span>{LAYER_META[layer].label}</span>
+                        <span className="nova-filter-count">{count}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="nova-search-box">
+                  <Search size={13} className="nova-search-icon" />
+                  <input
+                    type="search"
+                    value={holdingSearch}
+                    onChange={(event) => setHoldingSearch(event.target.value)}
+                    placeholder="搜索代码、名称或券商..."
+                    className="nova-search-input"
+                  />
+                  {holdingSearch && (
+                    <button
+                      type="button"
+                      className="nova-search-clear"
+                      onClick={() => setHoldingSearch('')}
+                      aria-label="清空搜索"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{t.symbol}</TableHead>
+                    <TableHead className="text-right">{t.value}</TableHead>
+                    <TableHead className="text-right">{t.weight}</TableHead>
+                    <TableHead className="text-center">{t.layer}</TableHead>
+                    <TableHead className="text-right">{t.qty}</TableHead>
+                    <TableHead className="text-right">{t.price}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredHoldings.length ? (
+                    filteredHoldings.map((holding) => (
+                      <FinanceHoldingRow
+                        key={holding.ticker}
+                        holding={holding}
+                        baseCurrency={baseCurrency}
+                        expanded={expandedTicker === holding.ticker}
+                        onToggle={() =>
+                          setExpandedTicker((current) =>
+                            current === holding.ticker ? null : holding.ticker,
+                          )
+                        }
+                        onUpdateHolding={onUpdateHolding}
+                      />
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={6} className="py-10 text-center">
+                        <div className="flex flex-col items-center gap-2 text-xs text-muted-foreground">
+                          <strong className="text-foreground">
+                            {holdingSearch || layerFilter !== 'ALL'
+                              ? '未找到匹配的持仓标的'
+                              : t.emptyTitle}
+                          </strong>
+                          <span>
+                            {holdingSearch || layerFilter !== 'ALL'
+                              ? '请尝试切换分层或清空搜索条件。'
+                              : t.emptyBody}
+                          </span>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </div>
+      ) : workspaceView === 'daily_accounts' ? (
+        <div className="nova-shell space-y-6" id="daily-view">
+          <AccountVaultSection
+            allHoldings={holdings}
+            baseCurrency={baseCurrency}
+            fx={fx}
+            onUpdateHolding={onUpdateHolding}
+          />
+        </div>
       ) : (
         <div className="nova-shell space-y-6" id="portfolio">
           {/* Minimalist Page Header */}
@@ -910,7 +1080,20 @@ export function FinanceReportScreen({
           </div>
 
           {/* =====================================================================
-              70% CORE: Holdings Panorama, Accounts & Direct-Edit Holdings Ledger
+              PROMINENT AI CIO INVESTMENT ADVISORY & REBALANCE CARD
+              Placed directly between the 4 KPI Cards and the Holdings Panorama
+             ===================================================================== */}
+          {aggregated.length > 0 && (
+            <CioInvestmentAdvisorCard
+              holdings={activeHoldings}
+              aggregated={aggregated}
+              totalValue={total}
+              baseCurrency={baseCurrency}
+            />
+          )}
+
+          {/* =====================================================================
+              70% CORE: Holdings Panorama & Accounts Distribution
              ===================================================================== */}
           {aggregated.length > 0 && (
             <PortfolioPanorama
@@ -939,160 +1122,8 @@ export function FinanceReportScreen({
             </div>
           )}
 
-          {/* Direct-Edit Holdings Ledger Table */}
-          <Card id="holdings" className="perf-contain-section">
-            <CardHeader className="pb-3">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div>
-                  <CardTitle className="text-base">{t.yourPortfolio}</CardTitle>
-                  <CardDescription>
-                    直接在表内修改「持股数」或「单价」即可完成调仓并实时更新组合权重（多账户合并项点击即可展开修改）
-                  </CardDescription>
-                </div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <button
-                    type="button"
-                    className="gf-text-action text-xs font-medium"
-                    onClick={() => setMergeEquivalent((prev) => !prev)}
-                  >
-                    <Layers3 size={13} />
-                    <span>同源归并: {mergeEquivalent ? '开' : '关'}</span>
-                  </button>
-                  <button
-                    type="button"
-                    className="gf-primary-action text-xs font-medium"
-                    onClick={() => setAddOpen(true)}
-                  >
-                    <Plus size={13} />
-                    <span>{t.addStock}</span>
-                  </button>
-                </div>
-              </div>
-            </CardHeader>
-
-            <CardContent className="space-y-3">
-              {/* Layer Filter Pills & Search Toolbar */}
-              <div className="nova-holdings-toolbar">
-                <div className="nova-filter-pills" role="tablist" aria-label="按资产层级筛选">
-                  <button
-                    type="button"
-                    className={`nova-filter-pill ${layerFilter === 'ALL' ? 'is-active' : ''}`}
-                    onClick={() => setLayerFilter('ALL')}
-                  >
-                    <span>全部</span>
-                    <span className="nova-filter-count">{aggregated.length}</span>
-                  </button>
-                  {LAYERS.map((layer) => {
-                    const count = aggregated.filter((item) => item.layer === layer).length;
-                    return (
-                      <button
-                        key={layer}
-                        type="button"
-                        className={`nova-filter-pill ${layerFilter === layer ? 'is-active' : ''}`}
-                        onClick={() => setLayerFilter(layer)}
-                      >
-                        <span className="nova-dot" style={{ background: LAYER_META[layer].color }} />
-                        <span>{LAYER_META[layer].label}</span>
-                        <span className="nova-filter-count">{count}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-                <div className="nova-search-box">
-                  <Search size={13} className="nova-search-icon" />
-                  <input
-                    type="search"
-                    value={holdingSearch}
-                    onChange={(event) => setHoldingSearch(event.target.value)}
-                    placeholder="搜索代码、名称或券商..."
-                    className="nova-search-input"
-                  />
-                  {holdingSearch && (
-                    <button
-                      type="button"
-                      className="nova-search-clear"
-                      onClick={() => setHoldingSearch('')}
-                      aria-label="清空搜索"
-                    >
-                      ×
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>{t.symbol}</TableHead>
-                    <TableHead className="text-right">{t.value}</TableHead>
-                    <TableHead className="text-right">{t.weight}</TableHead>
-                    <TableHead className="text-center">{t.layer}</TableHead>
-                    <TableHead className="text-right">{t.qty}</TableHead>
-                    <TableHead className="text-right">{t.price}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredHoldings.length ? (
-                    filteredHoldings.map((holding) => (
-                      <FinanceHoldingRow
-                        key={holding.ticker}
-                        holding={holding}
-                        baseCurrency={baseCurrency}
-                        expanded={expandedTicker === holding.ticker}
-                        onToggle={() =>
-                          setExpandedTicker((current) =>
-                            current === holding.ticker ? null : holding.ticker,
-                          )
-                        }
-                        onUpdateHolding={onUpdateHolding}
-                      />
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={6} className="py-10 text-center">
-                        <div className="flex flex-col items-center gap-2 text-xs text-muted-foreground">
-                          <strong className="text-foreground">
-                            {holdingSearch || layerFilter !== 'ALL'
-                              ? '未找到匹配的持仓标的'
-                              : t.emptyTitle}
-                          </strong>
-                          <span>
-                            {holdingSearch || layerFilter !== 'ALL'
-                              ? '请尝试切换分层或清空搜索条件。'
-                              : t.emptyBody}
-                          </span>
-                          {holdingSearch || layerFilter !== 'ALL' ? (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setLayerFilter('ALL');
-                                setHoldingSearch('');
-                              }}
-                              className="gf-text-action mt-1"
-                            >
-                              重置筛选条件
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => setImportOpen(true)}
-                              className="gf-primary-action mt-1"
-                            >
-                              <Upload size={14} />
-                              <span>{t.importPositions}</span>
-                            </button>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-
           {/* =====================================================================
-              30% STRATEGY & REBALANCE: Unified Corridor & Share Reference Card
+              STRATEGY & REBALANCE: Corridor & Asset Drift Guidance
              ===================================================================== */}
           {aggregated.length > 0 && (
             <ClassicRebalanceAnalytics
@@ -1104,15 +1135,50 @@ export function FinanceReportScreen({
             />
           )}
 
-          {/* =====================================================================
-              INDEPENDENT BOTTOM SECTION: Daily Financial Accounts Memo
-             ===================================================================== */}
-          <AccountVaultSection
-            allHoldings={holdings}
-            baseCurrency={baseCurrency}
-            fx={fx}
-            onUpdateHolding={onUpdateHolding}
-          />
+          {/* Quick Nav Card to Holdings & Daily Memo */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <button
+              type="button"
+              onClick={() => openWorkspace('holdings')}
+              className="p-4 rounded-xl border border-border/80 bg-card hover:bg-muted/40 transition-all text-left flex items-center justify-between group cursor-pointer shadow-xs"
+            >
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
+                    查看与编辑持仓明细
+                  </span>
+                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                    {aggregated.length} 标的
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  前往持仓账本，直接修改持股数与买入均价，支持多账户同源合并与标的检索。
+                </p>
+              </div>
+              <ChevronRight size={16} className="text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all shrink-0" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => openWorkspace('daily_accounts')}
+              className="p-4 rounded-xl border border-border/80 bg-card hover:bg-muted/40 transition-all text-left flex items-center justify-between group cursor-pointer shadow-xs"
+            >
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
+                    日常金融账户与钱包备忘
+                  </span>
+                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                    银行 · 钱包 · 活期
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  管理三井住友、索尼银行、Wise、微信以及 Web3 钱包等日常生活资金储备。
+                </p>
+              </div>
+              <ChevronRight size={16} className="text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all shrink-0" />
+            </button>
+          </div>
 
           {/* Minimalist Footer Action Row */}
           <div className="flex items-center justify-between flex-wrap gap-4 text-xs text-muted-foreground pt-2">

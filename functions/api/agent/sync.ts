@@ -76,10 +76,22 @@ const FUND_METADATA_HINTS: Record<string, { query: string; code?: string; note?:
  * Daily bank deposits & payment wallets are a separate ledger, not investment positions.
  */
 function isDailyMemoAccount(h: { broker: string; ticker: string; name: string; layer: string }): boolean {
-  if (h.layer === 'Core' || h.layer === 'Satellite' || h.layer === 'Defensive') return false;
   const broker = (h.broker || '').trim();
   const ticker = (h.ticker || '').toUpperCase();
   const name = (h.name || '').trim();
+
+  // Crypto wallets are daily memo wallets, not investment accounts
+  if (
+    ticker.startsWith('CRYPTO_') ||
+    ticker.includes('BITGET') ||
+    ticker.includes('METAMASK') ||
+    ticker.includes('WORLDCOIN') ||
+    /Bitget|Worldcoin|MetaMask/i.test(broker)
+  ) {
+    return true;
+  }
+
+  if (h.layer === 'Core' || h.layer === 'Satellite' || h.layer === 'Defensive') return false;
   if (broker === '乐天银行') return false; // linked brokerage reserve
   if (broker === '蚂蚁财富') return ticker.includes('YUEBAO') || ticker.includes('YU_E_BAO') || name.includes('余额宝');
   if (/证券|securities|broker|ibkr|interactive brokers|robinhood|charles schwab|fidelity/i.test(broker)) return false;

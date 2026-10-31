@@ -12,16 +12,17 @@ const data = JSON.parse(
 
 describe('superinvestor 13F data', () => {
   it('contains the configured investors and current filings', () => {
-    expect(data.investors).toHaveLength(4);
+    expect(data.investors).toHaveLength(5);
     expect(data.investors.map((investor) => investor.name)).toEqual([
       'Warren Buffett',
       'Bill Ackman',
       'David Tepper',
       'Cathie Wood',
+      'Nancy Pelosi (国会山股神)',
     ]);
     expect(
       data.investors.every(
-        (investor) => investor.reportDate && investor.filingUrl.startsWith('https://www.sec.gov/'),
+        (investor) => investor.reportDate && (investor.filingUrl.startsWith('https://www.sec.gov/') || investor.filingUrl.includes('house.gov')),
       ),
     ).toBe(true);
   });

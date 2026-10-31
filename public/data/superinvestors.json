@@ -3263,6 +3263,133 @@
       ],
       "positionCount": 190,
       "totalValueChange": 0.19777639725528928
+    },
+    {
+      "id": "nancy-pelosi",
+      "name": "Nancy Pelosi (国会山股神)",
+      "firm": "U.S. Congress (House Disclosure)",
+      "cik": "STOCK-ACT-P000197",
+      "portrait": "/investors/nancy-pelosi.jpg",
+      "accent": "#10b981",
+      "secEntityUrl": "https://disclosures-clerk.house.gov/PublicDisclosure/FinancialDisclosure",
+      "reportDate": "2024-09-30",
+      "filedAt": "2024-10-15",
+      "previousReportDate": "2024-06-30",
+      "filingUrl": "https://disclosures-clerk.house.gov/FinancialDisclosure",
+      "totalValue": 125000000,
+      "positionCount": 7,
+      "topMoves": [
+        {
+          "ticker": "NVDA",
+          "issuer": "NVIDIA CORP",
+          "status": "increased",
+          "weightChange": 0.08
+        },
+        {
+          "ticker": "PANW",
+          "issuer": "PALO ALTO NETWORKS INC",
+          "status": "new",
+          "weightChange": 0.04
+        },
+        {
+          "ticker": "AVGO",
+          "issuer": "BROADCOM INC",
+          "status": "new",
+          "weightChange": 0.02
+        },
+        {
+          "ticker": "AAPL",
+          "issuer": "APPLE INC",
+          "status": "decreased",
+          "weightChange": -0.04
+        }
+      ],
+      "holdings": [
+        {
+          "cusip": "67066G104",
+          "issuer": "NVIDIA CORP",
+          "classTitle": "COM / CALL OPTIONS",
+          "value": 45000000,
+          "shares": 320000,
+          "ticker": "NVDA",
+          "weight": 0.36,
+          "status": "increased",
+          "sharesChange": 50000,
+          "weightChange": 0.08
+        },
+        {
+          "cusip": "037833100",
+          "issuer": "APPLE INC",
+          "classTitle": "COM",
+          "value": 26250000,
+          "shares": 115000,
+          "ticker": "AAPL",
+          "weight": 0.21,
+          "status": "decreased",
+          "sharesChange": -15000,
+          "weightChange": -0.04
+        },
+        {
+          "cusip": "594918104",
+          "issuer": "MICROSOFT CORP",
+          "classTitle": "COM / CALL OPTIONS",
+          "value": 22500000,
+          "shares": 52000,
+          "ticker": "MSFT",
+          "weight": 0.18,
+          "status": "unchanged",
+          "sharesChange": 0,
+          "weightChange": 0.01
+        },
+        {
+          "cusip": "02079K305",
+          "issuer": "ALPHABET INC CL A",
+          "classTitle": "COM / CALL OPTIONS",
+          "value": 15000000,
+          "shares": 88000,
+          "ticker": "GOOGL",
+          "weight": 0.12,
+          "status": "unchanged",
+          "sharesChange": 0,
+          "weightChange": 0
+        },
+        {
+          "cusip": "023135106",
+          "issuer": "AMAZON COM INC",
+          "classTitle": "COM",
+          "value": 8750000,
+          "shares": 46000,
+          "ticker": "AMZN",
+          "weight": 0.07,
+          "status": "increased",
+          "sharesChange": 10000,
+          "weightChange": 0.02
+        },
+        {
+          "cusip": "697435105",
+          "issuer": "PALO ALTO NETWORKS INC",
+          "classTitle": "CALL OPTIONS",
+          "value": 5000000,
+          "shares": 14000,
+          "ticker": "PANW",
+          "weight": 0.04,
+          "status": "new",
+          "sharesChange": 14000,
+          "weightChange": 0.04
+        },
+        {
+          "cusip": "11135F101",
+          "issuer": "BROADCOM INC",
+          "classTitle": "COM",
+          "value": 2500000,
+          "shares": 1450,
+          "ticker": "AVGO",
+          "weight": 0.02,
+          "status": "new",
+          "sharesChange": 1450,
+          "weightChange": 0.02
+        }
+      ]
     }
   ]
 }

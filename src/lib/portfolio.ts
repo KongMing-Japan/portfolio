@@ -628,6 +628,7 @@ const DAILY_WALLET_BROKERS = new Set([
   'PayPal',
   'Bitget Wallet',
   'Worldcoin',
+  'MetaMask',
 ]);
 
 /**
@@ -638,14 +639,25 @@ const DAILY_WALLET_BROKERS = new Set([
  * - 微信支付、招商银行活期、三井住友、Sony银行、瑞穗、Wise、Revolut、PayPal等：属于日常消费生活现金
  */
 export function isDailyMemoAccount(holding: Pick<Holding, 'broker' | 'ticker' | 'name' | 'layer'>): boolean {
+  const broker = (holding.broker || '').trim();
+  const ticker = (holding.ticker || '').toUpperCase();
+  const name = (holding.name || '').trim();
+
+  // 0. Crypto wallets (Bitget, Worldcoin, MetaMask) are strictly daily living/memo wallets, NOT investment holdings
+  if (
+    DAILY_WALLET_BROKERS.has(broker) ||
+    ticker.startsWith('CRYPTO_') ||
+    ticker.includes('BITGET') ||
+    ticker.includes('METAMASK') ||
+    ticker.includes('WORLDCOIN')
+  ) {
+    return true;
+  }
+
   // 1. Any holding classified as Core, Satellite, or Defensive is ALWAYS an investment holding
   if (holding.layer === 'Core' || holding.layer === 'Satellite' || holding.layer === 'Defensive') {
     return false;
   }
-
-  const broker = (holding.broker || '').trim();
-  const ticker = (holding.ticker || '').toUpperCase();
-  const name = (holding.name || '').trim();
 
   // 2. Specific exception: 乐天银行 cash is linked investment cash
   if (broker === '乐天银行') return false;
