@@ -72,6 +72,30 @@ const FUND_METADATA_HINTS: Record<string, { query: string; code?: string; note?:
 };
 
 /**
+ * Server-side mirror of isDailyMemoAccount (src/lib/portfolio.ts).
+ * Daily bank deposits & payment wallets are a separate ledger, not investment positions.
+ */
+function isDailyMemoAccount(h: { broker: string; ticker: string; name: string; layer: string }): boolean {
+  if (h.layer === 'Core' || h.layer === 'Satellite' || h.layer === 'Defensive') return false;
+  const broker = (h.broker || '').trim();
+  const ticker = (h.ticker || '').toUpperCase();
+  const name = (h.name || '').trim();
+  if (broker === '乐天银行') return false; // linked brokerage reserve
+  if (broker === '蚂蚁财富') return ticker.includes('YUEBAO') || ticker.includes('YU_E_BAO') || name.includes('余额宝');
+  if (/证券|securities|broker|ibkr|interactive brokers|robinhood|charles schwab|fidelity/i.test(broker)) return false;
+  if (
+    !ticker.startsWith('CASH') &&
+    !ticker.includes('YUEBAO') &&
+    !ticker.includes('WALLET') &&
+    !/现金|現金|存款|活期/i.test(name) &&
+    !/现金|現金|存款|活期/i.test(ticker)
+  ) {
+    return false;
+  }
+  return /银行|bank|wallet|支付|pay|wise|revolut|paypal/i.test(broker) || /活期|零钱|储蓄|生活|日常/i.test(name);
+}
+
+/**
  * GET /api/agent/sync
  * Returns an AI-friendly overview of portfolio holdings,
  * highlighting which funds/stocks need price updates (e.g. OTC funds, QDII, unlisted trusts).
@@ -127,11 +151,18 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
 
   const layerValues: Record<string, number> = { Defensive: 0, Core: 0, Satellite: 0, Cash: 0 };
   let totalPortfolioValueJpy = 0;
+  let dailyAccountsValueJpy = 0;
 
   for (const h of holdings) {
     const rawVal = h.market_value ?? (h.market_price != null ? h.market_price * h.quantity : 0);
     const rate = fx[h.currency.toUpperCase()] ?? 1;
     const valJpy = rawVal * rate;
+    // Daily living bank/wallet accounts are tracked separately, not part of the investment portfolio
+    // (mirrors isDailyMemoAccount in src/lib/portfolio.ts)
+    if (isDailyMemoAccount(h)) {
+      dailyAccountsValueJpy += valJpy;
+      continue;
+    }
     totalPortfolioValueJpy += valJpy;
     if (h.layer in layerValues) {
       layerValues[h.layer] += valJpy;
@@ -158,6 +189,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
     baseCurrency: portfolio.base_currency,
     quoteUpdatedAt: portfolio.quote_updated_at,
     totalPortfolioValueJpy: Math.round(totalPortfolioValueJpy),
+    dailyAccountsValueJpy: Math.round(dailyAccountsValueJpy),
     totalHoldingsCount: holdings.length,
     layerSummary: {
       Defensive: {
@@ -454,8 +486,8 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
 
       // Compute latest total portfolio value in JPY
       const { results: currentHoldings } = await context.env.DB.prepare(
-        'SELECT currency, quantity, market_price, market_value, layer FROM holdings WHERE portfolio_id = ?',
-      ).bind(portfolio.id).all<{ currency: string; quantity: number; market_price: number | null; market_value: number | null; layer: string }>();
+        'SELECT ticker, name, broker, currency, quantity, market_price, market_value, layer FROM holdings WHERE portfolio_id = ?',
+      ).bind(portfolio.id).all<{ ticker: string; name: string; broker: string; currency: string; quantity: number; market_price: number | null; market_value: number | null; layer: string }>();
 
       const portfolioData = await context.env.DB.prepare(
         'SELECT fx_json FROM portfolios WHERE id = ?',
@@ -469,6 +501,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       let totalJpy = 0;
       const layerBreakdown: Record<string, number> = { Defensive: 0, Core: 0, Satellite: 0, Cash: 0 };
       for (const h of currentHoldings) {
+        if (isDailyMemoAccount(h)) continue;
         const val = h.market_value ?? (h.market_price != null ? h.market_price * h.quantity : 0);
         const rate = fxRates[h.currency.toUpperCase()] ?? 1;
         const inJpy = val * rate;

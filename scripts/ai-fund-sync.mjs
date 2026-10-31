@@ -40,7 +40,10 @@ async function main() {
   console.log(`\n📊 组合概览: ${status.portfolioName} (基准币种: ${status.baseCurrency})`);
   console.log(`📅 上次行情更新: ${status.quoteUpdatedAt || '未记录'}`);
   if (status.totalPortfolioValueJpy) {
-    console.log(`💰 总资产估值: ¥${status.totalPortfolioValueJpy.toLocaleString()} JPY`);
+    console.log(`💰 投资组合估值: ¥${status.totalPortfolioValueJpy.toLocaleString()} JPY`);
+  }
+  if (status.dailyAccountsValueJpy != null) {
+    console.log(`🏦 日常账户台账 (不计入仓位): ¥${status.dailyAccountsValueJpy.toLocaleString()} JPY`);
   }
   if (status.layerSummary) {
     console.log(`🛡️ 资产层级结构:`);
