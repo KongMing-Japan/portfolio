@@ -170,9 +170,6 @@ export function fxExposureFromHolding(holding: Pick<Holding, 'ticker' | 'name' |
   if (/emaxis.*s&p|513500|标普500etf博时/i.test(combined)) {
     return '美元';
   }
-  if (/vietnam|越南|cn_qdii_vn/i.test(combined)) {
-    return '越南盾';
-  }
   if (/513130|恒生科技/i.test(combined)) {
     return '港币';
   }
