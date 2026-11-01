@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Area,
   AreaChart,
@@ -16,8 +16,6 @@ import {
   PieChart as PieIcon,
   Calendar,
   Edit3,
-  Layers,
-  ShieldCheck,
   Check,
   X,
   Plus,
@@ -29,19 +27,19 @@ import type { AggregatedHolding, BaseCurrency } from '../types';
 import { formatMoney, formatPercent } from '../lib/portfolio';
 
 export interface MonthlyNetWorthRecord {
-  month: string; // e.g. "2024-05" or "5月"
+  month: string; // e.g. "2026-05"
   valueJpy: number;
 }
 
-const DEFAULT_HISTORY: MonthlyNetWorthRecord[] = [
-  { month: '2024-05', valueJpy: 112500000 },
-  { month: '2024-06', valueJpy: 116800000 },
-  { month: '2024-07', valueJpy: 114200000 },
-  { month: '2024-08', valueJpy: 118600000 },
-  { month: '2024-09', valueJpy: 121900000 },
+const DEFAULT_HISTORY_2026: MonthlyNetWorthRecord[] = [
+  { month: '2026-05', valueJpy: 112500000 },
+  { month: '2026-06', valueJpy: 116800000 },
+  { month: '2026-07', valueJpy: 114200000 },
+  { month: '2026-08', valueJpy: 118600000 },
+  { month: '2026-09', valueJpy: 121900000 },
 ];
 
-const STORAGE_KEY = 'portfolio_networth_history_records_v1';
+const STORAGE_KEY = 'portfolio_networth_history_records_2026_v2';
 
 const LAYER_COLORS: Record<string, string> = {
   Core: '#3b82f6', // blue
@@ -63,18 +61,20 @@ export function PortfolioHeroOverview({
   fx,
   aggregated,
 }: PortfolioHeroOverviewProps) {
-  // 1. Manage Historical Records
+  // 1. Manage Historical Records (strictly in year 2026)
   const [historyRecords, setHistoryRecords] = useState<MonthlyNetWorthRecord[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0 && String(parsed[0].month).startsWith('2026')) {
+          return parsed;
+        }
       }
     } catch {
       // fallback
     }
-    return DEFAULT_HISTORY;
+    return DEFAULT_HISTORY_2026;
   });
 
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -94,11 +94,10 @@ export function PortfolioHeroOverview({
     return rate && rate > 0 ? totalValue / rate : totalValue;
   }, [baseCurrency, totalValue, fx]);
 
-  // Combined chart data (Past records + Current October anchor)
+  // Combined chart data (Past records + Current October 2026 anchor)
   const chartData = useMemo(() => {
     const list = [...historyRecords];
-    // Append or update current month 2024-10
-    const currentMonthLabel = '2024-10';
+    const currentMonthLabel = '2026-10';
     const existingIdx = list.findIndex((item) => item.month === currentMonthLabel);
     if (existingIdx >= 0) {
       list[existingIdx] = { month: currentMonthLabel, valueJpy: currentTotalJpy };
@@ -129,7 +128,7 @@ export function PortfolioHeroOverview({
   }, [chartData]);
 
   // 2. Layer Calculations for Pie Chart
-  const { pieData, coreWeight, defWeight, satWeight, cashWeight, coreThreeWeight } = useMemo(() => {
+  const { pieData, coreWeight, coreThreeWeight } = useMemo(() => {
     let coreVal = 0;
     let defVal = 0;
     let satVal = 0;
@@ -148,18 +147,15 @@ export function PortfolioHeroOverview({
     const csw = totalValue > 0 ? cashVal / totalValue : 0;
 
     const data = [
-      { name: '核心仓 (Core)', layer: 'Core', value: coreVal, weight: cw, target: '60%', color: LAYER_COLORS.Core },
-      { name: '防守仓 (Defensive)', layer: 'Defensive', value: defVal, weight: dw, target: '20%', color: LAYER_COLORS.Defensive },
-      { name: '卫星仓 (Satellite)', layer: 'Satellite', value: satVal, weight: sw, target: '20%', color: LAYER_COLORS.Satellite },
-      { name: '现金储备 (Cash)', layer: 'Cash', value: cashVal, weight: csw, target: '缓冲', color: LAYER_COLORS.Cash },
+      { name: '核心仓', layer: 'Core', value: coreVal, weight: cw, color: LAYER_COLORS.Core },
+      { name: '防守仓', layer: 'Defensive', value: defVal, weight: dw, color: LAYER_COLORS.Defensive },
+      { name: '卫星仓', layer: 'Satellite', value: satVal, weight: sw, color: LAYER_COLORS.Satellite },
+      { name: '现金储备', layer: 'Cash', value: cashVal, weight: csw, color: LAYER_COLORS.Cash },
     ];
 
     return {
       pieData: data,
       coreWeight: cw,
-      defWeight: dw,
-      satWeight: sw,
-      cashWeight: csw,
       coreThreeWeight: cw + dw + sw,
     };
   }, [aggregated, totalValue]);
@@ -216,7 +212,7 @@ export function PortfolioHeroOverview({
               <div className="flex items-center gap-2">
                 <span className="text-[11px] text-muted-foreground flex items-center gap-1 font-mono">
                   <Calendar size={12} />
-                  <span>2024.05 ~ 2024.10 推移</span>
+                  <span>2026.05 ~ 2026.10 推移</span>
                 </span>
                 <button
                   type="button"
@@ -302,17 +298,16 @@ export function PortfolioHeroOverview({
         </Card>
 
         {/* =====================================================================
-            RIGHT (1 Col): Three Core Layers Pie / Donut Chart
+            RIGHT (1 Col): Three Core Layers Pie / Donut Chart (Emphasized Graph + Clean Legend)
            ===================================================================== */}
         <Card className="shadow-xs flex flex-col justify-between">
           <CardHeader className="pb-1">
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="text-base font-semibold flex items-center gap-1.5">
-                  <PieIcon size={15} className="text-primary" />
-                  <span>核心三仓结构</span>
+                <CardTitle className="text-base font-semibold">
+                  核心三仓结构
                 </CardTitle>
-                <CardDescription className="text-xs mt-0.5">
+                <CardDescription className="text-xs text-muted-foreground mt-0.5">
                   核心仓为主体 · 辅以防守与机动现金
                 </CardDescription>
               </div>
@@ -322,18 +317,38 @@ export function PortfolioHeroOverview({
             </div>
           </CardHeader>
 
-          <CardContent className="pt-1 pb-3 space-y-3">
-            {/* Donut Chart with Center KPI */}
-            <div className="relative h-[155px] w-full flex items-center justify-center">
-              <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 220, height: 155 }}>
+          <CardContent className="pt-2 pb-4 flex flex-col items-center justify-center flex-1">
+            {/* Enlarged Donut Chart as the Primary Visual Focus */}
+            <div className="relative h-[180px] w-full flex items-center justify-center">
+              <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 220, height: 180 }}>
                 <PieChart>
+                  <Tooltip
+                    content={({ active, payload }) => {
+                      if (!active || !payload?.length) return null;
+                      const d = payload[0].payload;
+                      return (
+                        <div className="rounded-lg border border-border bg-popover/95 p-2 shadow-md text-xs space-y-0.5">
+                          <p className="font-semibold text-foreground flex items-center gap-1.5">
+                            <span className="size-2 rounded-full" style={{ background: d.color }} />
+                            <span>{d.name}</span>
+                          </p>
+                          <p className="text-sm font-bold text-foreground tabular-nums">
+                            {formatPercent(d.weight, 1)}
+                          </p>
+                          <p className="text-[11px] text-muted-foreground tabular-nums">
+                            {formatMoney(d.value, baseCurrency)}
+                          </p>
+                        </div>
+                      );
+                    }}
+                  />
                   <Pie
                     data={pieData}
                     dataKey="value"
                     nameKey="name"
-                    innerRadius={46}
-                    outerRadius={68}
-                    paddingAngle={2.5}
+                    innerRadius={55}
+                    outerRadius={82}
+                    paddingAngle={3}
                     stroke="var(--card)"
                     strokeWidth={2}
                     isAnimationActive={false}
@@ -345,28 +360,24 @@ export function PortfolioHeroOverview({
                 </PieChart>
               </ResponsiveContainer>
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">核心仓</span>
-                <span className="text-lg font-bold text-foreground tabular-nums leading-tight">
+                <span className="text-[11px] font-medium text-muted-foreground tracking-wider">核心仓</span>
+                <span className="text-xl font-bold text-foreground tabular-nums leading-tight">
                   {formatPercent(coreWeight, 1)}
                 </span>
               </div>
             </div>
 
-            {/* Concise Layer Breakdown List */}
-            <div className="space-y-1.5 text-xs">
+            {/* Clean Legend (图例) without redundant bulky tables */}
+            <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs pt-3 w-full px-2 border-t border-border/50">
               {pieData.map((item) => (
-                <div key={item.layer} className="flex items-center justify-between py-0.5 border-b border-border/40 last:border-0">
+                <div key={item.layer} className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5 min-w-0">
                     <span className="size-2 rounded-full shrink-0" style={{ background: item.color }} />
-                    <span className="font-medium text-foreground truncate">{item.name.split(' ')[0]}</span>
-                    <span className="text-[10px] text-muted-foreground font-mono">
-                      (目标 {item.target})
-                    </span>
+                    <span className="text-muted-foreground truncate">{item.name}</span>
                   </div>
-                  <div className="text-right tabular-nums shrink-0">
-                    <span className="font-semibold text-foreground mr-1.5">{formatPercent(item.weight, 1)}</span>
-                    <span className="text-[11px] text-muted-foreground">({formatMoney(item.value, baseCurrency)})</span>
-                  </div>
+                  <span className="font-semibold text-foreground tabular-nums ml-1">
+                    {formatPercent(item.weight, 1)}
+                  </span>
                 </div>
               ))}
             </div>
@@ -380,7 +391,7 @@ export function PortfolioHeroOverview({
           <div className="p-5 rounded-2xl bg-card border border-border shadow-2xl max-w-md w-full mx-4 space-y-4">
             <div className="flex items-center justify-between pb-2 border-b border-border">
               <div>
-                <h3 className="text-base font-bold text-foreground">修改历史月度净值</h3>
+                <h3 className="text-base font-bold text-foreground">修改 2026 历史月度净值</h3>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   输入每个月末的实际净值（日元计），图表将自动生成连续的平滑面积推移
                 </p>
@@ -405,7 +416,7 @@ export function PortfolioHeroOverview({
                       next[idx].month = e.target.value;
                       setEditingList(next);
                     }}
-                    placeholder="YYYY-MM"
+                    placeholder="2026-MM"
                     className="w-24 px-2 py-1.5 rounded-md border border-border bg-background font-mono text-center"
                   />
                   <div className="relative flex-1">
@@ -437,7 +448,7 @@ export function PortfolioHeroOverview({
               <button
                 type="button"
                 onClick={() => {
-                  setEditingList([...editingList, { month: '2024-04', valueJpy: 110000000 }]);
+                  setEditingList([...editingList, { month: '2026-04', valueJpy: 110000000 }]);
                 }}
                 className="w-full py-1.5 rounded-md border border-dashed border-border text-xs text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors flex items-center justify-center gap-1 cursor-pointer"
               >
