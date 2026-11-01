@@ -1139,12 +1139,8 @@ export function FinanceReportScreen({
             Kodomo Go!
           </a>
           <span>·</span>
-          <a href="https://tax.kongmingjapan.com/" target="_blank" rel="noreferrer" className="text-foreground/80 hover:text-foreground transition-colors">
-            Tax
-          </a>
-          <span>·</span>
-          <a href="https://planner.kongmingjapan.com/" target="_blank" rel="noreferrer" className="text-foreground/80 hover:text-foreground transition-colors">
-            Planner
+          <a href="https://money.kongmingjapan.com/" target="_blank" rel="noreferrer" className="text-foreground/80 hover:text-foreground transition-colors">
+            Money
           </a>
           <span>·</span>
           <a href="https://portfolio.kongmingjapan.com/" target="_blank" rel="noreferrer" className="font-semibold text-foreground">

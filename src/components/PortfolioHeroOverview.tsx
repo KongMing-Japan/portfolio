@@ -24,7 +24,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
 import { Badge } from './ui/badge';
 import type { AggregatedHolding, BaseCurrency } from '../types';
-import { formatMoney, formatPercent } from '../lib/portfolio';
+import { formatExactMoney, formatMoney, formatPercent } from '../lib/portfolio';
 
 export interface MonthlyNetWorthRecord {
   month: string; // e.g. "2026-05"
@@ -82,16 +82,16 @@ export function PortfolioHeroOverview({
 
   // FX conversion helper: from JPY to baseCurrency
   const convertJpyToBase = (jpyVal: number): number => {
-    if (baseCurrency === 'JPY') return jpyVal;
-    const rate = fx[baseCurrency];
-    return rate && rate > 0 ? jpyVal * rate : jpyVal;
+    if (baseCurrency === 'JPY') return Math.round(jpyVal);
+    const rateToJpy = fx[baseCurrency] || (baseCurrency === 'USD' ? 154.5 : baseCurrency === 'CNY' ? 21.6 : 1);
+    return rateToJpy > 0 ? jpyVal / rateToJpy : jpyVal;
   };
 
   // Convert current total in baseCurrency back to JPY for storage
   const currentTotalJpy = useMemo(() => {
-    if (baseCurrency === 'JPY') return totalValue;
-    const rate = fx[baseCurrency];
-    return rate && rate > 0 ? totalValue / rate : totalValue;
+    if (baseCurrency === 'JPY') return Math.round(totalValue);
+    const rateToJpy = fx[baseCurrency] || (baseCurrency === 'USD' ? 154.5 : baseCurrency === 'CNY' ? 21.6 : 1);
+    return Math.round(totalValue * rateToJpy);
   }, [baseCurrency, totalValue, fx]);
 
   // Combined chart data (Past records + Current October 2026 anchor)
@@ -205,7 +205,7 @@ export function PortfolioHeroOverview({
                   )}
                 </div>
                 <div className="text-3xl font-bold tracking-tight text-foreground tabular-nums mt-1">
-                  {formatMoney(totalValue, baseCurrency)}
+                  {formatExactMoney(totalValue, baseCurrency)}
                 </div>
               </div>
 
@@ -251,13 +251,19 @@ export function PortfolioHeroOverview({
                     fontSize={10}
                     tickLine={false}
                     axisLine={false}
-                    tickFormatter={(val) => {
+                    domain={['auto', 'auto']}
+                    tickFormatter={(val: number) => {
                       if (baseCurrency === 'JPY') {
-                        return `${(val / 100000000).toFixed(2)}亿`;
+                        if (val >= 100000000) {
+                          return `${(val / 100000000).toFixed(2)}亿`;
+                        }
+                        return `${Math.round(val / 10000).toLocaleString('en-US')}万`;
                       }
-                      return `${(val / 1000).toFixed(0)}k`;
+                      if (baseCurrency === 'USD') {
+                        return `$${Math.round(val / 1000).toLocaleString('en-US')}k`;
+                      }
+                      return `¥${Math.round(val / 10000).toLocaleString('en-US')}万`;
                     }}
-                    domain={['dataMin - 5000000', 'dataMax + 5000000']}
                   />
                   <Tooltip
                     content={({ active, payload }) => {
@@ -267,7 +273,7 @@ export function PortfolioHeroOverview({
                         <div className="rounded-lg border border-border bg-popover/95 p-2.5 shadow-md backdrop-blur-xs text-xs space-y-1">
                           <p className="font-medium text-foreground">{d.fullMonth} 月末净值</p>
                           <p className="text-sm font-bold text-primary tabular-nums">
-                            {formatMoney(d.value, baseCurrency)}
+                            {formatExactMoney(d.value, baseCurrency)}
                           </p>
                           {d.momReturn !== null && (
                             <p className="text-[11px] text-muted-foreground tabular-nums">
@@ -336,7 +342,7 @@ export function PortfolioHeroOverview({
                             {formatPercent(d.weight, 1)}
                           </p>
                           <p className="text-[11px] text-muted-foreground tabular-nums">
-                            {formatMoney(d.value, baseCurrency)}
+                            {formatExactMoney(d.value, baseCurrency)}
                           </p>
                         </div>
                       );
