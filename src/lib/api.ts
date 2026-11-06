@@ -170,9 +170,9 @@ export interface CloudPortfolioResponse {
 export async function fetchPortfolioFromCloud(): Promise<CloudPortfolioResponse | null> {
   try {
     const response = await fetch('/api/portfolio', {
+      credentials: 'same-origin',
       headers: {
         Accept: 'application/json',
-        'X-Owner-Pin': '8888',
       },
       cache: 'no-store',
     });
@@ -187,9 +187,9 @@ export async function saveHoldingToCloud(holding: Holding): Promise<boolean> {
   try {
     const response = await fetch('/api/holdings', {
       method: 'POST',
+      credentials: 'same-origin',
       headers: {
         'Content-Type': 'application/json',
-        'X-Owner-Pin': '8888',
       },
       body: JSON.stringify({ holding }),
     });
@@ -203,9 +203,9 @@ export async function saveHoldingsBatchToCloud(holdings: Holding[]): Promise<boo
   try {
     const response = await fetch('/api/holdings', {
       method: 'POST',
+      credentials: 'same-origin',
       headers: {
         'Content-Type': 'application/json',
-        'X-Owner-Pin': '8888',
       },
       body: JSON.stringify({ holdings }),
     });
@@ -219,8 +219,8 @@ export async function deleteHoldingFromCloud(id: string): Promise<boolean> {
   try {
     const response = await fetch(`/api/holdings?id=${encodeURIComponent(id)}`, {
       method: 'DELETE',
+      credentials: 'same-origin',
       headers: {
-        'X-Owner-Pin': '8888',
       },
     });
     return response.ok;
@@ -238,9 +238,9 @@ export async function savePortfolioSettingsToCloud(settings: {
   try {
     const response = await fetch('/api/portfolio', {
       method: 'PUT',
+      credentials: 'same-origin',
       headers: {
         'Content-Type': 'application/json',
-        'X-Owner-Pin': '8888',
       },
       body: JSON.stringify(settings),
     });

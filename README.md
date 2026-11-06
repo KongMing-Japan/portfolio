@@ -68,9 +68,10 @@ Cloudflare Pages Secret。
 
 ## 数据与隐私
 
-- 完整组合保存在浏览器 IndexedDB，不需要登录。
-- 图片只发送给当次识别请求，应用不设置图片数据库或文件存储。
-- 可导出 Portfolio JSON，在其他设备重新导入。
+- 公开模式只使用示例或用户在当前浏览器导入的数据；私享云端组合必须通过服务端会话读取。
+- 生产认证需要四个 Cloudflare Pages Secret：`SESSION_SECRET`、`OWNER_USERNAME`、`OWNER_PASSWORD_HASH`（强密码的 SHA-256 十六进制摘要）和仅限 `/api/agent/sync` 的 `PORTFOLIO_SYNC_TOKEN`。只有 `OWNER_USERNAME` 指定的 D1 用户可登录。
+- 私有持仓快照通过未跟踪的 `PORTFOLIO_SEED_FILE` 输入生成临时 `migrations/seed_data.sql`；真实 CSV、JSON、生成种子和前端 TypeScript 数据文件均被忽略，禁止提交。
+- 图片只发送给当次识别请求；可导出 Portfolio JSON，在其他设备重新导入。
 - 行情接口通过 `/api/quotes` 获取证券价格与汇率；行情失败时保留导入值或成本估值并要求确认。
 
 ## 主要目录
