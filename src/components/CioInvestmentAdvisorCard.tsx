@@ -9,6 +9,7 @@ interface CioInvestmentAdvisorCardProps {
   totalValue: number;
   baseCurrency: BaseCurrency;
   isOwnerUnlocked?: boolean;
+  quoteUpdatedAt?: string | null;
 }
 
 const BUFFETT_SAMPLE_HOLDINGS_REVIEW = [
@@ -59,6 +60,7 @@ export function CioInvestmentAdvisorCard({
   totalValue,
   baseCurrency,
   isOwnerUnlocked = false,
+  quoteUpdatedAt,
 }: CioInvestmentAdvisorCardProps) {
   // Compute Layer allocations
   const metrics = useMemo(() => {
@@ -167,16 +169,37 @@ export function CioInvestmentAdvisorCard({
     ];
   }, []);
 
+  const latestDateInfo = useMemo(() => {
+    let d = new Date();
+    if (quoteUpdatedAt) {
+      const parsed = new Date(quoteUpdatedAt);
+      if (!isNaN(parsed.getTime())) {
+        d = parsed;
+      }
+    }
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return {
+      monthKey: `${year}-${month}`,
+      dateFormatted: `${year}-${month}-${day}`,
+      displayFull: `${year}年${Number(month)}月${Number(day)}日`,
+      monthNum: Number(month),
+    };
+  }, [quoteUpdatedAt]);
+
+  const nextMonthNum = latestDateInfo.monthNum === 12 ? 1 : latestDateInfo.monthNum + 1;
+
   const activeHoldingsReview = isOwnerUnlocked ? representativeHoldings : BUFFETT_SAMPLE_HOLDINGS_REVIEW;
 
   const titleText = isOwnerUnlocked
-    ? '10 月底复盘'
-    : '10 月底复盘 · 伯克希尔 (巴菲特) 示范组合深度诊断';
+    ? `${latestDateInfo.monthNum} 月底复盘与投资建议 (${latestDateInfo.dateFormatted} 更新)`
+    : `${latestDateInfo.monthNum} 月底复盘 · 伯克希尔 (巴菲特) 示范组合深度诊断`;
 
   const summaryText = isOwnerUnlocked ? (
-    `10 月末组合整体保持攻守兼备的稳健哑铃结构：核心仓（${formatPercent(metrics.coreWeight, 0)}）由高景气科技与高现金流实体双轮驱动，卫星仓（${formatPercent(metrics.satWeight, 0)}）严格约束在安全阈值内；投资账户内可用现金约 ${formatExactMoney(metrics.cashVal, baseCurrency)}（占比 ${formatPercent(metrics.cashWeight, 0)}），流动性储备极为充沛。鉴于防守仓（${formatPercent(metrics.defWeight, 0)}）距离 30% 目标线尚有缺口，建议 11 月保持「核心重仓耐心持有、弱势期权不盲目加码抄底、利用闲置资金逢低分批补足防守对冲（如 1482.T / 2563.T）」的操作主线。`
+    `${latestDateInfo.monthNum} 月末组合整体保持攻守兼备的稳健哑铃结构：核心仓（${formatPercent(metrics.coreWeight, 0)}）由高景气科技与高现金流实体双轮驱动，卫星仓（${formatPercent(metrics.satWeight, 0)}）严格约束在安全阈值内；投资账户可用现金约 ${formatExactMoney(metrics.cashVal, baseCurrency)}（占比 ${formatPercent(metrics.cashWeight, 0)}）。尤其值得关注的是，资金池每月有稳定 50 万日元现金由工资收入定期定投注入（2020年至今已持续积累超 4,150 万日元增量本金），构建起坚韧的自我造血现金流引擎，彻底规避了被动卖股变现风险。鉴于防守仓（${formatPercent(metrics.defWeight, 0)}）距离 30% 目标线尚有缺口，建议 ${nextMonthNum} 月继续保持「核心重仓耐心持有、弱势期权不盲目加码抄底、利用每月新补入的 50 万工资现金活水逢低分批补足防守对冲（如 1482.T / 2563.T）」的操作主线。`
   ) : (
-    `10 月末伯克希尔·哈撒韦公开持仓整体展现极高壁垒与流动性堡垒特征：核心权益持仓（${formatPercent(metrics.coreWeight, 0)}）高度聚焦于拥有极致品牌垄断与高自由现金流的企业（苹果、美国运通、可口可乐）；同时组合手握超过 3,200 亿美元的防守现金与短期美国国债，构筑了极深的流动性安全垫与极端风暴下的战略扫货弹药。建议个人投资者借鉴巴菲特「在别人贪婪时恐惧、手握充沛流动性耐心等待安全边际」的跨周期防御配置哲学。`
+    `${latestDateInfo.monthNum} 月末伯克希尔·哈撒韦公开持仓整体展现极高壁垒与流动性堡垒特征：核心权益持仓（${formatPercent(metrics.coreWeight, 0)}）高度聚焦于拥有极致品牌垄断与高自由现金流的企业（苹果、美国运通、可口可乐）；同时组合手握超过 3,200 亿美元的防守现金与短期美国国债，构筑了极深的流动性安全垫与极端风暴下的战略扫货弹药。建议个人投资者借鉴巴菲特「在别人贪婪时恐惧、手握充沛流动性耐心等待安全边际」的跨周期防御配置哲学。`
   );
 
   return (

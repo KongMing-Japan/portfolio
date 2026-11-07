@@ -995,6 +995,7 @@ export function FinanceReportScreen({
             fx={fx}
             aggregated={aggregated}
             isOwnerUnlocked={Boolean(isOwnerUnlocked)}
+            quoteUpdatedAt={quoteUpdatedAt}
           />
 
           {/* =====================================================================
@@ -1008,6 +1009,7 @@ export function FinanceReportScreen({
               totalValue={total}
               baseCurrency={baseCurrency}
               isOwnerUnlocked={Boolean(isOwnerUnlocked)}
+              quoteUpdatedAt={quoteUpdatedAt}
             />
           )}
 

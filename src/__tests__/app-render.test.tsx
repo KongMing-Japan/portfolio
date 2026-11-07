@@ -32,7 +32,7 @@ describe('App component', () => {
     expect(screen.getByText('公开示例 (13F)')).toBeDefined();
 
     // 4. CIO Card must display Buffett sample review, NOT user specific stocks
-    expect(screen.getByText('10 月底复盘 · 伯克希尔 (巴菲特) 示范组合深度诊断')).toBeDefined();
+    expect(screen.getByText(/月底复盘 · 伯克希尔 \(巴菲特\) 示范组合深度诊断/)).toBeDefined();
     expect(screen.getByText('伯克希尔重仓个股点评与投资哲学')).toBeDefined();
 
     // 5. Must NOT display the user's private stock reviews
@@ -51,9 +51,13 @@ describe('App component', () => {
     expect(screen.getByText('持仓明细')).toBeDefined();
     expect(screen.getByText('日常金融账户')).toBeDefined();
 
-    // 3. CIO Card displays owner's personal 10月底复盘
-    expect(screen.getByText('10 月底复盘')).toBeDefined();
+    // 3. CIO Card displays owner's personal review
+    expect(screen.getByText(/月底复盘与投资建议/)).toBeDefined();
     expect(screen.getByText('重点个股点评与操作建议')).toBeDefined();
+
+    // 4. Displays monthly salary cash inflow
+    expect(screen.getByText('工资月度定投现金注入')).toBeDefined();
+    expect(screen.getByText('+¥50万 / 月')).toBeDefined();
   });
 });
 
