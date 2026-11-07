@@ -298,8 +298,26 @@ async function fetchInvestor(investor) {
 }
 
 async function main() {
+  const outputUrl = new URL('../public/data/superinvestors.json', import.meta.url);
+  let existingInvestors = [];
+  try {
+    const raw = await fs.readFile(outputUrl, 'utf8');
+    const parsed = JSON.parse(raw);
+    existingInvestors = parsed.investors || [];
+  } catch {
+    // ignore
+  }
+
   const investors = [];
   for (const investor of INVESTORS) investors.push(await fetchInvestor(investor));
+
+  // Preserve non-SEC investors (e.g. congressional disclosures like Nancy Pelosi)
+  for (const prev of existingInvestors) {
+    if (!INVESTORS.some((inv) => inv.id === prev.id)) {
+      investors.push(prev);
+    }
+  }
+
   const sourceUpdatedAt = investors
     .map((investor) => investor.filedAt)
     .sort()
@@ -312,7 +330,6 @@ async function main() {
       '13F filings are delayed and cover reportable long U.S. securities only. They do not show cash, shorts, or a complete portfolio.',
     investors,
   };
-  const outputUrl = new URL('../public/data/superinvestors.json', import.meta.url);
   await fs.mkdir(new URL('../public/data/', import.meta.url), { recursive: true });
   await fs.writeFile(outputUrl, `${JSON.stringify(output, null, 2)}\n`);
   console.log(`Wrote ${investors.length} investors to public/data/superinvestors.json`);

@@ -170,37 +170,37 @@ export function PortfolioHeroOverview({
       const points = [
         {
           month: '2020.01',
-          fullMonth: '2020-01-01 起始投入',
+          fullMonth: '2020-01-01 起始投入 (老虎/微牛)',
           valueJpy: milestones.initialTotalJpy,
           note: `起始投入 · 微牛 $${milestones.webullUsd.toLocaleString()} + 老虎 $${milestones.tigerUsd.toLocaleString()} (汇率 ${milestones.initialFxUsdJpy})`,
           isMilestone: true,
         },
         {
           month: '2025.10',
-          fullMonth: '2025-10-21 阶段里程碑',
+          fullMonth: '2025-10-21 阶段里程碑 (老虎/微牛)',
           valueJpy: milestones.midAssetJpy,
-          note: `阶段资产 $${milestones.midAssetUsd.toLocaleString()} (汇率 ${milestones.midFxUsdJpy}) · 累计 +${(milestones.midCumulativeReturn * 100).toFixed(1)}% · IRR ${(milestones.midIrrAnnual * 100).toFixed(2)}%/年`,
+          note: `阶段资产 $${milestones.midAssetUsd.toLocaleString()} (老虎/微牛美股，汇率 ${milestones.midFxUsdJpy}) · 累计 +${(milestones.midCumulativeReturn * 100).toFixed(1)}% · IRR ${(milestones.midIrrAnnual * 100).toFixed(2)}%/年`,
           isMilestone: true,
         },
         {
           month: '2026.05',
           fullMonth: '2026-05 月末基准',
           valueJpy: 112500000,
-          note: '2026 年中资产推移',
+          note: '2026 年中资产推移 (全账户汇总)',
           isMilestone: false,
         },
         {
           month: '2026.08',
           fullMonth: '2026-08 月末基准',
           valueJpy: 118600000,
-          note: '2026 Q3 资产推移',
+          note: '2026 Q3 资产推移 (全账户汇总)',
           isMilestone: false,
         },
         {
           month: '2026.10',
-          fullMonth: '2026-10 最新实盘',
+          fullMonth: '2026-10 最新实盘 (全券商持仓)',
           valueJpy: currentTotalJpy,
-          note: '2026-10 实盘对账收官',
+          note: '2026-10 全券商实盘对账收官 (按各账户最新持股数精确汇总)',
           isMilestone: true,
         },
       ];
@@ -398,19 +398,19 @@ export function PortfolioHeroOverview({
             {/* Performance KPI Badges Row */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2.5 mt-1 border-t border-border/50 text-xs">
               <div className="p-2 rounded-lg bg-muted/30 border border-border/40">
-                <span className="text-[10px] text-muted-foreground block">阶段累计收益率 (2020~2025)</span>
+                <span className="text-[10px] text-muted-foreground block">海外美股累计收益 (2020~2025)</span>
                 <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
                   +{(milestones.midCumulativeReturn * 100).toFixed(1)}%
                 </span>
               </div>
               <div className="p-2 rounded-lg bg-muted/30 border border-border/40">
-                <span className="text-[10px] text-muted-foreground block">年化内部收益率 (IRR)</span>
+                <span className="text-[10px] text-muted-foreground block">美股年化 IRR (老虎/微牛)</span>
                 <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
                   {(milestones.midIrrAnnual * 100).toFixed(2)}% / 年
                 </span>
               </div>
               <div className="p-2 rounded-lg bg-muted/30 border border-border/40">
-                <span className="text-[10px] text-muted-foreground block">起始投入 (2020.01)</span>
+                <span className="text-[10px] text-muted-foreground block">创设本金 (老虎/微牛 2020.01)</span>
                 <span className="text-xs font-semibold text-foreground tabular-nums">
                   ${milestones.initialTotalUsd.toLocaleString()}
                   <span className="text-[10px] text-muted-foreground font-normal ml-1">
@@ -419,7 +419,7 @@ export function PortfolioHeroOverview({
                 </span>
               </div>
               <div className="p-2 rounded-lg bg-muted/30 border border-border/40">
-                <span className="text-[10px] text-muted-foreground block">全周期资产倍数 (2020~2026)</span>
+                <span className="text-[10px] text-muted-foreground block">全周期资产推移 (2020~2026)</span>
                 <span className="text-xs font-semibold text-primary tabular-nums">
                   {growthMultiple.toFixed(2)}x
                   <span className="text-[10px] text-muted-foreground font-normal ml-1">
@@ -659,10 +659,16 @@ export function PortfolioHeroOverview({
 
             {editTab === 'milestones' ? (
               <div className="space-y-3.5 max-h-[360px] overflow-y-auto pr-1 text-xs">
+                {/* Data Scope Banner */}
+                <div className="p-2.5 rounded-lg bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200/60 dark:border-blue-900/40 text-[11px] text-blue-800 dark:text-blue-300 leading-relaxed">
+                  <div className="font-semibold mb-0.5">数据口径说明：</div>
+                  2020~2025 历史投入与收益表现（+120.8%，IRR 14.60%）专属于<strong>老虎证券 / 微牛证券海外美股账户</strong>。其他国内及日本账户（乐天证券、招商证券、蚂蚁财富等）因早期历史数据缺失，当前统一按 2026 实盘持股数与单价汇总。
+                </div>
+
                 {/* 2020 Start Milestone */}
                 <div className="p-3 rounded-lg border border-border bg-muted/20 space-y-2">
                   <div className="flex items-center justify-between font-semibold text-foreground">
-                    <span>① 2020-01-01 初始投入设定</span>
+                    <span>① 2020-01-01 初始投入设定 (老虎/微牛账户)</span>
                     <span className="text-[11px] text-muted-foreground">汇率约为 110</span>
                   </div>
                   <div className="grid grid-cols-2 gap-2">

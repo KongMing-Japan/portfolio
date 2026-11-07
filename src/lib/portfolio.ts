@@ -184,6 +184,7 @@ export const POPULAR_BROKERS = [
   '乐天证券',
   'moomoo证券',
   'Tiger证券',
+  '招商证券',
   '微信证券',
   '蚂蚁财富',
   '乐天银行',
@@ -589,6 +590,9 @@ export function getCleanSecurityName(ticker: string, originalName = ''): string 
   if (t.includes('ANTBANK') || /^ant\s*bank$/i.test(n)) return 'ANT BANK';
   if (t.includes('WORLDCOIN') || t.includes('WLD') || /Worldcoin/i.test(n)) return 'Worldcoin';
   if (t.includes('BITGET') || /Bitget/i.test(n)) return 'Bitget Wallet';
+  if (t.includes('PHANTOM') || /Phantom/i.test(n)) return 'Phantom';
+  if (t.includes('TELEGRAM') || t.includes('TON_WALLET') || /Telegram/i.test(n)) return 'Telegram Wallet';
+  if (t.includes('METAMASK') || /MetaMask/i.test(n)) return 'MetaMask';
 
   if (!n) return t || '未命名标的';
   return n
@@ -629,26 +633,31 @@ const DAILY_WALLET_BROKERS = new Set([
   'Bitget Wallet',
   'Worldcoin',
   'MetaMask',
+  'Phantom',
+  'Telegram Wallet',
 ]);
 
 /**
  * 判断持仓是否属于日常消费、生活现金或备忘账户：
  * - 乐天银行：属于投资现金，纳入主投资组合（不属于日常备忘）
- * - 证券账户现金（乐天证券、moomoo证券、Tiger证券、微信证券）：属于投资现金
+ * - 证券账户现金（乐天证券、moomoo证券、Tiger证券、招商证券、微信证券）：属于投资现金
  * - 蚂蚁财富：天弘越南股票QDII属于投资；余额宝属于日常消费现金
- * - 微信支付、招商银行活期、三井住友、Sony银行、瑞穗、Wise、Revolut、PayPal等：属于日常消费生活现金
+ * - 微信支付、招商银行活期、三井住友、Sony银行、瑞穗、Wise、Revolut、PayPal、数字钱包等：属于日常消费生活现金
  */
 export function isDailyMemoAccount(holding: Pick<Holding, 'broker' | 'ticker' | 'name' | 'layer'>): boolean {
   const broker = (holding.broker || '').trim();
   const ticker = (holding.ticker || '').toUpperCase();
   const name = (holding.name || '').trim();
 
-  // 0. Crypto wallets (Bitget, Worldcoin, MetaMask) are strictly daily living/memo wallets, NOT investment holdings
+  // 0. Crypto wallets (Bitget, Worldcoin, MetaMask, Phantom, Telegram Wallet) are strictly daily living/memo wallets, NOT investment holdings
   if (
     DAILY_WALLET_BROKERS.has(broker) ||
     ticker.startsWith('CRYPTO_') ||
     ticker.includes('BITGET') ||
     ticker.includes('METAMASK') ||
+    ticker.includes('PHANTOM') ||
+    ticker.includes('TELEGRAM') ||
+    ticker.includes('TON_WALLET') ||
     ticker.includes('WORLDCOIN')
   ) {
     return true;
@@ -672,6 +681,7 @@ export function isDailyMemoAccount(holding: Pick<Holding, 'broker' | 'ticker' | 
     broker === '乐天证券' ||
     broker === 'moomoo证券' ||
     broker === 'Tiger证券' ||
+    broker === '招商证券' ||
     broker === '微信证券' ||
     /证券|securities|broker|ibkr|interactive brokers|robinhood|charles schwab|fidelity/i.test(broker)
   ) {
@@ -709,11 +719,20 @@ export function isDailyMemoAccount(holding: Pick<Holding, 'broker' | 'ticker' | 
  * 账户角色归类：
  * - 'brokerage': 核心证券与基金账户、投资备用现金（乐天银行）
  * - 'banking': 日常生活银行账户（三井住友、Sony、招行、瑞穗、ANT BANK、余额宝）
- * - 'wallet': 跨境支付与数字钱包（Wise、微信支付、Revolut、PayPal、Bitget、Worldcoin）
+ * - 'wallet': 跨境支付与数字钱包（Wise、微信支付、Revolut、PayPal、Bitget、Worldcoin、Phantom、Telegram）
  */
 export function classifyAccountRole(holding: Pick<Holding, 'broker' | 'ticker' | 'name' | 'layer'>): AccountRole {
   const broker = (holding.broker || '').trim();
-  if (DAILY_WALLET_BROKERS.has(broker) || holding.ticker === 'CRYPTO_BITGET' || holding.ticker === 'CRYPTO_WLD') {
+  const ticker = (holding.ticker || '').toUpperCase();
+  if (
+    DAILY_WALLET_BROKERS.has(broker) ||
+    ticker.startsWith('CRYPTO_') ||
+    ticker.includes('BITGET') ||
+    ticker.includes('WLD') ||
+    ticker.includes('PHANTOM') ||
+    ticker.includes('TELEGRAM') ||
+    ticker.includes('TON_WALLET')
+  ) {
     return 'wallet';
   }
   if (DAILY_BANKING_BROKERS.has(broker)) {

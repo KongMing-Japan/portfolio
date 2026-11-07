@@ -75,19 +75,19 @@ describe('portfolio import and analysis', () => {
     expect(holdings[1].layer).toBe('Cash');
   });
 
-  it('reconciles the 18-account real portfolio to ~128,418,099 JPY and merges cross-market S&P 500', () => {
+  it('reconciles the 20-account real portfolio to ~127,092,289 JPY and merges cross-market S&P 500', () => {
     const holdings = REAL_PORTFOLIO_SNAPSHOT.holdings;
     const brokers = new Set(holdings.map((h) => h.broker));
-    expect(brokers.size).toBe(18);
+    expect(brokers.size).toBe(20);
 
     const totalJpy = holdings.reduce((sum, h) => sum + (h.valueInBase ?? 0), 0);
-    expect(totalJpy).toBeCloseTo(128_418_099, -1);
+    expect(totalJpy).toBeCloseTo(127_092_289, -1);
 
     const merged = aggregateHoldings(holdings, { mergeEquivalent: true });
     const sp500 = merged.find((item) => item.ticker === 'S&P500·合并');
     expect(sp500).toBeDefined();
     expect(sp500?.accounts.length).toBe(4); // 2563.T x2 + eMAXIS Slim + 513500.SS
-    expect(sp500?.marketValueBase ?? 0).toBeCloseTo(15_297_300, -1);
+    expect(sp500?.marketValueBase ?? 0).toBeCloseTo(15_250_549, -1);
   });
 
   it('separates daily life cash from investment portfolio according to user classification', () => {
@@ -105,10 +105,14 @@ describe('portfolio import and analysis', () => {
     expect(dailyHoldings.some((h) => h.broker === '微信支付')).toBe(true);
     // SBI Shinsei Bank is daily life cash
     expect(dailyHoldings.some((h) => h.broker === 'SBI新生银行')).toBe(true);
+    // Phantom wallet is daily life cash
+    expect(dailyHoldings.some((h) => h.broker === 'Phantom')).toBe(true);
+    // Telegram wallet is daily life cash
+    expect(dailyHoldings.some((h) => h.broker === 'Telegram Wallet')).toBe(true);
 
     const dailySum = dailyHoldings.reduce((sum, h) => sum + (h.valueInBase ?? 0), 0);
     const coreSum = coreHoldings.reduce((sum, h) => sum + (h.valueInBase ?? 0), 0);
-    expect(dailySum + coreSum).toBeCloseTo(128_418_099, -1);
+    expect(dailySum + coreSum).toBeCloseTo(127_092_289, -1);
 
     const mergedCore = aggregateHoldings(coreHoldings, { mergeEquivalent: true });
     for (const item of mergedCore) {

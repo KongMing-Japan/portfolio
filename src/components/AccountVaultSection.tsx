@@ -45,7 +45,12 @@ export function getDailyAccountCategory(item: Holding): string {
     combined.includes('bitget') ||
     combined.includes('worldcoin') ||
     combined.includes('wld') ||
-    combined.includes('web3')
+    combined.includes('web3') ||
+    combined.includes('phantom') ||
+    combined.includes('solana') ||
+    combined.includes('telegram') ||
+    combined.includes('ton') ||
+    combined.includes('metamask')
   ) {
     return '虚拟币账户';
   }
@@ -76,6 +81,9 @@ const DEFAULT_ACCOUNT_NOTES: Record<string, string> = {
   'ANT BANK': '蚂蚁银行(香港)港币活期储蓄与理财备用',
   'Bitget Wallet': 'Web3 链上交互钱包与加密资产估值',
   Worldcoin: '数字身份与代币钱包估值',
+  Phantom: 'Solana 链上交互钱包 (PoC) 与 Web3 资产估值',
+  'Telegram Wallet': 'Telegram 链上钱包 (@wallet) 与 TON 生态理财',
+  MetaMask: 'EVM 链上交互钱包与代币资产备忘',
 };
 
 export function getAccountDescription(item: Holding): string {
