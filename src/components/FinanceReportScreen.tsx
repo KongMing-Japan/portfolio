@@ -380,21 +380,23 @@ export function FinanceReportScreen({
     const onHashChange = () => {
       if (window.location.hash.startsWith('#superinvestors')) {
         setWorkspaceView('superinvestors');
-      } else if (window.location.hash.startsWith('#holdings') || window.location.hash.startsWith('#ledger')) {
-        setWorkspaceView('holdings');
-      } else if (window.location.hash.startsWith('#daily') || window.location.hash.startsWith('#vault')) {
-        setWorkspaceView('daily_accounts');
       } else if (
-        window.location.hash === '#portfolio' ||
-        window.location.hash === '#allocation' ||
-        window.location.hash === ''
+        (window.location.hash.startsWith('#holdings') || window.location.hash.startsWith('#ledger')) &&
+        isOwnerUnlocked
       ) {
+        setWorkspaceView('holdings');
+      } else if (
+        (window.location.hash.startsWith('#daily') || window.location.hash.startsWith('#vault')) &&
+        isOwnerUnlocked
+      ) {
+        setWorkspaceView('daily_accounts');
+      } else {
         setWorkspaceView('portfolio');
       }
     };
     window.addEventListener('hashchange', onHashChange);
     return () => window.removeEventListener('hashchange', onHashChange);
-  }, []);
+  }, [isOwnerUnlocked]);
 
   // Investment portfolio strictly excludes daily living/payment accounts
   const activeHoldings = useMemo(
@@ -613,21 +615,25 @@ export function FinanceReportScreen({
               <span>投资大师</span>
             </button>
 
-            <button
-              className={`gf-nav-tab ${workspaceView === 'holdings' ? 'is-active' : ''}`}
-              onClick={() => openWorkspace('holdings')}
-            >
-              <TableProperties size={14} />
-              <span>持仓明细</span>
-            </button>
+            {isOwnerUnlocked && (
+              <>
+                <button
+                  className={`gf-nav-tab ${workspaceView === 'holdings' ? 'is-active' : ''}`}
+                  onClick={() => openWorkspace('holdings')}
+                >
+                  <TableProperties size={14} />
+                  <span>持仓明细</span>
+                </button>
 
-            <button
-              className={`gf-nav-tab ${workspaceView === 'daily_accounts' ? 'is-active' : ''}`}
-              onClick={() => openWorkspace('daily_accounts')}
-            >
-              <Wallet size={14} />
-              <span>日常金融账户</span>
-            </button>
+                <button
+                  className={`gf-nav-tab ${workspaceView === 'daily_accounts' ? 'is-active' : ''}`}
+                  onClick={() => openWorkspace('daily_accounts')}
+                >
+                  <Wallet size={14} />
+                  <span>日常金融账户</span>
+                </button>
+              </>
+            )}
           </nav>
           <div className="gf-topbar-user-area" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             {isOwnerUnlocked ? (
@@ -667,7 +673,7 @@ export function FinanceReportScreen({
             <SuperinvestorsScreen />
           </Suspense>
         </section>
-      ) : workspaceView === 'holdings' ? (
+      ) : workspaceView === 'holdings' && isOwnerUnlocked ? (
         <div className="nova-shell space-y-6" id="holdings-view">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
@@ -811,7 +817,7 @@ export function FinanceReportScreen({
             </CardContent>
           </Card>
         </div>
-      ) : workspaceView === 'daily_accounts' ? (
+      ) : workspaceView === 'daily_accounts' && isOwnerUnlocked ? (
         <div className="nova-shell space-y-6" id="daily-view">
           <AccountVaultSection
             allHoldings={holdings}
@@ -988,6 +994,7 @@ export function FinanceReportScreen({
             baseCurrency={baseCurrency}
             fx={fx}
             aggregated={aggregated}
+            isOwnerUnlocked={Boolean(isOwnerUnlocked)}
           />
 
           {/* =====================================================================
@@ -1000,6 +1007,7 @@ export function FinanceReportScreen({
               aggregated={aggregated}
               totalValue={total}
               baseCurrency={baseCurrency}
+              isOwnerUnlocked={Boolean(isOwnerUnlocked)}
             />
           )}
 

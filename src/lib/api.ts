@@ -1,5 +1,21 @@
 import type { Holding, QuoteResponse } from '../types';
 import { makeId, marketFromTicker, normalizeLayer } from './portfolio';
+import { isOwnerSessionUnlocked, getOwnerPin } from './storage';
+
+function getAuthHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {};
+  if (!isOwnerSessionUnlocked()) {
+    return headers;
+  }
+  try {
+    const token = sessionStorage.getItem('portfolio-cloud-token');
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+  } catch {}
+  headers['X-Owner-Pin'] = getOwnerPin();
+  return headers;
+}
 
 interface ExtractedPosition {
   ticker: string;
@@ -168,11 +184,14 @@ export interface CloudPortfolioResponse {
 }
 
 export async function fetchPortfolioFromCloud(): Promise<CloudPortfolioResponse | null> {
+  if (!isOwnerSessionUnlocked()) {
+    return null;
+  }
   try {
     const response = await fetch('/api/portfolio', {
       headers: {
         Accept: 'application/json',
-        'X-Owner-Pin': '8888',
+        ...getAuthHeaders(),
       },
       cache: 'no-store',
     });
@@ -184,12 +203,13 @@ export async function fetchPortfolioFromCloud(): Promise<CloudPortfolioResponse 
 }
 
 export async function saveHoldingToCloud(holding: Holding): Promise<boolean> {
+  if (!isOwnerSessionUnlocked()) return false;
   try {
     const response = await fetch('/api/holdings', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Owner-Pin': '8888',
+        ...getAuthHeaders(),
       },
       body: JSON.stringify({ holding }),
     });
@@ -200,12 +220,13 @@ export async function saveHoldingToCloud(holding: Holding): Promise<boolean> {
 }
 
 export async function saveHoldingsBatchToCloud(holdings: Holding[]): Promise<boolean> {
+  if (!isOwnerSessionUnlocked()) return false;
   try {
     const response = await fetch('/api/holdings', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Owner-Pin': '8888',
+        ...getAuthHeaders(),
       },
       body: JSON.stringify({ holdings }),
     });
@@ -216,11 +237,12 @@ export async function saveHoldingsBatchToCloud(holdings: Holding[]): Promise<boo
 }
 
 export async function deleteHoldingFromCloud(id: string): Promise<boolean> {
+  if (!isOwnerSessionUnlocked()) return false;
   try {
     const response = await fetch(`/api/holdings?id=${encodeURIComponent(id)}`, {
       method: 'DELETE',
       headers: {
-        'X-Owner-Pin': '8888',
+        ...getAuthHeaders(),
       },
     });
     return response.ok;
@@ -235,12 +257,13 @@ export async function savePortfolioSettingsToCloud(settings: {
   quoteUpdatedAt?: string;
   name?: string;
 }): Promise<boolean> {
+  if (!isOwnerSessionUnlocked()) return false;
   try {
     const response = await fetch('/api/portfolio', {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
-        'X-Owner-Pin': '8888',
+        ...getAuthHeaders(),
       },
       body: JSON.stringify(settings),
     });

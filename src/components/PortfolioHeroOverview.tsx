@@ -95,6 +95,7 @@ interface PortfolioHeroOverviewProps {
   baseCurrency: BaseCurrency;
   fx: Record<string, number>;
   aggregated: AggregatedHolding[];
+  isOwnerUnlocked?: boolean;
 }
 
 interface ChartDataPoint {
@@ -113,6 +114,7 @@ export function PortfolioHeroOverview({
   baseCurrency,
   fx,
   aggregated,
+  isOwnerUnlocked = false,
 }: PortfolioHeroOverviewProps) {
   // 1. Manage Milestones
   const [milestones, setMilestones] = useState<HistoricalMilestones>(() => {
@@ -192,6 +194,144 @@ export function PortfolioHeroOverview({
 
   // Combined chart data depending on timelineMode
   const chartData = useMemo<ChartDataPoint[]>(() => {
+    // 0. Public Guest Sample Mode (Warren Buffett / Berkshire Hathaway 13F Scale)
+    if (!isOwnerUnlocked) {
+      const convertUsdToBase = (usdVal: number): number => {
+        if (baseCurrency === 'USD') return usdVal;
+        const usdRateToJpy = fx['USD'] || 150.4;
+        const targetRateToJpy = fx[baseCurrency] || 1;
+        return (usdVal * usdRateToJpy) / targetRateToJpy;
+      };
+
+      const sampleUsdPoints =
+        timelineMode === 'recent_2026'
+          ? [
+              {
+                month: '2026.05',
+                fullMonth: '2026-05 (13F 公开报告)',
+                usdVal: 275000000000,
+                note: '2026 年中持仓估值 ($2,750 亿)',
+                isMilestone: false,
+              },
+              {
+                month: '2026.06',
+                fullMonth: '2026-06 (估值推移)',
+                usdVal: 278000000000,
+                note: '金融与能源仓位小幅上扬 ($2,780 亿)',
+                isMilestone: false,
+              },
+              {
+                month: '2026.07',
+                fullMonth: '2026-07 (估值推移)',
+                usdVal: 274000000000,
+                note: '夏季科技板块微幅回调 ($2,740 亿)',
+                isMilestone: false,
+              },
+              {
+                month: '2026.08',
+                fullMonth: '2026-08 (13F 公开报告)',
+                usdVal: 280000000000,
+                note: '大选前稳健防御布局 ($2,800 亿)',
+                isMilestone: false,
+              },
+              {
+                month: '2026.09',
+                fullMonth: '2026-09 (估值推移)',
+                usdVal: 282000000000,
+                note: '现金储备突破 3,250 亿美元 ($2,820 亿)',
+                isMilestone: false,
+              },
+              {
+                month: '2026.10',
+                fullMonth: '2026-10 (最新 13F 示例组合现值)',
+                usdVal:
+                  baseCurrency === 'USD'
+                    ? totalValue
+                    : totalValue / ((fx['USD'] || 150.4) / (fx[baseCurrency] || 1)),
+                note: '巴菲特 13F 公开持仓示例组合现值',
+                isMilestone: true,
+              },
+            ]
+          : [
+              {
+                month: '2020.01',
+                fullMonth: '2020-01 (13F 公开报告)',
+                usdVal: 242000000000,
+                note: '2020 年初伯克希尔持仓基准 ($2,420 亿)',
+                isMilestone: true,
+              },
+              {
+                month: '2021.01',
+                fullMonth: '2021-01 (13F 公开报告)',
+                usdVal: 281000000000,
+                note: '苹果与核心金融股增值驱动 ($2,810 亿)',
+                isMilestone: false,
+              },
+              {
+                month: '2022.01',
+                fullMonth: '2022-01 (13F 公开报告)',
+                usdVal: 331000000000,
+                note: '历史高位持仓规模 ($3,310 亿)',
+                isMilestone: false,
+              },
+              {
+                month: '2023.01',
+                fullMonth: '2023-01 (13F 公开报告)',
+                usdVal: 299000000000,
+                note: '加码西方石油与日本五大商社 ($2,990 亿)',
+                isMilestone: false,
+              },
+              {
+                month: '2024.01',
+                fullMonth: '2024-01 (13F 公开报告)',
+                usdVal: 347000000000,
+                note: '13F 持仓重回峰值 ($3,470 亿)',
+                isMilestone: true,
+              },
+              {
+                month: '2025.01',
+                fullMonth: '2025-01 (13F 公开报告)',
+                usdVal: 318000000000,
+                note: '高位从容减持苹果、增厚现金储备 ($3,180 亿)',
+                isMilestone: false,
+              },
+              {
+                month: '2026.05',
+                fullMonth: '2026-05 (13F 公开报告)',
+                usdVal: 275000000000,
+                note: '手握逾 3,200 亿美元国债与现金防御 ($2,750 亿)',
+                isMilestone: false,
+              },
+              {
+                month: '2026.10',
+                fullMonth: '2026-10 (最新 13F 示例组合现值)',
+                usdVal:
+                  baseCurrency === 'USD'
+                    ? totalValue
+                    : totalValue / ((fx['USD'] || 150.4) / (fx[baseCurrency] || 1)),
+                note: '巴菲特 13F 公开持仓示例组合现值',
+                isMilestone: true,
+              },
+            ];
+
+      const baseVal = convertUsdToBase(sampleUsdPoints[0].usdVal);
+      return sampleUsdPoints.map((item, idx) => {
+        const valBase = convertUsdToBase(item.usdVal);
+        const prevBase = idx > 0 ? convertUsdToBase(sampleUsdPoints[idx - 1].usdVal) : null;
+        const totalGrowth = baseVal > 0 ? (valBase - baseVal) / baseVal : null;
+        return {
+          month: item.month,
+          fullMonth: item.fullMonth,
+          value: Math.round(valBase),
+          valueJpy: Math.round(item.usdVal * (fx['USD'] || 150.4)),
+          note: item.note,
+          isMilestone: item.isMilestone,
+          momReturn: prevBase && prevBase > 0 ? (valBase - prevBase) / prevBase : null,
+          totalGrowth,
+        };
+      });
+    }
+
     if (timelineMode === 'all_cycle') {
       // Full cycle points: Incorporates同期日股及其他底仓基准 (otherBaselineJpy) so scale remains consistent around 1.03亿~1.24亿~1.19亿
       const fullCycleBaseJpy = milestones.initialTotalJpy + otherBaselineJpy;
@@ -411,10 +551,16 @@ export function PortfolioHeroOverview({
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-xs font-medium text-muted-foreground">
-                    {timelineMode === 'tiger_only' ? '老虎证券 (美港股专户)' : '投资组合总净值'}
+                    {!isOwnerUnlocked
+                      ? '伯克希尔·哈撒韦 13F 规模推移'
+                      : timelineMode === 'tiger_only'
+                      ? '老虎证券 (美港股专户)'
+                      : '投资组合总净值'}
                   </span>
                   <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal">
-                    {timelineMode === 'tiger_only'
+                    {!isOwnerUnlocked
+                      ? '公开示例 (13F)'
+                      : timelineMode === 'tiger_only'
                       ? '美港股专户'
                       : timelineMode === 'all_cycle'
                       ? '全周期 (含日股底仓)'
@@ -434,7 +580,7 @@ export function PortfolioHeroOverview({
                   )}
                 </div>
                 <div className="text-3xl font-bold tracking-tight text-foreground tabular-nums mt-1">
-                  {timelineMode === 'tiger_only'
+                  {isOwnerUnlocked && timelineMode === 'tiger_only'
                     ? formatExactMoney(convertJpyToBase(tigerCurrentJpy > 0 ? tigerCurrentJpy : 33460925), baseCurrency)
                     : formatExactMoney(totalValue, baseCurrency)}
                 </div>
@@ -451,22 +597,24 @@ export function PortfolioHeroOverview({
                         ? 'bg-background text-foreground shadow-2xs font-semibold'
                         : 'text-muted-foreground hover:text-foreground'
                     }`}
-                    title="全组合全周期推移（含日股等同期底仓基准，避免跨资产规模假跳跃）"
+                    title={isOwnerUnlocked ? "全组合全周期推移（含日股等同期底仓基准，避免跨资产规模假跳跃）" : "伯克希尔 13F 历史推移 (2020~2026)"}
                   >
-                    全周期 (含日股)
+                    {isOwnerUnlocked ? '全周期 (含日股)' : '13F 历史推移 (2020~2026)'}
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => setTimelineMode('tiger_only')}
-                    className={`px-2.5 py-1 rounded-md font-medium transition-colors cursor-pointer ${
-                      timelineMode === 'tiger_only'
-                        ? 'bg-background text-foreground shadow-2xs font-semibold'
-                        : 'text-muted-foreground hover:text-foreground'
-                    }`}
-                    title="老虎证券 (微牛+老虎美港股) 2020~2026 专属业绩推移"
-                  >
-                    老虎美港股
-                  </button>
+                  {isOwnerUnlocked && (
+                    <button
+                      type="button"
+                      onClick={() => setTimelineMode('tiger_only')}
+                      className={`px-2.5 py-1 rounded-md font-medium transition-colors cursor-pointer ${
+                        timelineMode === 'tiger_only'
+                          ? 'bg-background text-foreground shadow-2xs font-semibold'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                      title="老虎证券 (微牛+老虎美港股) 2020~2026 专属业绩推移"
+                    >
+                      老虎美港股
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => setTimelineMode('recent_2026')}
@@ -475,27 +623,63 @@ export function PortfolioHeroOverview({
                         ? 'bg-background text-foreground shadow-2xs font-semibold'
                         : 'text-muted-foreground hover:text-foreground'
                     }`}
-                    title="2026 年度月度详细净值推移"
+                    title={isOwnerUnlocked ? "2026 年度月度详细净值推移" : "2026 示例推移"}
                   >
-                    2026 月度
+                    {isOwnerUnlocked ? '2026 月度' : '2026 示例推移'}
                   </button>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={handleOpenEdit}
-                  className="gf-text-action text-xs font-medium py-1 px-2 rounded-md"
-                  title="录入或调整历史基准与里程碑"
-                >
-                  <Edit3 size={12} />
-                  <span>管理历史</span>
-                </button>
+                {isOwnerUnlocked && (
+                  <button
+                    type="button"
+                    onClick={handleOpenEdit}
+                    className="gf-text-action text-xs font-medium py-1 px-2 rounded-md"
+                    title="录入或调整历史基准与里程碑"
+                  >
+                    <Edit3 size={12} />
+                    <span>管理历史</span>
+                  </button>
+                )}
               </div>
             </div>
 
             {/* Performance KPI Badges Row */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2.5 mt-1 border-t border-border/50 text-xs">
-              {timelineMode === 'tiger_only' ? (
+              {!isOwnerUnlocked ? (
+                <>
+                  <div className="p-2 rounded-lg bg-muted/30 border border-border/40">
+                    <span className="text-[10px] text-muted-foreground block">历史复合年化回报 (CAGR)</span>
+                    <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
+                      +19.8% / 年
+                    </span>
+                    <span className="text-[9px] text-muted-foreground block mt-0.5">(1965~2025 伯克希尔复利战绩)</span>
+                  </div>
+                  <div className="p-2 rounded-lg bg-muted/30 border border-border/40">
+                    <span className="text-[10px] text-muted-foreground block">前三大重仓集中度 (Top 3)</span>
+                    <span className="text-sm font-bold text-primary tabular-nums">
+                      58.2%
+                    </span>
+                    <span className="text-[9px] text-muted-foreground block mt-0.5">(苹果 / 运通 / 可口可乐)</span>
+                  </div>
+                  <div className="p-2 rounded-lg bg-muted/30 border border-border/40">
+                    <span className="text-[10px] text-muted-foreground block">现金与短期美债储备</span>
+                    <span className="text-xs font-semibold text-foreground tabular-nums">
+                      $3,250 亿
+                      <span className="text-[10px] text-muted-foreground font-normal ml-1">
+                        (流动性安全垫)
+                      </span>
+                    </span>
+                    <span className="text-[9px] text-muted-foreground block mt-0.5">(极端风暴防守与扫货弹药)</span>
+                  </div>
+                  <div className="p-2 rounded-lg bg-muted/30 border border-border/40">
+                    <span className="text-[10px] text-muted-foreground block">13F 示例持仓现值 (2026.10)</span>
+                    <span className="text-xs font-semibold text-primary tabular-nums">
+                      {formatExactMoney(totalValue, baseCurrency)}
+                    </span>
+                    <span className="text-[9px] text-muted-foreground block mt-0.5">(公开样本数据仅供演示)</span>
+                  </div>
+                </>
+              ) : timelineMode === 'tiger_only' ? (
                 <>
                   <div className="p-2 rounded-lg bg-muted/30 border border-border/40">
                     <span className="text-[10px] text-muted-foreground block">美港股阶段收益 (2020~2025)</span>
@@ -622,6 +806,12 @@ export function PortfolioHeroOverview({
                         return `${Math.round(val / 10000).toLocaleString('en-US')}万`;
                       }
                       if (baseCurrency === 'USD') {
+                        if (val >= 1000000000) {
+                          return `$${(val / 1000000000).toFixed(0)}B`;
+                        }
+                        if (val >= 1000000) {
+                          return `$${(val / 1000000).toFixed(0)}M`;
+                        }
                         return `$${Math.round(val / 1000).toLocaleString('en-US')}k`;
                       }
                       return `¥${Math.round(val / 10000).toLocaleString('en-US')}万`;

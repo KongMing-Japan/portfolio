@@ -241,7 +241,7 @@ export function UserAuthModal({
                     <button
                       type="button"
                       onClick={() => {
-                        if (window.confirm('确认重新载入18个账户的核对基准数据？（覆盖当前草稿）')) {
+                        if (window.confirm('确认重新载入 20 个账户的核对基准数据？（覆盖当前草稿）')) {
                           onResetToVerifiedBaseline();
                           onClose();
                         }
@@ -249,7 +249,7 @@ export function UserAuthModal({
                       className="w-full h-9 inline-flex items-center justify-center gap-2 rounded-md border border-input bg-background text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shadow-sm"
                     >
                       <RefreshCw size={13} />
-                      <span>恢复 18 账户核对基准</span>
+                      <span>恢复 20 账户核对基准</span>
                     </button>
                   )}
 

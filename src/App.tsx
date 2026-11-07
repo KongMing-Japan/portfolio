@@ -66,6 +66,36 @@ const INITIAL_STATUS: ProcessingStatus = {
   message: '准备解析持仓数据',
 };
 
+export function containsPrivateOwnerData(targetHoldings: Holding[]): boolean {
+  if (!Array.isArray(targetHoldings) || targetHoldings.length === 0) return false;
+  return targetHoldings.some((h) => {
+    const t = (h.ticker || '').toUpperCase();
+    const n = (h.name || '').toLowerCase();
+    const b = (h.broker || '').toLowerCase();
+    // Private brokers / wallets
+    if (/招商|微牛|webull|乐天|rakuten|moomoo|tiger|wise|bitget|phantom|telegram|三井住友|mizuho|瑞穗|sbi|ant bank|余额宝|微信支付|worldcoin/i.test(b)) {
+      return true;
+    }
+    // Private tickers
+    if (
+      /^(513130|513500|300750|7581|4044|2845|2563|1482|2236|01810|00700|09866|09868)$/.test(t) ||
+      t.startsWith('7581.') ||
+      t.startsWith('4044.') ||
+      t.startsWith('2845.') ||
+      t.startsWith('1482.') ||
+      t.startsWith('2563.') ||
+      t.startsWith('2236.')
+    ) {
+      return true;
+    }
+    // Private names
+    if (/萨莉亚|关东电化|日经纳指|东证|米哈游|小米集团|腾讯控股|小鹏汽车|蔚来|招商证券|招商银行/i.test(n)) {
+      return true;
+    }
+    return false;
+  });
+}
+
 function App() {
   const [step, setStep] = useState<AppStep>('report');
   const [isOwnerUnlocked, setIsOwnerUnlocked] = useState<boolean>(() =>
@@ -134,8 +164,11 @@ function App() {
       if (ownerMode) {
         await saveOwnerSnapshot(snapshot);
       } else {
-        await saveSnapshot(snapshot);
-        setHasSavedPortfolio(true);
+        // Guest mode: only persist if not containing private owner data
+        if (!containsPrivateOwnerData(nextHoldings)) {
+          await saveSnapshot(snapshot);
+          setHasSavedPortfolio(true);
+        }
       }
     },
     [baseCurrency, fx, isOwnerUnlocked, quoteUpdatedAt],
@@ -239,8 +272,8 @@ function App() {
     const now = new Date().toISOString();
     setQuoteUpdatedAt(now);
     setStep('report');
-    await persist(INITIAL_SAMPLE_HOLDINGS, 'USD', INITIAL_FX, now, false);
-  }, [persist]);
+    await clearSnapshot().catch(() => {});
+  }, []);
 
   const handleUnlockOwner = useCallback(async () => {
     setError(null);
@@ -306,31 +339,14 @@ function App() {
     setIsOwnerUnlocked(false);
     try {
       const guestSnapshot = await loadSnapshot();
-      if (guestSnapshot?.holdings?.length) {
-        const nextBase: BaseCurrency =
-          guestSnapshot.baseCurrency === 'JPY' ? 'JPY' : 'USD';
-        setHoldings(
-          recalculateBaseValues(
-            guestSnapshot.holdings,
-            guestSnapshot.fx,
-            nextBase,
-          ),
-        );
-        setBaseCurrency(nextBase);
-        setFx(guestSnapshot.fx);
-        setQuoteUpdatedAt(guestSnapshot.quoteUpdatedAt);
-      } else {
-        setHoldings(INITIAL_SAMPLE_HOLDINGS);
-        setBaseCurrency('USD');
-        setFx(INITIAL_FX);
-        setQuoteUpdatedAt(INITIAL_UPDATED_AT);
+      if (guestSnapshot?.holdings && containsPrivateOwnerData(guestSnapshot.holdings)) {
+        await clearSnapshot();
       }
-    } catch {
-      setHoldings(INITIAL_SAMPLE_HOLDINGS);
-      setBaseCurrency('USD');
-      setFx(INITIAL_FX);
-      setQuoteUpdatedAt(INITIAL_UPDATED_AT);
-    }
+    } catch {}
+    setHoldings(INITIAL_SAMPLE_HOLDINGS);
+    setBaseCurrency('USD');
+    setFx(INITIAL_FX);
+    setQuoteUpdatedAt(INITIAL_UPDATED_AT);
     setStep('report');
   }, []);
 
@@ -403,6 +419,16 @@ function App() {
         .then((snapshot) => {
           if (!active) return;
           if (snapshot?.holdings?.length) {
+            // Strict security check: if stored snapshot has owner data, wipe it immediately
+            if (containsPrivateOwnerData(snapshot.holdings)) {
+              void clearSnapshot();
+              setHoldings(INITIAL_SAMPLE_HOLDINGS);
+              setBaseCurrency('USD');
+              setFx(INITIAL_FX);
+              setQuoteUpdatedAt(INITIAL_UPDATED_AT);
+              setStep('report');
+              return;
+            }
             const nextBase: BaseCurrency =
               snapshot.baseCurrency === 'JPY' ? 'JPY' : 'USD';
             setHasSavedPortfolio(true);
@@ -417,10 +443,18 @@ function App() {
             setFx(snapshot.fx);
             setQuoteUpdatedAt(snapshot.quoteUpdatedAt);
             setStep('report');
+          } else {
+            setHoldings(INITIAL_SAMPLE_HOLDINGS);
+            setBaseCurrency('USD');
+            setFx(INITIAL_FX);
+            setQuoteUpdatedAt(INITIAL_UPDATED_AT);
           }
         })
         .catch(() => {
-          // Keep initial sample state if storage lookup fails
+          setHoldings(INITIAL_SAMPLE_HOLDINGS);
+          setBaseCurrency('USD');
+          setFx(INITIAL_FX);
+          setQuoteUpdatedAt(INITIAL_UPDATED_AT);
         });
     }
     return () => {

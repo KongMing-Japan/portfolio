@@ -8,12 +8,57 @@ interface CioInvestmentAdvisorCardProps {
   aggregated: AggregatedHolding[];
   totalValue: number;
   baseCurrency: BaseCurrency;
+  isOwnerUnlocked?: boolean;
 }
+
+const BUFFETT_SAMPLE_HOLDINGS_REVIEW = [
+  {
+    name: '苹果',
+    ticker: 'AAPL · 美股',
+    layer: '核心仓',
+    weight: '26.0%',
+    statusText: '长线压舱石 · 持续分红回购',
+    action: '核心底仓卧倒，高估值期从容减持兑现',
+    commentary:
+      '伯克希尔第一大重仓股，拥有无可撼动的消费电子与全球闭环生态护城河。巴菲特在年内锁定部分利润增厚现金储备，但依然将苹果视为最核心的消费特许企业。',
+  },
+  {
+    name: '美国运通',
+    ticker: 'AXP · 美股',
+    layer: '核心仓',
+    weight: '20.6%',
+    statusText: '浮盈数十倍 · 30年复利传奇',
+    action: '长线坚定持有，享受网络效应红利',
+    commentary:
+      '高端持卡人净利息与年费收入韧性极高，全球高净值商旅支付闭环构筑了无法撼动的网络效应，是典型不受短期宏观周期侵蚀的长期现金奶牛。',
+  },
+  {
+    name: '可口可乐',
+    ticker: 'KO · 美股',
+    layer: '核心仓',
+    weight: '13.6%',
+    statusText: '永续分红机器 · 跨世纪抗通胀',
+    action: '永久持有，稳定享受现金股息',
+    commentary:
+      '自 1988 年建仓以来持股超 35 年，每年收到的现金股息早已数倍超越初始投资本金，是价值投资护城河与抗通胀资产的教科书级典范。',
+  },
+  {
+    name: '西方石油 / 雪佛龙',
+    ticker: 'OXY / CVX · 美股',
+    layer: '防守仓',
+    weight: '14.5%',
+    statusText: '传统能源压舱石 · 高自由现金流',
+    action: '战略能源对冲，逢低估值区间增配',
+    commentary:
+      '巴菲特近年来持续逆周期增持的传统能源资产，拥有极佳的资产回报率与自由现金流分红，作为全球通胀波动与地缘动荡的长期战略对冲。',
+  },
+];
 
 export function CioInvestmentAdvisorCard({
   aggregated,
   totalValue,
   baseCurrency,
+  isOwnerUnlocked = false,
 }: CioInvestmentAdvisorCardProps) {
   // Compute Layer allocations
   const metrics = useMemo(() => {
@@ -122,26 +167,38 @@ export function CioInvestmentAdvisorCard({
     ];
   }, []);
 
+  const activeHoldingsReview = isOwnerUnlocked ? representativeHoldings : BUFFETT_SAMPLE_HOLDINGS_REVIEW;
+
+  const titleText = isOwnerUnlocked
+    ? '10 月底复盘'
+    : '10 月底复盘 · 伯克希尔 (巴菲特) 示范组合深度诊断';
+
+  const summaryText = isOwnerUnlocked ? (
+    `10 月末组合整体保持攻守兼备的稳健哑铃结构：核心仓（${formatPercent(metrics.coreWeight, 0)}）由高景气科技与高现金流实体双轮驱动，卫星仓（${formatPercent(metrics.satWeight, 0)}）严格约束在安全阈值内；投资账户内可用现金约 ${formatExactMoney(metrics.cashVal, baseCurrency)}（占比 ${formatPercent(metrics.cashWeight, 0)}），流动性储备极为充沛。鉴于防守仓（${formatPercent(metrics.defWeight, 0)}）距离 30% 目标线尚有缺口，建议 11 月保持「核心重仓耐心持有、弱势期权不盲目加码抄底、利用闲置资金逢低分批补足防守对冲（如 1482.T / 2563.T）」的操作主线。`
+  ) : (
+    `10 月末伯克希尔·哈撒韦公开持仓整体展现极高壁垒与流动性堡垒特征：核心权益持仓（${formatPercent(metrics.coreWeight, 0)}）高度聚焦于拥有极致品牌垄断与高自由现金流的企业（苹果、美国运通、可口可乐）；同时组合手握超过 3,200 亿美元的防守现金与短期美国国债，构筑了极深的流动性安全垫与极端风暴下的战略扫货弹药。建议个人投资者借鉴巴菲特「在别人贪婪时恐惧、手握充沛流动性耐心等待安全边际」的跨周期防御配置哲学。`
+  );
+
   return (
     <Card className="shadow-xs overflow-hidden">
       {/* 简洁无多余嵌套的 CardHeader：标题 + 10月末总体复盘文字，不套额外灰色卡片 */}
       <CardHeader className="pb-3 border-b border-border/50 space-y-2">
         <CardTitle className="text-base font-semibold text-foreground">
-          10 月底复盘
+          {titleText}
         </CardTitle>
         <p className="text-sm text-foreground/90 leading-relaxed">
-          10 月末组合整体保持攻守兼备的稳健哑铃结构：核心仓（{formatPercent(metrics.coreWeight, 0)}）由高景气科技与高现金流实体双轮驱动，卫星仓（{formatPercent(metrics.satWeight, 0)}）严格约束在安全阈值内；投资账户内可用现金约 {formatExactMoney(metrics.cashVal, baseCurrency)}（占比 {formatPercent(metrics.cashWeight, 0)}），流动性储备极为充沛。鉴于防守仓（{formatPercent(metrics.defWeight, 0)}）距离 30% 目标线尚有缺口，建议 11 月保持「核心重仓耐心持有、弱势期权不盲目加码抄底、利用闲置资金逢低分批补足防守对冲（如 1482.T / 2563.T）」的操作主线。
+          {summaryText}
         </p>
       </CardHeader>
 
       <CardContent className="pt-4 space-y-3">
         <h4 className="text-sm font-semibold text-foreground">
-          重点个股点评与操作建议
+          {isOwnerUnlocked ? '重点个股点评与操作建议' : '伯克希尔重仓个股点评与投资哲学'}
         </h4>
 
         {/* 干净列表形式，每只股票独立分开，无多余嵌套，无 emoji */}
         <div className="rounded-xl border border-border divide-y divide-border/60 bg-card overflow-hidden">
-          {representativeHoldings.map((item) => (
+          {activeHoldingsReview.map((item) => (
             <div key={item.name} className="p-3.5 space-y-1.5 hover:bg-muted/20 transition-colors">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
                 <div className="flex items-center gap-2 flex-wrap">
