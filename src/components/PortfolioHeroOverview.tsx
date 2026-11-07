@@ -48,6 +48,8 @@ export interface HistoricalMilestones {
   midAssetJpy: number; // 37652500
   midCumulativeReturn: number; // 1.208 (+120.8%)
   midIrrAnnual: number; // 0.146 (14.60%/年)
+
+  otherHoldingsBaselineJpy?: number; // 同期日股及其他账户持仓基准 (约 85,897,460)
 }
 
 const DEFAULT_MILESTONES: HistoricalMilestones = {
@@ -64,6 +66,8 @@ const DEFAULT_MILESTONES: HistoricalMilestones = {
   midAssetJpy: 37652500,
   midCumulativeReturn: 1.208,
   midIrrAnnual: 0.146,
+
+  otherHoldingsBaselineJpy: 85897460,
 };
 
 const DEFAULT_HISTORY_2026: MonthlyNetWorthRecord[] = [
@@ -84,7 +88,7 @@ const LAYER_COLORS: Record<string, string> = {
   Cash: '#64748b', // slate
 };
 
-type TimelineViewMode = 'all_cycle' | 'recent_2026';
+type TimelineViewMode = 'all_cycle' | 'tiger_only' | 'recent_2026';
 
 interface PortfolioHeroOverviewProps {
   totalValue: number;
@@ -163,37 +167,61 @@ export function PortfolioHeroOverview({
     return Math.round(totalValue * rateToJpy);
   }, [baseCurrency, totalValue, fx]);
 
+  // 0. Calculate Tiger holdings vs Non-Tiger holdings in current portfolio
+  const { tigerCurrentJpy, nonTigerCurrentJpy } = useMemo(() => {
+    let tiger = 0;
+    let nonTiger = 0;
+    for (const item of aggregated) {
+      for (const acc of item.accounts) {
+        const rate = fx[acc.currency] || (acc.currency === 'USD' ? 154.5 : acc.currency === 'CNY' ? 21.6 : 1);
+        const val = (acc.marketValue ?? (acc.quantity * (acc.marketPrice || 1))) * rate;
+        if (acc.broker === 'Tiger证券') {
+          tiger += val;
+        } else {
+          nonTiger += val;
+        }
+      }
+    }
+    return {
+      tigerCurrentJpy: Math.round(tiger),
+      nonTigerCurrentJpy: Math.round(nonTiger),
+    };
+  }, [aggregated, fx]);
+
+  const otherBaselineJpy = milestones.otherHoldingsBaselineJpy ?? (nonTigerCurrentJpy > 0 ? nonTigerCurrentJpy : 85897460);
+
   // Combined chart data depending on timelineMode
   const chartData = useMemo<ChartDataPoint[]>(() => {
     if (timelineMode === 'all_cycle') {
-      // Full cycle points: 2020 Start -> 2025 Mid -> 2026-05 -> 2026-08 -> Current
+      // Full cycle points: Incorporates同期日股及其他底仓基准 (otherBaselineJpy) so scale remains consistent around 1.03亿~1.24亿~1.19亿
+      const fullCycleBaseJpy = milestones.initialTotalJpy + otherBaselineJpy;
       const points = [
         {
           month: '2020.01',
-          fullMonth: '2020-01-01 起始投入 (老虎/微牛)',
-          valueJpy: milestones.initialTotalJpy,
-          note: `起始投入 · 微牛 $${milestones.webullUsd.toLocaleString()} + 老虎 $${milestones.tigerUsd.toLocaleString()} (汇率 ${milestones.initialFxUsdJpy})`,
+          fullMonth: '2020-01-01 起始基准 (全组合)',
+          valueJpy: fullCycleBaseJpy,
+          note: `全组合基准：日股等同期底仓 ¥${Math.round(otherBaselineJpy / 10000).toLocaleString()}万 + 老虎/微牛本金 $${milestones.initialTotalUsd.toLocaleString()} (¥${Math.round(milestones.initialTotalJpy / 10000).toLocaleString()}万)`,
           isMilestone: true,
         },
         {
           month: '2025.10',
-          fullMonth: '2025-10-21 阶段里程碑 (老虎/微牛)',
-          valueJpy: milestones.midAssetJpy,
-          note: `阶段资产 $${milestones.midAssetUsd.toLocaleString()} (老虎/微牛美股，汇率 ${milestones.midFxUsdJpy}) · 累计 +${(milestones.midCumulativeReturn * 100).toFixed(1)}% · IRR ${(milestones.midIrrAnnual * 100).toFixed(2)}%/年`,
+          fullMonth: '2025-10-21 阶段里程碑 (全组合)',
+          valueJpy: milestones.midAssetJpy + otherBaselineJpy,
+          note: `全组合总值：日股等底仓 ¥${Math.round(otherBaselineJpy / 10000).toLocaleString()}万 + 老虎美股 $${milestones.midAssetUsd.toLocaleString()} (¥${Math.round(milestones.midAssetJpy / 10000).toLocaleString()}万，美股累计收益 +${(milestones.midCumulativeReturn * 100).toFixed(1)}%，IRR ${(milestones.midIrrAnnual * 100).toFixed(2)}%/年)`,
           isMilestone: true,
         },
         {
           month: '2026.05',
           fullMonth: '2026-05 月末基准',
           valueJpy: 112500000,
-          note: '2026 年中资产推移 (全账户汇总)',
+          note: '2026 年中全组合资产推移',
           isMilestone: false,
         },
         {
           month: '2026.08',
           fullMonth: '2026-08 月末基准',
           valueJpy: 118600000,
-          note: '2026 Q3 资产推移 (全账户汇总)',
+          note: '2026 Q3 全组合资产推移',
           isMilestone: false,
         },
         {
@@ -208,6 +236,49 @@ export function PortfolioHeroOverview({
       return points.map((item, idx) => {
         const valBase = convertJpyToBase(item.valueJpy);
         const prev = idx > 0 ? convertJpyToBase(points[idx - 1].valueJpy) : null;
+        const totalGrowth = ((valBase - convertJpyToBase(fullCycleBaseJpy)) / convertJpyToBase(fullCycleBaseJpy));
+        return {
+          month: item.month,
+          fullMonth: item.fullMonth,
+          value: valBase,
+          valueJpy: item.valueJpy,
+          note: item.note,
+          isMilestone: item.isMilestone,
+          momReturn: prev && prev > 0 ? (valBase - prev) / prev : null,
+          totalGrowth,
+        };
+      });
+    }
+
+    if (timelineMode === 'tiger_only') {
+      // Tiger Overseas Account Only (2020: $155,137 -> 2025: $250,000 -> 2026: current)
+      const tigerPoints = [
+        {
+          month: '2020.01',
+          fullMonth: '2020-01-01 创设本金 (微牛+老虎)',
+          valueJpy: milestones.initialTotalJpy,
+          note: `创设总投入：微牛 $${milestones.webullUsd.toLocaleString()} + 老虎 $${milestones.tigerUsd.toLocaleString()} (合计 $${milestones.initialTotalUsd.toLocaleString()}，汇率 ${milestones.initialFxUsdJpy})`,
+          isMilestone: true,
+        },
+        {
+          month: '2025.10',
+          fullMonth: '2025-10-21 阶段里程碑 (老虎美股)',
+          valueJpy: milestones.midAssetJpy,
+          note: `阶段美股资产 $${milestones.midAssetUsd.toLocaleString()} (汇率 ${milestones.midFxUsdJpy}) · 累计收益 +${(milestones.midCumulativeReturn * 100).toFixed(1)}% · 年化 IRR ${(milestones.midIrrAnnual * 100).toFixed(2)}%/年`,
+          isMilestone: true,
+        },
+        {
+          month: '2026.10',
+          fullMonth: '2026-10 最新实盘 (老虎美港股)',
+          valueJpy: tigerCurrentJpy > 0 ? tigerCurrentJpy : 33460925,
+          note: '老虎证券最新实盘市值 (美港股最新行情折算)',
+          isMilestone: true,
+        },
+      ];
+
+      return tigerPoints.map((item, idx) => {
+        const valBase = convertJpyToBase(item.valueJpy);
+        const prev = idx > 0 ? convertJpyToBase(tigerPoints[idx - 1].valueJpy) : null;
         const totalGrowth = ((valBase - convertJpyToBase(milestones.initialTotalJpy)) / convertJpyToBase(milestones.initialTotalJpy));
         return {
           month: item.month,
@@ -248,21 +319,26 @@ export function PortfolioHeroOverview({
         totalGrowth: null,
       };
     });
-  }, [timelineMode, milestones, historyRecords, currentTotalJpy, baseCurrency, fx]);
+  }, [timelineMode, milestones, historyRecords, currentTotalJpy, tigerCurrentJpy, otherBaselineJpy, baseCurrency, fx]);
 
-  // Overall performance calculations from 2020 to latest
-  const totalGrowthSinceInception = useMemo(() => {
-    const initBase = convertJpyToBase(milestones.initialTotalJpy);
-    if (!initBase || initBase <= 0) return 0;
-    return (totalValue - initBase) / initBase;
-  }, [milestones, totalValue, baseCurrency, fx]);
-
-  // Multiple of growth (e.g. 7.33x)
-  const growthMultiple = useMemo(() => {
-    const initBase = convertJpyToBase(milestones.initialTotalJpy);
-    if (!initBase || initBase <= 0) return 1;
-    return totalValue / initBase;
-  }, [milestones, totalValue, baseCurrency, fx]);
+  // Overall performance calculations depending on timelineMode
+  const { totalGrowthSinceInception, growthMultiple } = useMemo(() => {
+    if (timelineMode === 'tiger_only') {
+      const initBase = convertJpyToBase(milestones.initialTotalJpy);
+      const curBase = convertJpyToBase(tigerCurrentJpy > 0 ? tigerCurrentJpy : 33460925);
+      if (!initBase || initBase <= 0) return { totalGrowthSinceInception: 0, growthMultiple: 1 };
+      return {
+        totalGrowthSinceInception: (curBase - initBase) / initBase,
+        growthMultiple: curBase / initBase,
+      };
+    }
+    const fullCycleBase = convertJpyToBase(milestones.initialTotalJpy + otherBaselineJpy);
+    if (!fullCycleBase || fullCycleBase <= 0) return { totalGrowthSinceInception: 0, growthMultiple: 1 };
+    return {
+      totalGrowthSinceInception: (totalValue - fullCycleBase) / fullCycleBase,
+      growthMultiple: totalValue / fullCycleBase,
+    };
+  }, [timelineMode, milestones, otherBaselineJpy, tigerCurrentJpy, totalValue, baseCurrency, fx]);
 
   // Calculate MoM return for the current latest month
   const latestMoM = useMemo(() => {
@@ -334,9 +410,15 @@ export function PortfolioHeroOverview({
             <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs font-medium text-muted-foreground">投资组合总净值</span>
+                  <span className="text-xs font-medium text-muted-foreground">
+                    {timelineMode === 'tiger_only' ? '老虎证券 (美港股专户)' : '投资组合总净值'}
+                  </span>
                   <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal">
-                    {baseCurrency}
+                    {timelineMode === 'tiger_only'
+                      ? '美港股专户'
+                      : timelineMode === 'all_cycle'
+                      ? '全周期 (含日股底仓)'
+                      : '2026 月度'}
                   </Badge>
                   {latestMoM !== null && (
                     <span
@@ -352,7 +434,9 @@ export function PortfolioHeroOverview({
                   )}
                 </div>
                 <div className="text-3xl font-bold tracking-tight text-foreground tabular-nums mt-1">
-                  {formatExactMoney(totalValue, baseCurrency)}
+                  {timelineMode === 'tiger_only'
+                    ? formatExactMoney(convertJpyToBase(tigerCurrentJpy > 0 ? tigerCurrentJpy : 33460925), baseCurrency)
+                    : formatExactMoney(totalValue, baseCurrency)}
                 </div>
               </div>
 
@@ -367,8 +451,21 @@ export function PortfolioHeroOverview({
                         ? 'bg-background text-foreground shadow-2xs font-semibold'
                         : 'text-muted-foreground hover:text-foreground'
                     }`}
+                    title="全组合全周期推移（含日股等同期底仓基准，避免跨资产规模假跳跃）"
                   >
-                    全周期 (2020~2026)
+                    全周期 (含日股)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTimelineMode('tiger_only')}
+                    className={`px-2.5 py-1 rounded-md font-medium transition-colors cursor-pointer ${
+                      timelineMode === 'tiger_only'
+                        ? 'bg-background text-foreground shadow-2xs font-semibold'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                    title="老虎证券 (微牛+老虎美港股) 2020~2026 专属业绩推移"
+                  >
+                    老虎美港股
                   </button>
                   <button
                     type="button"
@@ -378,6 +475,7 @@ export function PortfolioHeroOverview({
                         ? 'bg-background text-foreground shadow-2xs font-semibold'
                         : 'text-muted-foreground hover:text-foreground'
                     }`}
+                    title="2026 年度月度详细净值推移"
                   >
                     2026 月度
                   </button>
@@ -397,36 +495,97 @@ export function PortfolioHeroOverview({
 
             {/* Performance KPI Badges Row */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2.5 mt-1 border-t border-border/50 text-xs">
-              <div className="p-2 rounded-lg bg-muted/30 border border-border/40">
-                <span className="text-[10px] text-muted-foreground block">海外美股累计收益 (2020~2025)</span>
-                <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
-                  +{(milestones.midCumulativeReturn * 100).toFixed(1)}%
-                </span>
-              </div>
-              <div className="p-2 rounded-lg bg-muted/30 border border-border/40">
-                <span className="text-[10px] text-muted-foreground block">美股年化 IRR (老虎/微牛)</span>
-                <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
-                  {(milestones.midIrrAnnual * 100).toFixed(2)}% / 年
-                </span>
-              </div>
-              <div className="p-2 rounded-lg bg-muted/30 border border-border/40">
-                <span className="text-[10px] text-muted-foreground block">创设本金 (老虎/微牛 2020.01)</span>
-                <span className="text-xs font-semibold text-foreground tabular-nums">
-                  ${milestones.initialTotalUsd.toLocaleString()}
-                  <span className="text-[10px] text-muted-foreground font-normal ml-1">
-                    (¥{(milestones.initialTotalJpy / 10000).toFixed(0)}万)
-                  </span>
-                </span>
-              </div>
-              <div className="p-2 rounded-lg bg-muted/30 border border-border/40">
-                <span className="text-[10px] text-muted-foreground block">全周期资产推移 (2020~2026)</span>
-                <span className="text-xs font-semibold text-primary tabular-nums">
-                  {growthMultiple.toFixed(2)}x
-                  <span className="text-[10px] text-muted-foreground font-normal ml-1">
-                    (+{(totalGrowthSinceInception * 100).toFixed(0)}%)
-                  </span>
-                </span>
-              </div>
+              {timelineMode === 'tiger_only' ? (
+                <>
+                  <div className="p-2 rounded-lg bg-muted/30 border border-border/40">
+                    <span className="text-[10px] text-muted-foreground block">美港股阶段收益 (2020~2025)</span>
+                    <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
+                      +{(milestones.midCumulativeReturn * 100).toFixed(1)}%
+                    </span>
+                    <span className="text-[9px] text-muted-foreground block mt-0.5">(微牛+老虎实盘增长)</span>
+                  </div>
+                  <div className="p-2 rounded-lg bg-muted/30 border border-border/40">
+                    <span className="text-[10px] text-muted-foreground block">美港股年化 IRR (微牛+老虎)</span>
+                    <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
+                      {(milestones.midIrrAnnual * 100).toFixed(2)}% / 年
+                    </span>
+                    <span className="text-[9px] text-muted-foreground block mt-0.5">(内部年化复利收益率)</span>
+                  </div>
+                  <div className="p-2 rounded-lg bg-muted/30 border border-border/40">
+                    <span className="text-[10px] text-muted-foreground block">创设总投入 (2020.01)</span>
+                    <span className="text-xs font-semibold text-foreground tabular-nums">
+                      ${milestones.initialTotalUsd.toLocaleString()}
+                      <span className="text-[10px] text-muted-foreground font-normal ml-1">
+                        (¥{(milestones.initialTotalJpy / 10000).toFixed(0)}万)
+                      </span>
+                    </span>
+                  </div>
+                  <div className="p-2 rounded-lg bg-muted/30 border border-border/40">
+                    <span className="text-[10px] text-muted-foreground block">老虎专户最新实盘 (2026.10)</span>
+                    <span className="text-xs font-semibold text-primary tabular-nums">
+                      {formatExactMoney(convertJpyToBase(tigerCurrentJpy > 0 ? tigerCurrentJpy : 33460925), baseCurrency)}
+                    </span>
+                  </div>
+                </>
+              ) : timelineMode === 'all_cycle' ? (
+                <>
+                  <div className="p-2 rounded-lg bg-muted/30 border border-border/40">
+                    <span className="text-[10px] text-muted-foreground block">老虎美港股阶段收益</span>
+                    <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
+                      +{(milestones.midCumulativeReturn * 100).toFixed(1)}%
+                    </span>
+                    <span className="text-[9px] text-muted-foreground block mt-0.5">(2020~2025 阶段业绩)</span>
+                  </div>
+                  <div className="p-2 rounded-lg bg-muted/30 border border-border/40">
+                    <span className="text-[10px] text-muted-foreground block">老虎美股年化 IRR</span>
+                    <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
+                      {(milestones.midIrrAnnual * 100).toFixed(2)}% / 年
+                    </span>
+                    <span className="text-[9px] text-muted-foreground block mt-0.5">(微牛+老虎创设专户)</span>
+                  </div>
+                  <div className="p-2 rounded-lg bg-muted/30 border border-border/40">
+                    <span className="text-[10px] text-muted-foreground block">全组合起始基准 (2020.01)</span>
+                    <span className="text-xs font-semibold text-foreground tabular-nums">
+                      ¥{Math.round((milestones.initialTotalJpy + otherBaselineJpy) / 10000).toLocaleString()}万
+                    </span>
+                    <span className="text-[9px] text-muted-foreground block mt-0.5">(含日股底仓与美股本金)</span>
+                  </div>
+                  <div className="p-2 rounded-lg bg-muted/30 border border-border/40">
+                    <span className="text-[10px] text-muted-foreground block">全组合阶段基准 (2025.10)</span>
+                    <span className="text-xs font-semibold text-primary tabular-nums">
+                      ¥{Math.round((milestones.midAssetJpy + otherBaselineJpy) / 10000).toLocaleString()}万
+                    </span>
+                    <span className="text-[9px] text-muted-foreground block mt-0.5">(老虎 $25万 + 日股底仓)</span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="p-2 rounded-lg bg-muted/30 border border-border/40">
+                    <span className="text-[10px] text-muted-foreground block">2026 年中高点 (09月)</span>
+                    <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
+                      ¥12,190万
+                    </span>
+                  </div>
+                  <div className="p-2 rounded-lg bg-muted/30 border border-border/40">
+                    <span className="text-[10px] text-muted-foreground block">2026 年中低点 (05月)</span>
+                    <span className="text-sm font-bold text-foreground tabular-nums">
+                      ¥11,250万
+                    </span>
+                  </div>
+                  <div className="p-2 rounded-lg bg-muted/30 border border-border/40">
+                    <span className="text-[10px] text-muted-foreground block">最新月度环比</span>
+                    <span className={`text-xs font-semibold tabular-nums ${latestMoM !== null && latestMoM >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                      {latestMoM !== null && latestMoM >= 0 ? '+' : ''}{latestMoM !== null ? (latestMoM * 100).toFixed(1) : '0.0'}%
+                    </span>
+                  </div>
+                  <div className="p-2 rounded-lg bg-muted/30 border border-border/40">
+                    <span className="text-[10px] text-muted-foreground block">2026 收官总净值</span>
+                    <span className="text-xs font-semibold text-primary tabular-nums">
+                      {formatExactMoney(totalValue, baseCurrency)}
+                    </span>
+                  </div>
+                </>
+              )}
             </div>
           </CardHeader>
 
@@ -790,6 +949,62 @@ export function PortfolioHeroOverview({
                         }}
                         className="w-full px-2 py-1.5 rounded border border-border bg-background font-mono text-right"
                       />
+                    </div>
+                  </div>
+                </div>
+
+                {/* ③ Other Holdings Baseline */}
+                <div className="p-3 rounded-lg border border-border bg-muted/20 space-y-2">
+                  <div className="flex items-center justify-between font-semibold text-foreground">
+                    <span>③ 同期日股及其他底仓基准 (JPY)</span>
+                    <span className="text-[11px] text-muted-foreground">用于平滑全周期综合图表</span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    2020~2025 年间，您已持有日股（乐天证券、moomoo 证券、乐天银行等）及国内资产，其当前实盘持股基准总值约为 <strong>¥{Math.round(otherBaselineJpy).toLocaleString()}</strong>。与老虎美港股合并后，全组合历史推移将呈现连贯真实的 <strong>1.03亿 → 1.24亿 → 1.19亿</strong> 走势，消除跨资产统计假跳跃。
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <span className="text-[10px] text-muted-foreground block mb-0.5">底仓总值设定 (JPY)</span>
+                      <input
+                        type="number"
+                        value={editingMilestones.otherHoldingsBaselineJpy ?? otherBaselineJpy}
+                        onChange={(e) => {
+                          const val = Number(e.target.value) || 0;
+                          setEditingMilestones({
+                            ...editingMilestones,
+                            otherHoldingsBaselineJpy: val,
+                          });
+                        }}
+                        className="w-full px-2 py-1.5 rounded border border-border bg-background font-mono text-right"
+                      />
+                    </div>
+                    <div className="flex items-end">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingMilestones({
+                            ...editingMilestones,
+                            otherHoldingsBaselineJpy: nonTigerCurrentJpy > 0 ? nonTigerCurrentJpy : 85897460,
+                          });
+                        }}
+                        className="w-full py-1.5 px-2 rounded border border-border bg-muted/50 hover:bg-muted text-[11px] text-foreground transition-colors cursor-pointer"
+                      >
+                        重置为当前实盘底仓 (¥{Math.round(nonTigerCurrentJpy > 0 ? nonTigerCurrentJpy : 85897460).toLocaleString()})
+                      </button>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 pt-1 border-t border-border/40 text-[11px]">
+                    <div>
+                      <span className="text-muted-foreground">全组合 2020 起始基准：</span>
+                      <span className="font-semibold text-foreground font-mono ml-1">
+                        ¥{Math.round(editingMilestones.initialTotalJpy + (editingMilestones.otherHoldingsBaselineJpy ?? otherBaselineJpy)).toLocaleString()}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">全组合 2025 阶段总值：</span>
+                      <span className="font-semibold text-foreground font-mono ml-1">
+                        ¥{Math.round(editingMilestones.midAssetJpy + (editingMilestones.otherHoldingsBaselineJpy ?? otherBaselineJpy)).toLocaleString()}
+                      </span>
                     </div>
                   </div>
                 </div>
