@@ -20,6 +20,9 @@ import {
   X,
   Plus,
   Trash2,
+  Milestone,
+  Clock,
+  Sparkles,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
 import { Badge } from './ui/badge';
@@ -31,6 +34,38 @@ export interface MonthlyNetWorthRecord {
   valueJpy: number;
 }
 
+export interface HistoricalMilestones {
+  startDate: string; // "2020-01-01"
+  initialFxUsdJpy: number; // 110.0
+  webullUsd: number; // 141497
+  tigerUsd: number; // 13640
+  initialTotalUsd: number; // 155137
+  initialTotalJpy: number; // 17065070
+
+  midDate: string; // "2025-10-21"
+  midAssetUsd: number; // 250000
+  midFxUsdJpy: number; // 150.61
+  midAssetJpy: number; // 37652500
+  midCumulativeReturn: number; // 1.208 (+120.8%)
+  midIrrAnnual: number; // 0.146 (14.60%/年)
+}
+
+const DEFAULT_MILESTONES: HistoricalMilestones = {
+  startDate: '2020-01-01',
+  initialFxUsdJpy: 110.0,
+  webullUsd: 141497,
+  tigerUsd: 13640,
+  initialTotalUsd: 155137,
+  initialTotalJpy: 17065070,
+
+  midDate: '2025-10-21',
+  midAssetUsd: 250000,
+  midFxUsdJpy: 150.61,
+  midAssetJpy: 37652500,
+  midCumulativeReturn: 1.208,
+  midIrrAnnual: 0.146,
+};
+
 const DEFAULT_HISTORY_2026: MonthlyNetWorthRecord[] = [
   { month: '2026-05', valueJpy: 112500000 },
   { month: '2026-06', valueJpy: 116800000 },
@@ -39,7 +74,8 @@ const DEFAULT_HISTORY_2026: MonthlyNetWorthRecord[] = [
   { month: '2026-09', valueJpy: 121900000 },
 ];
 
-const STORAGE_KEY = 'portfolio_networth_history_records_2026_v2';
+const STORAGE_KEY_RECORDS = 'portfolio_networth_history_records_2026_v2';
+const STORAGE_KEY_MILESTONES = 'portfolio_historical_milestones_v1';
 
 const LAYER_COLORS: Record<string, string> = {
   Core: '#3b82f6', // blue
@@ -48,11 +84,24 @@ const LAYER_COLORS: Record<string, string> = {
   Cash: '#64748b', // slate
 };
 
+type TimelineViewMode = 'all_cycle' | 'recent_2026';
+
 interface PortfolioHeroOverviewProps {
   totalValue: number;
   baseCurrency: BaseCurrency;
   fx: Record<string, number>;
   aggregated: AggregatedHolding[];
+}
+
+interface ChartDataPoint {
+  month: string;
+  fullMonth: string;
+  value: number;
+  valueJpy: number;
+  note?: string | null;
+  isMilestone: boolean;
+  momReturn: number | null;
+  totalGrowth?: number | null;
 }
 
 export function PortfolioHeroOverview({
@@ -61,10 +110,24 @@ export function PortfolioHeroOverview({
   fx,
   aggregated,
 }: PortfolioHeroOverviewProps) {
-  // 1. Manage Historical Records (strictly in year 2026)
+  // 1. Manage Milestones
+  const [milestones, setMilestones] = useState<HistoricalMilestones>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_MILESTONES);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.startDate) return { ...DEFAULT_MILESTONES, ...parsed };
+      }
+    } catch {
+      // fallback
+    }
+    return DEFAULT_MILESTONES;
+  });
+
+  // 2. Manage 2026 Monthly Records
   const [historyRecords, setHistoryRecords] = useState<MonthlyNetWorthRecord[]>(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
+      const saved = localStorage.getItem(STORAGE_KEY_RECORDS);
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0 && String(parsed[0].month).startsWith('2026')) {
@@ -77,7 +140,13 @@ export function PortfolioHeroOverview({
     return DEFAULT_HISTORY_2026;
   });
 
+  // 3. Timeline View Mode: All Cycle (2020~2026) vs Recent 6 Months (2026)
+  const [timelineMode, setTimelineMode] = useState<TimelineViewMode>('all_cycle');
+
+  // 4. Modal Editing States
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editTab, setEditTab] = useState<'milestones' | 'monthly'>('milestones');
+  const [editingMilestones, setEditingMilestones] = useState<HistoricalMilestones>(milestones);
   const [editingList, setEditingList] = useState<MonthlyNetWorthRecord[]>(historyRecords);
 
   // FX conversion helper: from JPY to baseCurrency
@@ -94,8 +163,66 @@ export function PortfolioHeroOverview({
     return Math.round(totalValue * rateToJpy);
   }, [baseCurrency, totalValue, fx]);
 
-  // Combined chart data (Past records + Current October 2026 anchor)
-  const chartData = useMemo(() => {
+  // Combined chart data depending on timelineMode
+  const chartData = useMemo<ChartDataPoint[]>(() => {
+    if (timelineMode === 'all_cycle') {
+      // Full cycle points: 2020 Start -> 2025 Mid -> 2026-05 -> 2026-08 -> Current
+      const points = [
+        {
+          month: '2020.01',
+          fullMonth: '2020-01-01 起始投入',
+          valueJpy: milestones.initialTotalJpy,
+          note: `起始投入 · 微牛 $${milestones.webullUsd.toLocaleString()} + 老虎 $${milestones.tigerUsd.toLocaleString()} (汇率 ${milestones.initialFxUsdJpy})`,
+          isMilestone: true,
+        },
+        {
+          month: '2025.10',
+          fullMonth: '2025-10-21 阶段里程碑',
+          valueJpy: milestones.midAssetJpy,
+          note: `阶段资产 $${milestones.midAssetUsd.toLocaleString()} (汇率 ${milestones.midFxUsdJpy}) · 累计 +${(milestones.midCumulativeReturn * 100).toFixed(1)}% · IRR ${(milestones.midIrrAnnual * 100).toFixed(2)}%/年`,
+          isMilestone: true,
+        },
+        {
+          month: '2026.05',
+          fullMonth: '2026-05 月末基准',
+          valueJpy: 112500000,
+          note: '2026 年中资产推移',
+          isMilestone: false,
+        },
+        {
+          month: '2026.08',
+          fullMonth: '2026-08 月末基准',
+          valueJpy: 118600000,
+          note: '2026 Q3 资产推移',
+          isMilestone: false,
+        },
+        {
+          month: '2026.10',
+          fullMonth: '2026-10 最新实盘',
+          valueJpy: currentTotalJpy,
+          note: '2026-10 实盘对账收官',
+          isMilestone: true,
+        },
+      ];
+
+      return points.map((item, idx) => {
+        const valBase = convertJpyToBase(item.valueJpy);
+        const prev = idx > 0 ? convertJpyToBase(points[idx - 1].valueJpy) : null;
+        const totalGrowth = ((valBase - convertJpyToBase(milestones.initialTotalJpy)) / convertJpyToBase(milestones.initialTotalJpy));
+        return {
+          month: item.month,
+          fullMonth: item.fullMonth,
+          value: valBase,
+          valueJpy: item.valueJpy,
+          note: item.note,
+          isMilestone: item.isMilestone,
+          momReturn: prev && prev > 0 ? (valBase - prev) / prev : null,
+          totalGrowth,
+        };
+      });
+    }
+
+    // Recent 2026 monthly details
     const list = [...historyRecords];
     const currentMonthLabel = '2026-10';
     const existingIdx = list.findIndex((item) => item.month === currentMonthLabel);
@@ -115,10 +242,27 @@ export function PortfolioHeroOverview({
         fullMonth: item.month,
         value: valBase,
         valueJpy: item.valueJpy,
+        note: null,
+        isMilestone: false,
         momReturn,
+        totalGrowth: null,
       };
     });
-  }, [historyRecords, currentTotalJpy, baseCurrency, fx]);
+  }, [timelineMode, milestones, historyRecords, currentTotalJpy, baseCurrency, fx]);
+
+  // Overall performance calculations from 2020 to latest
+  const totalGrowthSinceInception = useMemo(() => {
+    const initBase = convertJpyToBase(milestones.initialTotalJpy);
+    if (!initBase || initBase <= 0) return 0;
+    return (totalValue - initBase) / initBase;
+  }, [milestones, totalValue, baseCurrency, fx]);
+
+  // Multiple of growth (e.g. 7.33x)
+  const growthMultiple = useMemo(() => {
+    const initBase = convertJpyToBase(milestones.initialTotalJpy);
+    if (!initBase || initBase <= 0) return 1;
+    return totalValue / initBase;
+  }, [milestones, totalValue, baseCurrency, fx]);
 
   // Calculate MoM return for the current latest month
   const latestMoM = useMemo(() => {
@@ -161,10 +305,12 @@ export function PortfolioHeroOverview({
   }, [aggregated, totalValue]);
 
   // Save edited history
-  const handleSaveHistory = () => {
+  const handleSaveAll = () => {
+    setMilestones(editingMilestones);
     setHistoryRecords(editingList);
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(editingList));
+      localStorage.setItem(STORAGE_KEY_MILESTONES, JSON.stringify(editingMilestones));
+      localStorage.setItem(STORAGE_KEY_RECORDS, JSON.stringify(editingList));
     } catch {
       // ignore
     }
@@ -172,6 +318,7 @@ export function PortfolioHeroOverview({
   };
 
   const handleOpenEdit = () => {
+    setEditingMilestones({ ...milestones });
     setEditingList([...historyRecords]);
     setIsEditOpen(true);
   };
@@ -180,13 +327,13 @@ export function PortfolioHeroOverview({
     <div className="space-y-4">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* =====================================================================
-            LEFT (2 Cols): Net Worth Evolution Area Chart
+            LEFT (2 Cols): Net Worth Evolution Area Chart + Performance Milestones
            ===================================================================== */}
         <Card className="lg:col-span-2 overflow-hidden shadow-xs flex flex-col justify-between">
           <CardHeader className="pb-2">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
               <div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-xs font-medium text-muted-foreground">投资组合总净值</span>
                   <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal">
                     {baseCurrency}
@@ -209,20 +356,76 @@ export function PortfolioHeroOverview({
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] text-muted-foreground flex items-center gap-1 font-mono">
-                  <Calendar size={12} />
-                  <span>2026.05 ~ 2026.10 推移</span>
-                </span>
+              {/* Timeline Toggle & Edit Button */}
+              <div className="flex items-center gap-2 flex-wrap self-start sm:self-auto">
+                <div className="inline-flex items-center bg-muted/70 p-0.5 rounded-lg text-xs" role="tablist">
+                  <button
+                    type="button"
+                    onClick={() => setTimelineMode('all_cycle')}
+                    className={`px-2.5 py-1 rounded-md font-medium transition-colors cursor-pointer ${
+                      timelineMode === 'all_cycle'
+                        ? 'bg-background text-foreground shadow-2xs font-semibold'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    全周期 (2020~2026)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTimelineMode('recent_2026')}
+                    className={`px-2.5 py-1 rounded-md font-medium transition-colors cursor-pointer ${
+                      timelineMode === 'recent_2026'
+                        ? 'bg-background text-foreground shadow-2xs font-semibold'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    2026 月度
+                  </button>
+                </div>
+
                 <button
                   type="button"
                   onClick={handleOpenEdit}
                   className="gf-text-action text-xs font-medium py-1 px-2 rounded-md"
-                  title="录入或调整历史月度净值基准"
+                  title="录入或调整历史基准与里程碑"
                 >
                   <Edit3 size={12} />
-                  <span>调整历史</span>
+                  <span>管理历史</span>
                 </button>
+              </div>
+            </div>
+
+            {/* Performance KPI Badges Row */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2.5 mt-1 border-t border-border/50 text-xs">
+              <div className="p-2 rounded-lg bg-muted/30 border border-border/40">
+                <span className="text-[10px] text-muted-foreground block">阶段累计收益率 (2020~2025)</span>
+                <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
+                  +{(milestones.midCumulativeReturn * 100).toFixed(1)}%
+                </span>
+              </div>
+              <div className="p-2 rounded-lg bg-muted/30 border border-border/40">
+                <span className="text-[10px] text-muted-foreground block">年化内部收益率 (IRR)</span>
+                <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
+                  {(milestones.midIrrAnnual * 100).toFixed(2)}% / 年
+                </span>
+              </div>
+              <div className="p-2 rounded-lg bg-muted/30 border border-border/40">
+                <span className="text-[10px] text-muted-foreground block">起始投入 (2020.01)</span>
+                <span className="text-xs font-semibold text-foreground tabular-nums">
+                  ${milestones.initialTotalUsd.toLocaleString()}
+                  <span className="text-[10px] text-muted-foreground font-normal ml-1">
+                    (¥{(milestones.initialTotalJpy / 10000).toFixed(0)}万)
+                  </span>
+                </span>
+              </div>
+              <div className="p-2 rounded-lg bg-muted/30 border border-border/40">
+                <span className="text-[10px] text-muted-foreground block">全周期资产倍数 (2020~2026)</span>
+                <span className="text-xs font-semibold text-primary tabular-nums">
+                  {growthMultiple.toFixed(2)}x
+                  <span className="text-[10px] text-muted-foreground font-normal ml-1">
+                    (+{(totalGrowthSinceInception * 100).toFixed(0)}%)
+                  </span>
+                </span>
               </div>
             </div>
           </CardHeader>
@@ -270,14 +473,29 @@ export function PortfolioHeroOverview({
                       if (!active || !payload?.length) return null;
                       const d = payload[0].payload;
                       return (
-                        <div className="rounded-lg border border-border bg-popover/95 p-2.5 shadow-md backdrop-blur-xs text-xs space-y-1">
-                          <p className="font-medium text-foreground">{d.fullMonth} 月末净值</p>
-                          <p className="text-sm font-bold text-primary tabular-nums">
-                            {formatExactMoney(d.value, baseCurrency)}
-                          </p>
-                          {d.momReturn !== null && (
-                            <p className="text-[11px] text-muted-foreground tabular-nums">
-                              月度环比：
+                        <div className="rounded-lg border border-border bg-popover/95 p-3 shadow-md backdrop-blur-xs text-xs space-y-1.5 max-w-xs">
+                          <div className="flex items-center justify-between gap-2 border-b border-border/50 pb-1">
+                            <span className="font-semibold text-foreground">{d.fullMonth}</span>
+                            {d.isMilestone && (
+                              <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.2 rounded font-medium">
+                                里程碑基准
+                              </span>
+                            )}
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground text-[10px] block">净值折算 ({baseCurrency})</span>
+                            <span className="text-base font-bold text-foreground tabular-nums">
+                              {formatExactMoney(d.value, baseCurrency)}
+                            </span>
+                          </div>
+                          {d.note && (
+                            <p className="text-[11px] text-muted-foreground leading-snug bg-muted/40 p-1.5 rounded">
+                              {d.note}
+                            </p>
+                          )}
+                          {d.momReturn !== null && !d.isMilestone && (
+                            <p className="text-[10px] text-muted-foreground tabular-nums">
+                              环比：
                               <span className={d.momReturn >= 0 ? 'text-emerald-500 font-semibold' : 'text-rose-500 font-semibold'}>
                                 {d.momReturn >= 0 ? '+' : ''}{(d.momReturn * 100).toFixed(2)}%
                               </span>
@@ -373,7 +591,7 @@ export function PortfolioHeroOverview({
               </div>
             </div>
 
-            {/* Clean Legend (图例) without redundant bulky tables */}
+            {/* Clean Legend without redundant bulky tables */}
             <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs pt-3 w-full px-2 border-t border-border/50">
               {pieData.map((item) => (
                 <div key={item.layer} className="flex items-center justify-between">
@@ -391,15 +609,15 @@ export function PortfolioHeroOverview({
         </Card>
       </div>
 
-      {/* Edit Historical Records Modal */}
+      {/* Edit Historical Records & Milestones Modal */}
       {isEditOpen && (
         <div className="gf-modal-backdrop" role="presentation">
-          <div className="p-5 rounded-2xl bg-card border border-border shadow-2xl max-w-md w-full mx-4 space-y-4">
+          <div className="p-5 rounded-2xl bg-card border border-border shadow-2xl max-w-lg w-full mx-4 space-y-4">
             <div className="flex items-center justify-between pb-2 border-b border-border">
               <div>
-                <h3 className="text-base font-bold text-foreground">修改 2026 历史月度净值</h3>
+                <h3 className="text-base font-bold text-foreground">管理历史基准与推移点位</h3>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  输入每个月末的实际净值（日元计），图表将自动生成连续的平滑面积推移
+                  设定 2020 起始本金、2025 阶段里程碑与 2026 各月实际净值
                 </p>
               </div>
               <button
@@ -411,57 +629,218 @@ export function PortfolioHeroOverview({
               </button>
             </div>
 
-            <div className="space-y-2.5 max-h-[320px] overflow-y-auto pr-1">
-              {editingList.map((item, idx) => (
-                <div key={idx} className="flex items-center gap-2 text-xs">
-                  <input
-                    type="text"
-                    value={item.month}
-                    onChange={(e) => {
-                      const next = [...editingList];
-                      next[idx].month = e.target.value;
-                      setEditingList(next);
-                    }}
-                    placeholder="2026-MM"
-                    className="w-24 px-2 py-1.5 rounded-md border border-border bg-background font-mono text-center"
-                  />
-                  <div className="relative flex-1">
-                    <span className="absolute left-2.5 top-1.5 text-muted-foreground">¥</span>
-                    <input
-                      type="number"
-                      value={item.valueJpy}
-                      onChange={(e) => {
-                        const next = [...editingList];
-                        next[idx].valueJpy = Number(e.target.value) || 0;
-                        setEditingList(next);
-                      }}
-                      className="w-full pl-6 pr-2 py-1.5 rounded-md border border-border bg-background font-mono text-right"
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditingList(editingList.filter((_, i) => i !== idx));
-                    }}
-                    className="text-muted-foreground hover:text-rose-500 p-1 cursor-pointer"
-                    title="删除该月记录"
-                  >
-                    <Trash2 size={13} />
-                  </button>
-                </div>
-              ))}
-
+            {/* Tab Switcher in Modal */}
+            <div className="flex items-center gap-2 border-b border-border pb-2 text-xs">
               <button
                 type="button"
-                onClick={() => {
-                  setEditingList([...editingList, { month: '2026-04', valueJpy: 110000000 }]);
-                }}
-                className="w-full py-1.5 rounded-md border border-dashed border-border text-xs text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                onClick={() => setEditTab('milestones')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md font-medium transition-colors cursor-pointer ${
+                  editTab === 'milestones'
+                    ? 'bg-primary/10 text-primary font-semibold'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
               >
-                <Plus size={13} />
-                <span>新增月份点位</span>
+                <Milestone size={13} />
+                <span>历史里程碑基准 (2020 / 2025)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditTab('monthly')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md font-medium transition-colors cursor-pointer ${
+                  editTab === 'monthly'
+                    ? 'bg-primary/10 text-primary font-semibold'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <Clock size={13} />
+                <span>2026 月度详细点位</span>
               </button>
             </div>
+
+            {editTab === 'milestones' ? (
+              <div className="space-y-3.5 max-h-[360px] overflow-y-auto pr-1 text-xs">
+                {/* 2020 Start Milestone */}
+                <div className="p-3 rounded-lg border border-border bg-muted/20 space-y-2">
+                  <div className="flex items-center justify-between font-semibold text-foreground">
+                    <span>① 2020-01-01 初始投入设定</span>
+                    <span className="text-[11px] text-muted-foreground">汇率约为 110</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <span className="text-[10px] text-muted-foreground block mb-0.5">微牛账户投入 (USD)</span>
+                      <input
+                        type="number"
+                        value={editingMilestones.webullUsd}
+                        onChange={(e) => {
+                          const val = Number(e.target.value) || 0;
+                          const totalUsd = val + editingMilestones.tigerUsd;
+                          setEditingMilestones({
+                            ...editingMilestones,
+                            webullUsd: val,
+                            initialTotalUsd: totalUsd,
+                            initialTotalJpy: Math.round(totalUsd * editingMilestones.initialFxUsdJpy),
+                          });
+                        }}
+                        className="w-full px-2 py-1.5 rounded border border-border bg-background font-mono text-right"
+                      />
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-muted-foreground block mb-0.5">老虎账户投入 (USD)</span>
+                      <input
+                        type="number"
+                        value={editingMilestones.tigerUsd}
+                        onChange={(e) => {
+                          const val = Number(e.target.value) || 0;
+                          const totalUsd = editingMilestones.webullUsd + val;
+                          setEditingMilestones({
+                            ...editingMilestones,
+                            tigerUsd: val,
+                            initialTotalUsd: totalUsd,
+                            initialTotalJpy: Math.round(totalUsd * editingMilestones.initialFxUsdJpy),
+                          });
+                        }}
+                        className="w-full px-2 py-1.5 rounded border border-border bg-background font-mono text-right"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 pt-1 border-t border-border/40 text-[11px]">
+                    <div>
+                      <span className="text-muted-foreground">合计投入：</span>
+                      <span className="font-semibold text-foreground font-mono ml-1">
+                        ${editingMilestones.initialTotalUsd.toLocaleString()}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">折合日元：</span>
+                      <span className="font-semibold text-foreground font-mono ml-1">
+                        ¥{editingMilestones.initialTotalJpy.toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2025 Mid Milestone */}
+                <div className="p-3 rounded-lg border border-border bg-muted/20 space-y-2">
+                  <div className="flex items-center justify-between font-semibold text-foreground">
+                    <span>② 2025-10-21 阶段数据与收益表现</span>
+                    <span className="text-[11px] text-muted-foreground">汇率 150.61</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <span className="text-[10px] text-muted-foreground block mb-0.5">阶段资产 (USD)</span>
+                      <input
+                        type="number"
+                        value={editingMilestones.midAssetUsd}
+                        onChange={(e) => {
+                          const val = Number(e.target.value) || 0;
+                          setEditingMilestones({
+                            ...editingMilestones,
+                            midAssetUsd: val,
+                            midAssetJpy: Math.round(val * editingMilestones.midFxUsdJpy),
+                          });
+                        }}
+                        className="w-full px-2 py-1.5 rounded border border-border bg-background font-mono text-right"
+                      />
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-muted-foreground block mb-0.5">折算日元 (JPY)</span>
+                      <input
+                        type="number"
+                        value={editingMilestones.midAssetJpy}
+                        onChange={(e) => {
+                          const val = Number(e.target.value) || 0;
+                          setEditingMilestones({
+                            ...editingMilestones,
+                            midAssetJpy: val,
+                          });
+                        }}
+                        className="w-full px-2 py-1.5 rounded border border-border bg-background font-mono text-right"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <span className="text-[10px] text-muted-foreground block mb-0.5">累计收益率 (%)</span>
+                      <input
+                        type="number"
+                        step="0.1"
+                        value={(editingMilestones.midCumulativeReturn * 100).toFixed(1)}
+                        onChange={(e) => {
+                          const val = (Number(e.target.value) || 0) / 100;
+                          setEditingMilestones({ ...editingMilestones, midCumulativeReturn: val });
+                        }}
+                        className="w-full px-2 py-1.5 rounded border border-border bg-background font-mono text-right"
+                      />
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-muted-foreground block mb-0.5">年化 IRR (%)</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={(editingMilestones.midIrrAnnual * 100).toFixed(2)}
+                        onChange={(e) => {
+                          const val = (Number(e.target.value) || 0) / 100;
+                          setEditingMilestones({ ...editingMilestones, midIrrAnnual: val });
+                        }}
+                        className="w-full px-2 py-1.5 rounded border border-border bg-background font-mono text-right"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2.5 max-h-[320px] overflow-y-auto pr-1">
+                {editingList.map((item, idx) => (
+                  <div key={idx} className="flex items-center gap-2 text-xs">
+                    <input
+                      type="text"
+                      value={item.month}
+                      onChange={(e) => {
+                        const next = [...editingList];
+                        next[idx].month = e.target.value;
+                        setEditingList(next);
+                      }}
+                      placeholder="2026-MM"
+                      className="w-24 px-2 py-1.5 rounded-md border border-border bg-background font-mono text-center"
+                    />
+                    <div className="relative flex-1">
+                      <span className="absolute left-2.5 top-1.5 text-muted-foreground">¥</span>
+                      <input
+                        type="number"
+                        value={item.valueJpy}
+                        onChange={(e) => {
+                          const next = [...editingList];
+                          next[idx].valueJpy = Number(e.target.value) || 0;
+                          setEditingList(next);
+                        }}
+                        className="w-full pl-6 pr-2 py-1.5 rounded-md border border-border bg-background font-mono text-right"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingList(editingList.filter((_, i) => i !== idx));
+                      }}
+                      className="text-muted-foreground hover:text-rose-500 p-1 cursor-pointer"
+                      title="删除该月记录"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                ))}
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingList([...editingList, { month: '2026-04', valueJpy: 110000000 }]);
+                  }}
+                  className="w-full py-1.5 rounded-md border border-dashed border-border text-xs text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                >
+                  <Plus size={13} />
+                  <span>新增月份点位</span>
+                </button>
+              </div>
+            )}
 
             <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
               <button
@@ -473,11 +852,11 @@ export function PortfolioHeroOverview({
               </button>
               <button
                 type="button"
-                onClick={handleSaveHistory}
+                onClick={handleSaveAll}
                 className="gf-primary-action text-xs"
               >
                 <Check size={13} />
-                <span>保存并更新图表</span>
+                <span>保存并更新图表与指标</span>
               </button>
             </div>
           </div>
