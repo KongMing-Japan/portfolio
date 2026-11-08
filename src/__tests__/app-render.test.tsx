@@ -55,9 +55,13 @@ describe('App component', () => {
     expect(screen.getByText(/月底复盘与投资建议/)).toBeDefined();
     expect(screen.getByText('重点个股点评与操作建议')).toBeDefined();
 
-    // 4. Displays monthly salary cash inflow
+    // 4. Displays monthly salary cash inflow & pure investment returns under dual-track accounting
     expect(screen.getByText('工资月度定投现金注入')).toBeDefined();
     expect(screen.getByText('+¥50万 / 月')).toBeDefined();
+    expect(screen.getByText('双轨独立核算体系')).toBeDefined();
+    expect(screen.getByText('美港股纯投资收益 (2020~2025)')).toBeDefined();
+    expect(screen.getByText('+120.8%')).toBeDefined();
+    expect(screen.getByText('储蓄与投资收益严格分账')).toBeDefined();
   });
 });
 

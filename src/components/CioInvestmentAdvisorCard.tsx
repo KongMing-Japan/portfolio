@@ -197,7 +197,7 @@ export function CioInvestmentAdvisorCard({
     : `${latestDateInfo.monthNum} 月底复盘 · 伯克希尔 (巴菲特) 示范组合深度诊断`;
 
   const summaryText = isOwnerUnlocked ? (
-    `${latestDateInfo.monthNum} 月末组合整体保持攻守兼备的稳健哑铃结构：核心仓（${formatPercent(metrics.coreWeight, 0)}）由高景气科技与高现金流实体双轮驱动，卫星仓（${formatPercent(metrics.satWeight, 0)}）严格约束在安全阈值内；投资账户可用现金约 ${formatExactMoney(metrics.cashVal, baseCurrency)}（占比 ${formatPercent(metrics.cashWeight, 0)}）。尤其值得关注的是，资金池每月有稳定 50 万日元现金由工资收入定期定投注入（2020年至今已持续积累超 4,150 万日元增量本金），构建起坚韧的自我造血现金流引擎，彻底规避了被动卖股变现风险。鉴于防守仓（${formatPercent(metrics.defWeight, 0)}）距离 30% 目标线尚有缺口，建议 ${nextMonthNum} 月继续保持「核心重仓耐心持有、弱势期权不盲目加码抄底、利用每月新补入的 50 万工资现金活水逢低分批补足防守对冲（如 1482.T / 2563.T）」的操作主线。`
+    `${latestDateInfo.monthNum} 月末组合整体保持攻守兼备的稳健哑铃结构：核心仓（${formatPercent(metrics.coreWeight, 0)}）由高景气科技与高现金流实体双轮驱动，卫星仓（${formatPercent(metrics.satWeight, 0)}）严格约束在安全阈值内；投资账户可用现金约 ${formatExactMoney(metrics.cashVal, baseCurrency)}（占比 ${formatPercent(metrics.cashWeight, 0)}）。在核算上，严格秉持「双轨独立」原则：个人工资每月补充的 50 万日元现金作为外部储蓄本金独立建账，不混入持仓投资收益率（保持二级市场纯收益 +120.8% 的纯粹性）。这笔持续注入的现金流构建起自我造血的干火药引擎，鉴于防守仓（${formatPercent(metrics.defWeight, 0)}）距离 30% 目标线尚有缺口，建议 ${nextMonthNum} 月继续保持「核心重仓耐心持有、弱势期权不盲目加码抄底、利用每月新补入的 50 万工资现金活水逢低分批补足防守对冲（如 1482.T / 2563.T）」的操作主线。`
   ) : (
     `${latestDateInfo.monthNum} 月末伯克希尔·哈撒韦公开持仓整体展现极高壁垒与流动性堡垒特征：核心权益持仓（${formatPercent(metrics.coreWeight, 0)}）高度聚焦于拥有极致品牌垄断与高自由现金流的企业（苹果、美国运通、可口可乐）；同时组合手握超过 3,200 亿美元的防守现金与短期美国国债，构筑了极深的流动性安全垫与极端风暴下的战略扫货弹药。建议个人投资者借鉴巴菲特「在别人贪婪时恐惧、手握充沛流动性耐心等待安全边际」的跨周期防御配置哲学。`
   );

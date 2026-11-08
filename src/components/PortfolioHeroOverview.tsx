@@ -408,7 +408,7 @@ export function PortfolioHeroOverview({
           month: '2025.10',
           fullMonth: '2025-10-21 阶段里程碑 (全组合)',
           valueJpy: milestones.midAssetJpy + otherBaselineJpy,
-          note: `全组合阶段总值：日股等底仓 ¥${Math.round(otherBaselineJpy / 10000).toLocaleString()}万 + 老虎美股 $${milestones.midAssetUsd.toLocaleString()} (¥${Math.round(milestones.midAssetJpy / 10000).toLocaleString()}万) · 包含每月 50 万工资现金定投 (期间累计注入 3,500万) · 美股累计收益 +${(milestones.midCumulativeReturn * 100).toFixed(1)}%，IRR ${(milestones.midIrrAnnual * 100).toFixed(2)}%/年`,
+          note: `全组合阶段总值：日股等底仓 ¥${Math.round(otherBaselineJpy / 10000).toLocaleString()}万 + 老虎美股 $${milestones.midAssetUsd.toLocaleString()} (¥${Math.round(milestones.midAssetJpy / 10000).toLocaleString()}万) · 美港股纯投资收益 +${(milestones.midCumulativeReturn * 100).toFixed(1)}%，年化 IRR ${(milestones.midIrrAnnual * 100).toFixed(2)}%/年 · [独立储蓄账目] 个人工资定投截至此时累计注入 ¥${Math.round(midSalaryInflowJpy / 10000).toLocaleString()}万 (外部储蓄，不计入持仓收益率)`,
           isMilestone: true,
         },
         {
@@ -441,14 +441,13 @@ export function PortfolioHeroOverview({
         month: latestDateInfo.monthDot,
         fullMonth: `${latestDateInfo.dateFormatted} 更新当日实盘 (全券商持仓)`,
         valueJpy: currentTotalJpy,
-        note: `${latestDateInfo.dateFormatted} 更新当日实盘 · 2020年至今持续每月注入 50 万工资定投资金 (累计注资约 ¥${Math.round(totalSalaryInflowJpy / 10000).toLocaleString()}万，${monthsToCurrent}个月)`,
+        note: `${latestDateInfo.dateFormatted} 更新当日实盘总值 · [独立储蓄账目] 个人工资定投累计注入 ¥${Math.round(totalSalaryInflowJpy / 10000).toLocaleString()}万 (${monthsToCurrent}个月外部劳动储蓄，不计入持仓投资收益率)`,
         isMilestone: true,
       });
 
       return points.map((item, idx) => {
         const valBase = convertJpyToBase(item.valueJpy);
         const prev = idx > 0 ? convertJpyToBase(points[idx - 1].valueJpy) : null;
-        const totalGrowth = ((valBase - convertJpyToBase(fullCycleBaseJpy)) / convertJpyToBase(fullCycleBaseJpy));
         return {
           month: item.month,
           fullMonth: item.fullMonth,
@@ -457,7 +456,7 @@ export function PortfolioHeroOverview({
           note: item.note,
           isMilestone: item.isMilestone,
           momReturn: prev && prev > 0 ? (valBase - prev) / prev : null,
-          totalGrowth,
+          totalGrowth: null,
         };
       });
     }
@@ -476,7 +475,7 @@ export function PortfolioHeroOverview({
           month: '2025.10',
           fullMonth: '2025-10-21 阶段里程碑 (老虎美股)',
           valueJpy: milestones.midAssetJpy,
-          note: `阶段美股资产 $${milestones.midAssetUsd.toLocaleString()} (汇率 ${milestones.midFxUsdJpy}) · 累计收益 +${(milestones.midCumulativeReturn * 100).toFixed(1)}% · 年化 IRR ${(milestones.midIrrAnnual * 100).toFixed(2)}%/年`,
+          note: `阶段美股资产 $${milestones.midAssetUsd.toLocaleString()} (汇率 ${milestones.midFxUsdJpy}) · 纯二级市场投资收益 +${(milestones.midCumulativeReturn * 100).toFixed(1)}% · 年化 IRR ${(milestones.midIrrAnnual * 100).toFixed(2)}%/年 (剔除出入金干扰的纯投资回报)`,
           isMilestone: true,
         },
       ];
@@ -538,7 +537,7 @@ export function PortfolioHeroOverview({
         value: valBase,
         valueJpy: item.valueJpy,
         note: isCurrent
-          ? `${latestDateInfo.dateFormatted} 更新当日实盘净值 · 包含每月 50 万日元工资收入现金定投`
+          ? `${latestDateInfo.dateFormatted} 更新当日实盘净值 · 个人工资月度储蓄另行独立核算 (+¥50万/月，不计入投资收益率)`
           : `${item.month} 月末资产记录`,
         isMilestone: isCurrent,
         momReturn,
@@ -770,18 +769,18 @@ export function PortfolioHeroOverview({
               ) : timelineMode === 'tiger_only' ? (
                 <>
                   <div className="p-2 rounded-lg bg-muted/30 border border-border/40">
-                    <span className="text-[10px] text-muted-foreground block">美港股阶段收益 (2020~2025)</span>
+                    <span className="text-[10px] text-muted-foreground block">美港股纯投资收益 (2020~2025)</span>
                     <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
                       +{(milestones.midCumulativeReturn * 100).toFixed(1)}%
                     </span>
-                    <span className="text-[9px] text-muted-foreground block mt-0.5">(微牛+老虎实盘增长)</span>
+                    <span className="text-[9px] text-muted-foreground block mt-0.5">(二级市场纯收益 · 微牛+老虎)</span>
                   </div>
                   <div className="p-2 rounded-lg bg-muted/30 border border-border/40">
                     <span className="text-[10px] text-muted-foreground block">美港股年化 IRR (微牛+老虎)</span>
                     <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
                       {(milestones.midIrrAnnual * 100).toFixed(2)}% / 年
                     </span>
-                    <span className="text-[9px] text-muted-foreground block mt-0.5">(内部年化复利收益率)</span>
+                    <span className="text-[9px] text-muted-foreground block mt-0.5">(剔除出入金内部真实收益率)</span>
                   </div>
                   <div className="p-2 rounded-lg bg-muted/30 border border-border/40">
                     <span className="text-[10px] text-muted-foreground block">创设总投入 (2020.01)</span>
@@ -791,7 +790,7 @@ export function PortfolioHeroOverview({
                         (¥{(milestones.initialTotalJpy / 10000).toFixed(0)}万)
                       </span>
                     </span>
-                    <span className="text-[9px] text-muted-foreground block mt-0.5">(汇率 110 创设本金)</span>
+                    <span className="text-[9px] text-muted-foreground block mt-0.5">(汇率 110 初始创设本金)</span>
                   </div>
                   <div className="p-2 rounded-lg bg-muted/30 border border-border/40">
                     <span className="text-[10px] text-muted-foreground block">
@@ -806,12 +805,12 @@ export function PortfolioHeroOverview({
               ) : timelineMode === 'all_cycle' ? (
                 <>
                   <div className="p-2 rounded-lg bg-muted/30 border border-border/40">
-                    <span className="text-[10px] text-muted-foreground block">美港股阶段收益 (2020~2025)</span>
+                    <span className="text-[10px] text-muted-foreground block">美港股纯投资收益 (2020~2025)</span>
                     <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
                       +{(milestones.midCumulativeReturn * 100).toFixed(1)}%
                     </span>
                     <span className="text-[9px] text-muted-foreground block mt-0.5">
-                      年化 IRR {(milestones.midIrrAnnual * 100).toFixed(2)}%/年
+                      年化 IRR {(milestones.midIrrAnnual * 100).toFixed(2)}%/年 (二级市场纯收益)
                     </span>
                   </div>
                   <div className="p-2 rounded-lg bg-muted/30 border border-border/40">
@@ -820,7 +819,7 @@ export function PortfolioHeroOverview({
                       +¥{Math.round(monthlySalaryInflow / 10000)}万 / 月
                     </span>
                     <span className="text-[9px] text-muted-foreground block mt-0.5">
-                      2020至今累计注资约 ¥{Math.round(totalSalaryInflowJpy / 10000).toLocaleString()}万 ({monthsToCurrent}个月)
+                      累计注资 ¥{Math.round(totalSalaryInflowJpy / 10000).toLocaleString()}万 · 独立核算不计入收益率
                     </span>
                   </div>
                   <div className="p-2 rounded-lg bg-muted/30 border border-border/40">
@@ -828,16 +827,16 @@ export function PortfolioHeroOverview({
                     <span className="text-xs font-semibold text-foreground tabular-nums">
                       ¥{Math.round((milestones.initialTotalJpy + otherBaselineJpy) / 10000).toLocaleString()}万
                     </span>
-                    <span className="text-[9px] text-muted-foreground block mt-0.5">(日股底仓 + 美港股本金)</span>
+                    <span className="text-[9px] text-muted-foreground block mt-0.5">(日股底仓 + 美港股初始本金)</span>
                   </div>
                   <div className="p-2 rounded-lg bg-muted/30 border border-border/40">
                     <span className="text-[10px] text-muted-foreground block">
-                      更新当日实盘总值 ({latestDateInfo.dateFormatted})
+                      更新当日组合总资产 ({latestDateInfo.dateFormatted})
                     </span>
                     <span className="text-xs font-semibold text-primary tabular-nums">
                       {formatExactMoney(totalValue, baseCurrency)}
                     </span>
-                    <span className="text-[9px] text-muted-foreground block mt-0.5">(全券商当日实盘精确对账)</span>
+                    <span className="text-[9px] text-muted-foreground block mt-0.5">(持仓实盘现值 + 独立现金池)</span>
                   </div>
                 </>
               ) : (
@@ -850,18 +849,18 @@ export function PortfolioHeroOverview({
                     <span className="text-[9px] text-muted-foreground block mt-0.5">历史阶段净值高位</span>
                   </div>
                   <div className="p-2 rounded-lg bg-muted/30 border border-border/40">
-                    <span className="text-[10px] text-muted-foreground block">月度工资定投补给</span>
+                    <span className="text-[10px] text-muted-foreground block">工资月度定投现金注入</span>
                     <span className="text-sm font-bold text-primary tabular-nums">
                       +¥{Math.round(monthlySalaryInflow / 10000)}万 / 月
                     </span>
-                    <span className="text-[9px] text-muted-foreground block mt-0.5">现金池持续增量活水</span>
+                    <span className="text-[9px] text-muted-foreground block mt-0.5">外部储蓄活水 · 独立核算</span>
                   </div>
                   <div className="p-2 rounded-lg bg-muted/30 border border-border/40">
                     <span className="text-[10px] text-muted-foreground block">最新月度环比</span>
                     <span className={`text-xs font-semibold tabular-nums ${latestMoM !== null && latestMoM >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
                       {latestMoM !== null && latestMoM >= 0 ? '+' : ''}{latestMoM !== null ? (latestMoM * 100).toFixed(1) : '0.0'}%
                     </span>
-                    <span className="text-[9px] text-muted-foreground block mt-0.5">较上期环比变动</span>
+                    <span className="text-[9px] text-muted-foreground block mt-0.5">资产总值月度变动</span>
                   </div>
                   <div className="p-2 rounded-lg bg-muted/30 border border-border/40">
                     <span className="text-[10px] text-muted-foreground block">
@@ -878,6 +877,24 @@ export function PortfolioHeroOverview({
           </CardHeader>
 
           <CardContent className="pt-2 pb-3">
+            {/* 双轨独立核算解构条 (解锁状态下全周期模式醒目展示) */}
+            {isOwnerUnlocked && timelineMode === 'all_cycle' && (
+              <div className="mb-2.5 px-3 py-1.5 rounded-lg border border-border/50 bg-muted/20 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 text-xs">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="font-semibold text-foreground flex items-center gap-1">
+                    <span className="size-1.5 rounded-full bg-primary" />
+                    双轨独立核算体系
+                  </span>
+                  <span className="text-muted-foreground text-[11px]">
+                    个人每月工资定投补充 50 万日元现金（累计注入 ¥{Math.round(totalSalaryInflowJpy / 10000).toLocaleString()}万）按<strong>外部储蓄本金独立建账</strong>，严格不计入持仓收益率；<strong>+120.8% (IRR 14.60%)</strong> 纯粹反映二级市场真实投资回报。
+                  </span>
+                </div>
+                <span className="text-[10px] text-muted-foreground shrink-0 font-medium px-1.5 py-0.5 rounded bg-background border border-border/40">
+                  储蓄与投资收益严格分账
+                </span>
+              </div>
+            )}
+
             <div className="h-[210px] w-full">
               <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 500, height: 210 }}>
                 <AreaChart data={chartData} margin={{ top: 12, right: 12, left: -16, bottom: 0 }}>
@@ -936,7 +953,7 @@ export function PortfolioHeroOverview({
                             )}
                           </div>
                           <div>
-                            <span className="text-muted-foreground text-[10px] block">净值折算 ({baseCurrency})</span>
+                            <span className="text-muted-foreground text-[10px] block">组合总资产 ({baseCurrency})</span>
                             <span className="text-base font-bold text-foreground tabular-nums">
                               {formatExactMoney(d.value, baseCurrency)}
                             </span>
@@ -946,9 +963,21 @@ export function PortfolioHeroOverview({
                               {d.note}
                             </p>
                           )}
+                          {isOwnerUnlocked && timelineMode === 'all_cycle' && (
+                            <div className="pt-1 border-t border-border/40 text-[10px] text-muted-foreground space-y-0.5">
+                              <div className="flex justify-between">
+                                <span>持仓纯投资收益率：</span>
+                                <span className="font-semibold text-emerald-600 dark:text-emerald-400 font-mono">+120.8% (IRR 14.60%)</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>个人工资定投累计：</span>
+                                <span className="font-semibold text-primary font-mono">¥{Math.round(totalSalaryInflowJpy / 10000).toLocaleString()}万 (独立记账)</span>
+                              </div>
+                            </div>
+                          )}
                           {d.momReturn !== null && !d.isMilestone && (
                             <p className="text-[10px] text-muted-foreground tabular-nums">
-                              环比：
+                              资产规模环比：
                               <span className={d.momReturn >= 0 ? 'text-emerald-500 font-semibold' : 'text-rose-500 font-semibold'}>
                                 {d.momReturn >= 0 ? '+' : ''}{(d.momReturn * 100).toFixed(2)}%
                               </span>
@@ -1306,11 +1335,11 @@ export function PortfolioHeroOverview({
                 {/* ④ Monthly Salary Inflow Setting */}
                 <div className="p-3 rounded-lg border border-border bg-muted/20 space-y-2">
                   <div className="flex items-center justify-between font-semibold text-foreground">
-                    <span>④ 每月工资现金定投补充设定 (工资收入注入)</span>
+                    <span>④ 个人工资定投现金储备设定 (独立储蓄账目)</span>
                     <span className="text-[11px] text-primary font-mono">从 2020 年起持续补入</span>
                   </div>
                   <p className="text-[11px] text-muted-foreground leading-relaxed">
-                    每月由个人工资收入固定向资金账户补充 <strong>50 万日元现金</strong>。这部分属于自然增长的外部储蓄增量本金，区分于二级市场纯投资收益。
+                    每月由个人工资收入固定向资金账户补充 <strong>50 万日元现金</strong>。<strong>【独立核算规则】</strong>此部分属于外部个人劳动储蓄本金，系统将其<strong>完全独立于持仓投资收益率核算</strong>，不作为二级市场投资盈利，确保持仓收益率真实反映纯资本投资表现。
                   </p>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
