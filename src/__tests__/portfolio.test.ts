@@ -75,19 +75,19 @@ describe('portfolio import and analysis', () => {
     expect(holdings[1].layer).toBe('Cash');
   });
 
-  it('reconciles the 20-account real portfolio to ~127,092,289 JPY and merges cross-market S&P 500', () => {
+  it('reconciles the 21-account real portfolio to ~121,242,963 JPY and merges cross-market S&P 500', () => {
     const holdings = REAL_PORTFOLIO_SNAPSHOT.holdings;
     const brokers = new Set(holdings.map((h) => h.broker));
-    expect(brokers.size).toBe(20);
+    expect(brokers.size).toBe(21);
 
     const totalJpy = holdings.reduce((sum, h) => sum + (h.valueInBase ?? 0), 0);
-    expect(totalJpy).toBeCloseTo(127_092_289, -1);
+    expect(totalJpy).toBeCloseTo(121_242_963, -1);
 
     const merged = aggregateHoldings(holdings, { mergeEquivalent: true });
     const sp500 = merged.find((item) => item.ticker === 'S&P500·合并');
     expect(sp500).toBeDefined();
     expect(sp500?.accounts.length).toBe(4); // 2563.T x2 + eMAXIS Slim + 513500.SS
-    expect(sp500?.marketValueBase ?? 0).toBeCloseTo(15_250_549, -1);
+    expect(sp500?.marketValueBase ?? 0).toBeCloseTo(15_172_966, -1);
   });
 
   it('separates daily life cash from investment portfolio according to user classification', () => {
@@ -112,7 +112,7 @@ describe('portfolio import and analysis', () => {
 
     const dailySum = dailyHoldings.reduce((sum, h) => sum + (h.valueInBase ?? 0), 0);
     const coreSum = coreHoldings.reduce((sum, h) => sum + (h.valueInBase ?? 0), 0);
-    expect(dailySum + coreSum).toBeCloseTo(127_092_289, -1);
+    expect(dailySum + coreSum).toBeCloseTo(121_242_963, -1);
 
     const mergedCore = aggregateHoldings(coreHoldings, { mergeEquivalent: true });
     for (const item of mergedCore) {
