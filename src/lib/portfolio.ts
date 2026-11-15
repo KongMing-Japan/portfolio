@@ -182,8 +182,6 @@ export function fxExposureFromHolding(holding: Pick<Holding, 'ticker' | 'name' |
 
 export const POPULAR_BROKERS = [
   '乐天证券',
-  '乐天基金',
-  'au 账户',
   'moomoo证券',
   'Tiger证券',
   '招商证券',
@@ -681,8 +679,6 @@ export function isDailyMemoAccount(holding: Pick<Holding, 'broker' | 'ticker' | 
   // 4. Brokerages (stocks, ETFs, funds, and brokerage cash pools) are investments
   if (
     broker === '乐天证券' ||
-    broker === '乐天基金' ||
-    broker === 'au 账户' ||
     broker === 'moomoo证券' ||
     broker === 'Tiger证券' ||
     broker === '招商证券' ||

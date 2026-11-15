@@ -75,10 +75,10 @@ describe('portfolio import and analysis', () => {
     expect(holdings[1].layer).toBe('Cash');
   });
 
-  it('reconciles the 21-account real portfolio to ~121,242,963 JPY and merges cross-market S&P 500', () => {
+  it('reconciles the 20-account real portfolio to ~121,242,963 JPY and merges cross-market S&P 500', () => {
     const holdings = REAL_PORTFOLIO_SNAPSHOT.holdings;
     const brokers = new Set(holdings.map((h) => h.broker));
-    expect(brokers.size).toBe(21);
+    expect(brokers.size).toBe(20);
 
     const totalJpy = holdings.reduce((sum, h) => sum + (h.valueInBase ?? 0), 0);
     expect(totalJpy).toBeCloseTo(121_242_963, -1);

@@ -190,40 +190,13 @@ export const REAL_PORTFOLIO_HOLDINGS: Holding[] = [
   },
 
   // ===========================================================================
-  // 2. 乐天基金｜公募定投 (账户市值：3,328,609 日元，浮盈 +¥178,598 / +5.66%)
+  // 2. moomoo证券｜日元 (账户合计：21,875,109 日元，含现物股票 ¥16,679,500 + 公募投信 ¥3,328,609 + 可用现金 ¥1,867,000)
   // ===========================================================================
   {
-    id: 'real-rakuten-fund-emaxis-sp500',
-    ticker: 'EMAXIS_SP500',
-    name: 'eMAXIS Slim 美国株式(S&P 500)',
-    broker: '乐天基金',
-    account: '乐天公募基金账户',
-    market: 'Japan',
-    currency: 'JPY',
-    quantity: 1,
-    costPerUnit: 3150011,
-    importedMarketValue: 3328609,
-    marketPrice: 3328609,
-    marketValue: 3328609,
-    valueInBase: 3328609,
-    layer: 'Defensive',
-    theme: 'Bonds & Index (标普500定投)',
-    sourceType: 'manual',
-    confidence: 1,
-    needsReview: false,
-    reviewReasons: [],
-    targetWeight: null,
-    investmentThesis: '防守仓场外公募定投：eMAXIS Slim 美国株式（S&P 500），评价损益 +¥178,598 (+5.66%)。',
-  },
-
-  // ===========================================================================
-  // 3. au 账户（现物 7808）｜日元 (证券 16,679,500 + 现金 1,867,000 = 18,546,500 日元)
-  // ===========================================================================
-  {
-    id: 'real-au-2845',
+    id: 'real-moomoo-2845',
     ticker: '2845.T',
     name: '纳斯达克 100 (对冲)',
-    broker: 'au 账户',
+    broker: 'moomoo证券',
     account: '现物账户 7808',
     market: 'Japan',
     currency: 'JPY',
@@ -240,13 +213,13 @@ export const REAL_PORTFOLIO_HOLDINGS: Holding[] = [
     needsReview: false,
     reviewReasons: [],
     targetWeight: null,
-    investmentThesis: '核心仓（美股主线）：au现物账户 2,000 份，成本 2,865 → 现价 3,225，浮盈 +¥721,197 (+12.6%)。',
+    investmentThesis: '核心仓（美股主线）：moomoo证券现物账户 2,000 份，成本 2,865 → 现价 3,225，浮盈 +¥721,197 (+12.6%)。',
   },
   {
-    id: 'real-au-3905',
+    id: 'real-moomoo-3905',
     ticker: '3905.T',
     name: 'DataSection',
-    broker: 'au 账户',
+    broker: 'moomoo证券',
     account: '现物账户 7808',
     market: 'Japan',
     currency: 'JPY',
@@ -266,10 +239,10 @@ export const REAL_PORTFOLIO_HOLDINGS: Holding[] = [
     investmentThesis: '核心/高弹性AI算力节点：日本AI数据中心算力布局，持仓 1,500 股，浮亏 −¥351,955 (−13.1%)。',
   },
   {
-    id: 'real-au-9023',
+    id: 'real-moomoo-9023',
     ticker: '9023.T',
     name: '东京地铁',
-    broker: 'au 账户',
+    broker: 'moomoo证券',
     account: '现物账户 7808',
     market: 'Japan',
     currency: 'JPY',
@@ -289,10 +262,33 @@ export const REAL_PORTFOLIO_HOLDINGS: Holding[] = [
     investmentThesis: '防守仓特许公共基础设施：东京核心地铁垄断路网，持仓 5,300 股，浮亏 −¥624,828 (−7.3%)。',
   },
   {
-    id: 'real-au-cash-jpy',
-    ticker: 'Cash_JPY_AU',
-    name: 'au账户可用现金',
-    broker: 'au 账户',
+    id: 'real-moomoo-emaxis-sp500',
+    ticker: 'EMAXIS_SP500',
+    name: 'eMAXIS Slim 美国株式(S&P 500)',
+    broker: 'moomoo证券',
+    account: '日元投信账户',
+    market: 'Japan',
+    currency: 'JPY',
+    quantity: 1,
+    costPerUnit: 3150011,
+    importedMarketValue: 3328609,
+    marketPrice: 3328609,
+    marketValue: 3328609,
+    valueInBase: 3328609,
+    layer: 'Defensive',
+    theme: 'Bonds & Index (标普500定投)',
+    sourceType: 'manual',
+    confidence: 1,
+    needsReview: false,
+    reviewReasons: [],
+    targetWeight: null,
+    investmentThesis: '防守仓场外公募定投：moomoo证券 eMAXIS Slim 美国株式（S&P 500），评价损益 +¥178,598 (+5.66%)。',
+  },
+  {
+    id: 'real-moomoo-cash-jpy',
+    ticker: 'Cash_JPY_Moomoo',
+    name: 'moomoo证券可用现金',
+    broker: 'moomoo证券',
     account: '现物账户 7808 现金',
     market: 'Cash',
     currency: 'JPY',
@@ -309,11 +305,11 @@ export const REAL_PORTFOLIO_HOLDINGS: Holding[] = [
     needsReview: false,
     reviewReasons: [],
     targetWeight: null,
-    investmentThesis: 'au 账户内可用日元现金储备，随时可用于低吸补仓。',
+    investmentThesis: 'moomoo证券内可用日元现金储备，随时可用于低吸补仓。',
   },
 
   // ===========================================================================
-  // 4. Tiger Brokers（综合账户）｜美股 $61,328.03 + 港股 HK$924,680
+  // 3. Tiger Brokers（综合账户）｜美股 $61,328.03 + 港股 HK$924,680
   // ===========================================================================
   {
     id: 'real-tiger-crcl',
